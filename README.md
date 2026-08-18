@@ -91,10 +91,33 @@ http://localhost:3000/auth/callback
 
 ### 3) Crear las tablas requeridas
 
-Abre el SQL Editor en Supabase y ejecuta este bloque:
+El esquema completo del proyecto y sus políticas RLS está documentado en [SUPABASE_QUERIES.md](SUPABASE_QUERIES.md). Es la referencia principal para crear tablas, triggers, políticas y bucket de imágenes.
+
+Abre el SQL Editor en Supabase y ejecuta el contenido de ese archivo en el mismo proyecto que tienes configurado en `.env.local`.
+
+> Si quieres revisar el SQL de una sola vez, usa el archivo [SUPABASE_QUERIES.md](SUPABASE_QUERIES.md). Aquí se conserva solo la referencia rápida.
+
+### 3.1) Esquema mínimo recomendado
 
 ```sql
 create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  full_name text,
+  role text not null default 'user' check (role in ('user','admin')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  description text,
+  created_at timestamptz not null default now()
+);
 
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
@@ -104,44 +127,33 @@ create table if not exists public.products (
   price_usd numeric(10,2) not null default 0,
   stock integer not null default 0,
   image_url text,
-  colors text[] default '{}',
-  specifications jsonb default '{}',
-  category_id text,
-  featured boolean default false,
-  created_at timestamptz default now()
+  colors text[] not null default '{}',
+  specifications jsonb not null default '{}',
+  category_id uuid references public.categories(id) on delete set null,
+  featured boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.solicitudes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   total_usd numeric(12,2) not null default 0,
-  exchange_rate numeric(10,2) default 36.5,
-  status text not null default 'pendiente',
-  created_at timestamptz default now()
+  exchange_rate numeric(10,2) not null default 36.5,
+  status text not null default 'pending' check (status in ('pending','confirmed','shipped','completed','cancelled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-alter table public.products enable row level security;
-alter table public.solicitudes enable row level security;
-
-create policy "products read"
-on public.products
-for select
-using (true);
-
-create policy "solicitudes select own"
-on public.solicitudes
-for select
-using (auth.uid() = user_id);
-
-create policy "solicitudes insert own"
-on public.solicitudes
-for insert
-with check (auth.uid() = user_id);
-
-create policy "solicitudes update own"
-on public.solicitudes
-for update
-using (auth.uid() = user_id);
+create table if not exists public.solicitud_items (
+  id uuid primary key default gen_random_uuid(),
+  solicitud_id uuid not null references public.solicitudes(id) on delete cascade,
+  product_id uuid not null references public.products(id) on delete restrict,
+  product_name text not null,
+  quantity integer not null check (quantity > 0),
+  unit_price_usd numeric(10,2) not null default 0,
+  created_at timestamptz not null default now()
+);
 ```
 
 ### 4) Verificar la configuración
@@ -237,25 +249,25 @@ El runtime usa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KE
 
 La creación de solicitudes pasa por `POST /api/solicitudes`, donde el servidor valida sesión, cantidades, stock y precios actuales antes de insertar `solicitudes` y `solicitud_items`. Los roles se resuelven desde `profiles.role`, nunca desde metadata editable del usuario.
 
-Para habilitar imágenes desde administración, configura el bucket público `productos-bucket` y estas políticas:
+Para habilitar imágenes desde administración, configura el bucket público `productos-bucket` y estas políticas. El nombre exacto del bucket coincide con la ruta de carga usada en [app/api/admin/upload/route.ts](app/api/admin/upload/route.ts):
 
 ```sql
 insert into storage.buckets (id, name, public)
 values ('productos-bucket', 'productos-bucket', true)
 on conflict (id) do update set public = true;
 
-create policy "Public product images"
+create policy "Public product files"
 on storage.objects for select
 using (bucket_id = 'productos-bucket');
 
-create policy "Admins upload product images"
+create policy "Admins upload product files"
 on storage.objects for insert to authenticated
 with check (
   bucket_id = 'productos-bucket'
   and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
 
-create policy "Admins update product images"
+create policy "Admins update product files"
 on storage.objects for update to authenticated
 using (
   bucket_id = 'productos-bucket'
@@ -265,7 +277,16 @@ with check (
   bucket_id = 'productos-bucket'
   and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
+
+create policy "Admins delete product files"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'productos-bucket'
+  and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
 ```
+
+La versión completa del SQL — incluyendo perfiles, políticas RLS, bucket y checks — está en [SUPABASE_QUERIES.md](SUPABASE_QUERIES.md).
 
 El aviso administrativo puede conectarse posteriormente a un proveedor de correo o webhook mediante variables de servidor; no se exponen secretos al cliente.
 

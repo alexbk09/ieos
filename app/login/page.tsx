@@ -1,10 +1,132 @@
 'use client'
 import { FormEvent, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, LockKeyhole } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, LockKeyhole } from 'lucide-react'
+
+function normalizeRole(value: unknown): 'admin' | 'user' {
+  const raw = String(value ?? '').toLowerCase().trim()
+  if (raw === 'admin' || raw === '1' || value === 1) return 'admin'
+  return 'user'
+}
 
 export default function LoginPage() {
-  const [register, setRegister] = useState(false); const [error, setError] = useState(''); const [message, setMessage] = useState('')
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(''); setMessage(''); const form = new FormData(event.currentTarget); const email = String(form.get('email')); const password = String(form.get('password')); const supabase = createClient(); const result = register ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback`, data: { name: form.get('name'), phone: form.get('phone') } } }) : await supabase.auth.signInWithPassword({ email, password }); if (result.error) setError('No pudimos completar la operación. Revisa tus datos e inténtalo de nuevo.'); else setMessage(register ? 'Revisa tu correo para confirmar tu cuenta.' : 'Sesión iniciada. Ya puedes volver al catálogo.') }
-  return <main className="grid min-h-screen place-items-center bg-blue-950 p-5 text-white"><div className="w-full max-w-md"><a href="/" className="mb-12 inline-flex items-center gap-2 text-sm text-slate-300"><ArrowLeft size={16} /> Volver a ilumaX</a><div className="mb-8"><span className="grid size-10 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span><h1 className="mt-6 text-4xl font-semibold tracking-[-.06em]">{register ? 'Crea tu cuenta.' : 'Bienvenido de vuelta.'}</h1><p className="mt-3 text-slate-300">Gestiona tus solicitudes y proyectos desde un solo lugar.</p></div><form onSubmit={submit} className="grid gap-3">{register && <><input name="name" required placeholder="Nombre completo" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" /><input name="phone" required placeholder="Teléfono" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" /></>}<input name="email" required type="email" placeholder="Correo electrónico" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" /><input name="password" required type="password" minLength={6} placeholder="Contraseña" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" /><button className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-blue-950">{register ? 'Crear cuenta' : 'Iniciar sesión'} <LockKeyhole size={15} /></button></form>{error && <p className="mt-4 text-sm text-rose-300">{error}</p>}{message && <p className="mt-4 text-sm text-cyan-300">{message}</p>}<button onClick={() => setRegister(!register)} className="mt-7 text-left text-sm text-slate-300 underline underline-offset-4">{register ? 'Ya tengo una cuenta' : 'Quiero crear una cuenta'}</button></div></main>
+  const router = useRouter()
+  const [register, setRegister] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function redirectByRole() {
+    const supabase = createClient()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      router.push('/')
+      return
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const role = normalizeRole(profile?.role ?? user.app_metadata?.role ?? user.user_metadata?.role)
+
+    if (role === 'admin') {
+      toast.success('Bienvenido administrador. Redirigiendo al panel.')
+      router.push('/admin')
+      return
+    }
+
+    toast.success('Sesión iniciada. Redirigiendo al catálogo.')
+    router.push('/')
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setIsSubmitting(true)
+
+    const form = new FormData(event.currentTarget)
+    const email = String(form.get('email'))
+    const password = String(form.get('password'))
+    const supabase = createClient()
+
+    try {
+      if (register) {
+        const result = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              name: form.get('name'),
+              phone: form.get('phone')
+            }
+          }
+        })
+
+        if (result.error) {
+          toast.error('No pudimos completar el registro. Revisa tus datos e inténtalo de nuevo.')
+          return
+        }
+
+        toast.success('Revisa tu correo para verificar tu cuenta. Mira también la bandeja de entrada y la carpeta de spam.')
+        setRegister(false)
+        event.currentTarget.reset()
+        return
+      }
+
+      const result = await supabase.auth.signInWithPassword({ email, password })
+
+      if (result.error) {
+        toast.error('No pudimos iniciar sesión. Revisa tus credenciales e inténtalo de nuevo.')
+        return
+      }
+
+      await redirectByRole()
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-blue-950 p-5 text-white">
+      <div className="w-full max-w-md">
+        <a href="/" className="mb-12 inline-flex items-center gap-2 text-sm text-slate-300">
+          <ArrowLeft size={16} /> Volver a ilumaX
+        </a>
+
+        <div className="mb-8">
+          <span className="grid size-10 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span>
+          <h1 className="mt-6 text-4xl font-semibold tracking-[-.06em]">{register ? 'Crea tu cuenta.' : 'Bienvenido de vuelta.'}</h1>
+          <p className="mt-3 text-slate-300">Gestiona tus solicitudes y proyectos desde un solo lugar.</p>
+        </div>
+
+        <form onSubmit={submit} className="grid gap-3">
+          {register && (
+            <>
+              <input name="name" required placeholder="Nombre completo" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" />
+              <input name="phone" required placeholder="Teléfono" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" />
+            </>
+          )}
+
+          <input name="email" required type="email" placeholder="Correo electrónico" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" />
+          <input name="password" required type="password" minLength={6} placeholder="Contraseña" className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm outline-none placeholder:text-slate-400" />
+
+          <button
+            disabled={isSubmitting}
+            className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-blue-950 disabled:cursor-not-allowed disabled:bg-cyan-300"
+          >
+            {isSubmitting ? 'Procesando...' : register ? 'Crear cuenta' : 'Iniciar sesión'}
+            {isSubmitting ? <LoaderCircle size={15} className="animate-spin" /> : <LockKeyhole size={15} />}
+          </button>
+        </form>
+
+        <button onClick={() => setRegister(!register)} disabled={isSubmitting} className="mt-7 text-left text-sm text-slate-300 underline underline-offset-4 disabled:opacity-60">
+          {register ? 'Ya tengo una cuenta' : 'Quiero crear una cuenta'}
+        </button>
+      </div>
+    </main>
+  )
 }

@@ -13,9 +13,46 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const start = (product?: Product) => setEditing(product ?? { name: '', slug: '', description: '', price_usd: 0, stock: 0, category_id: categories[0]?.id ?? '', featured: false, image_url: '' })
-  async function save() { if (!editing?.name || !editing.slug) return toast.error('Completa nombre y slug'); setSaving(true); const response = await fetch('/api/admin/products', { method: editing.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing) }); const result = await response.json(); setSaving(false); if (!response.ok) return toast.error(result.error ?? 'No se pudo guardar'); setProducts((current) => editing.id ? current.map((p) => p.id === editing.id ? result.product : p) : [result.product, ...current]); setEditing(null); toast.success('Producto guardado') }
-  async function remove(id: string) { if (!confirm('¿Eliminar este producto?')) return; const response = await fetch(`/api/admin/products?id=${id}`, { method: 'DELETE' }); if (!response.ok) return toast.error('No se pudo eliminar'); setProducts((current) => current.filter((p) => p.id !== id)); toast.success('Producto eliminado') }
-  async function upload(file: File) { setUploading(true); const form = new FormData(); form.append('file', file); const response = await fetch('/api/admin/upload', { method: 'POST', body: form }); const result = await response.json(); setUploading(false); if (!response.ok) return toast.error(result.error ?? 'No se pudo cargar la imagen'); setEditing((current) => current ? { ...current, image_url: result.url } : current); toast.success('Imagen cargada') }
+  async function save() {
+    if (!editing?.name || !editing.slug) {
+      toast.error('Falta información del producto', { description: 'Completa nombre y slug para continuar.' })
+      return
+    }
+    setSaving(true)
+    const response = await fetch('/api/admin/products', { method: editing.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editing) })
+    const result = await response.json()
+    setSaving(false)
+    if (!response.ok) {
+      toast.error('No se pudo guardar el producto', { description: result.error ?? 'Revisa la información e inténtalo de nuevo.' })
+      return
+    }
+    setProducts((current) => editing.id ? current.map((p) => p.id === editing.id ? result.product : p) : [result.product, ...current])
+    setEditing(null)
+    toast.success('Producto guardado', { description: 'Los cambios quedaron publicados en el catálogo.' })
+  }
+  async function remove(id: string) {
+    if (!confirm('¿Eliminar este producto?')) return
+    const response = await fetch(`/api/admin/products?id=${id}`, { method: 'DELETE' })
+    if (!response.ok) {
+      toast.error('No se pudo eliminar', { description: 'El producto no pudo borrarse en este momento.' })
+      return
+    }
+    setProducts((current) => current.filter((p) => p.id !== id))
+    toast.success('Producto eliminado', { description: 'Se retiró del catálogo correctamente.' })
+  }
+  async function upload(file: File) {
+    setUploading(true)
+    const form = new FormData(); form.append('file', file)
+    const response = await fetch('/api/admin/upload', { method: 'POST', body: form })
+    const result = await response.json()
+    setUploading(false)
+    if (!response.ok) {
+      toast.error('No se pudo cargar la imagen', { description: result.error ?? 'Verifica el bucket y vuelve a intentarlo.' })
+      return
+    }
+    setEditing((current) => current ? { ...current, image_url: result.url } : current)
+    toast.success('Imagen cargada', { description: 'La imagen ya está lista para usar en el producto.' })
+  }
   return <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
     <section className="rounded-3xl border border-border bg-card p-5 sm:p-7"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-medium">Catálogo</h2><p className="mt-1 text-sm text-muted-foreground">{products.length} productos publicados</p></div><button onClick={() => start()} className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground"><Plus size={16} /> Nuevo</button></div><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="pb-3">Producto</th><th className="pb-3">Precio</th><th className="pb-3">Stock</th><th className="pb-3">Estado</th><th className="pb-3" /></tr></thead><tbody>{products.map((product) => <tr key={product.id} className="border-b border-border/70"><td className="py-4"><div className="flex items-center gap-3">{product.image_url ? <img src={product.image_url} alt="" className="size-11 rounded-xl object-cover" /> : <div className="grid size-11 place-items-center rounded-xl bg-muted"><ImagePlus size={16} className="text-muted-foreground" /></div>}<div><p className="font-medium">{product.name}</p><p className="text-xs text-muted-foreground">/{product.slug}</p></div></div></td><td className="py-4">${Number(product.price_usd).toFixed(2)}</td><td className="py-4"><span className={product.stock < 20 ? 'text-amber-600' : ''}>{product.stock}</span></td><td className="py-4">{product.featured ? <span className="rounded-full bg-accent/30 px-2 py-1 text-xs text-accent-foreground">Destacado</span> : <span className="text-muted-foreground">Activo</span>}</td><td className="py-4"><div className="flex justify-end gap-2"><button aria-label="Editar" onClick={() => start(product)} className="rounded-full p-2 hover:bg-muted"><Pencil size={15} /></button><button aria-label="Eliminar" onClick={() => remove(product.id)} className="rounded-full p-2 text-destructive hover:bg-muted"><Trash2 size={15} /></button></div></td></tr>)}</tbody></table></div></section>
     {editing && <section className="rounded-3xl border border-border bg-card p-6"><div className="flex items-center justify-between"><h2 className="font-medium">{editing.id ? 'Editar producto' : 'Nuevo producto'}</h2><button onClick={() => setEditing(null)} className="text-sm text-muted-foreground">Cancelar</button></div><div className="mt-6 grid gap-4"><label className="grid gap-2 text-sm">Nombre<input value={editing.name ?? ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none focus:ring-2 focus:ring-ring" /></label><label className="grid gap-2 text-sm">Slug<input value={editing.slug ?? ''} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none focus:ring-2 focus:ring-ring" /></label><label className="grid gap-2 text-sm">Descripción<textarea value={editing.description ?? ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={3} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none focus:ring-2 focus:ring-ring" /></label><div className="grid grid-cols-2 gap-3"><label className="grid gap-2 text-sm">Precio USD<input type="number" value={editing.price_usd ?? 0} onChange={(e) => setEditing({ ...editing, price_usd: Number(e.target.value) })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none" /></label><label className="grid gap-2 text-sm">Stock<input type="number" value={editing.stock ?? 0} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value) })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none" /></label></div><label className="grid gap-2 text-sm">Categoría<select value={editing.category_id ?? ''} onChange={(e) => setEditing({ ...editing, category_id: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={Boolean(editing.featured)} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Mostrar como destacado</label><div className="rounded-2xl border border-dashed border-border p-4">{editing.image_url && <img src={editing.image_url} alt="Vista previa" className="mb-3 aspect-video w-full rounded-xl object-cover" />}<label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-muted px-4 py-3 text-sm hover:bg-secondary"><Upload size={16} />{uploading ? 'Cargando…' : 'Cargar imagen'}<input type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label><input type="hidden" value={editing.image_url ?? ''} readOnly /></div><button disabled={saving || uploading} onClick={save} className="rounded-xl bg-primary px-4 py-3 text-sm text-primary-foreground disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar producto'}</button></div></section>}
