@@ -10,7 +10,59 @@ Este archivo centraliza el esquema SQL y las políticas de acceso que usa la apl
 create extension if not exists pgcrypto;
 ```
 
-## 2) Tabla de perfiles de usuario
+## 2) Tabla de roles
+
+Almacena los roles del sistema. Cada rol agrupa permisos por módulo.
+
+```sql
+create table if not exists public.roles (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  description text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.roles enable row level security;
+```
+
+## 3) Tabla de módulos
+
+Define los módulos del sistema a los que se asignan permisos (lectura, escritura, borrado).
+
+```sql
+create table if not exists public.modules (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  description text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.modules enable row level security;
+```
+
+## 4) Tabla de permisos por rol y módulo
+
+Vincula cada rol con los módulos a los que tiene acceso y qué operaciones puede realizar.
+
+```sql
+create table if not exists public.role_permissions (
+  id uuid primary key default gen_random_uuid(),
+  role_id uuid not null references public.roles(id) on delete cascade,
+  module_id uuid not null references public.modules(id) on delete cascade,
+  can_read boolean not null default false,
+  can_write boolean not null default false,
+  can_delete boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (role_id, module_id)
+);
+
+alter table public.role_permissions enable row level security;
+```
+
+## 5) Tabla de perfiles de usuario
+
+Incluye `role` (compatibilidad con el código actual) y `role_id` (FK a la tabla `roles` para permisos finos).
 
 ```sql
 create table if not exists public.profiles (
@@ -18,32 +70,43 @@ create table if not exists public.profiles (
   email text,
   full_name text,
   phone text,
-  role text not null default 'user' check (role in ('user', 'admin')),
+  role text not null default 'client' check (role in ('admin', 'client', 'user')),
+  role_id uuid references public.roles(id),
   avatar_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 alter table public.profiles enable row level security;
+```
 
+## 6) Trigger: asignar rol "client" al registrarse
+
+Todo usuario nuevo que se registre desde la app recibe el rol `client` por defecto (a menos que envíe `role` en sus metadatos, usado solo para el admin creado manualmente).
+
+```sql
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_role text := coalesce(new.raw_user_meta_data->>'role', 'client');
 begin
-  insert into public.profiles (id, email, full_name, role)
+  insert into public.profiles (id, email, full_name, role, role_id)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', new.email),
-    coalesce(new.raw_user_meta_data->>'role', 'user')
+    v_role,
+    (select r.id from public.roles r where r.name = v_role limit 1)
   )
   on conflict (id) do update
     set email = excluded.email,
         full_name = coalesce(public.profiles.full_name, excluded.full_name),
-        role = coalesce(public.profiles.role, excluded.role);
+        role = coalesce(public.profiles.role, excluded.role),
+        role_id = coalesce(public.profiles.role_id, excluded.role_id);
 
   return new;
 end;
@@ -70,7 +133,7 @@ before update on public.profiles
 for each row execute procedure public.set_updated_at();
 ```
 
-### Políticas para `profiles`
+## 7) Políticas para `profiles`
 
 ```sql
 create policy "Profiles read own or admin"
@@ -104,7 +167,153 @@ with check (
 );
 ```
 
-## 3) Categorías
+## 8) Políticas para `roles`, `modules` y `role_permissions`
+
+```sql
+-- roles: solo lectura pública de nombres, escritura de admin
+create policy "Roles read public"
+on public.roles for select
+using (true);
+
+create policy "Roles admin all"
+on public.roles for all
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+)
+with check (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+);
+
+-- modules: solo lectura pública de nombres, escritura de admin
+create policy "Modules read public"
+on public.modules for select
+using (true);
+
+create policy "Modules admin all"
+on public.modules for all
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+)
+with check (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+);
+
+-- role_permissions: lectura a quien tenga can_read en el módulo, escritura de admin
+create policy "Role permissions read own role"
+on public.role_permissions for select
+using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.role_id = role_id
+  )
+  or exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.role = 'admin'
+  )
+);
+
+create policy "Role permissions admin all"
+on public.role_permissions for all
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+)
+with check (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+);
+```
+
+## 9) Insertar roles base (administrador y cliente)
+
+```sql
+insert into public.roles (name, description)
+values
+  ('admin',  'Administrador del sistema con acceso total a todos los módulos'),
+  ('client', 'Cliente final que navega el catálogo y envía solicitudes')
+on conflict (name) do update
+  set description = excluded.description;
+```
+
+## 10) Insertar módulos del sistema
+
+```sql
+insert into public.modules (name, slug, description)
+values
+  ('Dashboard',          'dashboard',        'Resumen general del panel administrativo'),
+  ('Productos',          'productos',        'Gestión de productos del catálogo'),
+  ('Categorías',         'categorias',       'Gestión de categorías del catálogo'),
+  ('Usuarios',           'usuarios',         'Gestión de usuarios y asignación de roles'),
+  ('Solicitudes',        'solicitudes',      'Gestión de solicitudes de los clientes'),
+  ('Roles y Permisos',   'roles_permissions','Gestión de roles, módulos y permisos')
+on conflict (slug) do update
+  set name = excluded.name, description = excluded.description;
+```
+
+## 11) Asignar permisos al rol administrador
+
+El rol `admin` recibe permisos de **lectura, escritura y borrado** en **todos** los módulos.
+
+```sql
+insert into public.role_permissions (role_id, module_id, can_read, can_write, can_delete)
+select r.id, m.id, true, true, true
+from public.roles r
+cross join public.modules m
+where r.name = 'admin'
+on conflict (role_id, module_id)
+do update set
+  can_read = true,
+  can_write = true,
+  can_delete = true;
+```
+
+## 12) Asignar permisos al rol cliente
+
+El rol `client` solo puede **leer** productos y ver sus propias solicitudes.
+
+```sql
+insert into public.role_permissions (role_id, module_id, can_read, can_write, can_delete)
+select r.id, m.id, true, false, false
+from public.roles r
+cross join public.modules m
+where r.name = 'client'
+  and m.slug in ('productos', 'solicitudes')
+on conflict (role_id, module_id)
+do update set
+  can_read = true,
+  can_write = false,
+  can_delete = false;
+```
+
+## 13) Insertar usuario administrador
+
+> ⚠️ **IMPORTANTE**: Cambia el `email` y `password` antes de ejecutar. La primera query crea el usuario en Supabase Auth con rol `admin` en sus metadatos y confirmado. La segunda asegura que su perfil quede con rol `admin` y su `role_id` apuntando al rol administrador.
+
+```sql
+-- 1) Crear el usuario en Supabase Auth
+select auth.admin_create_user(
+  '{
+    "email": "admin@ilumax.ve",
+    "password": "CambiaEstaClave123!",
+    "email_confirm": true,
+    "user_metadata": {
+      "full_name": "Administrador ilumaX",
+      "role": "admin"
+    }
+  }'::jsonb
+);
+
+-- 2) Asegurar que el perfil quede con rol admin y role_id correcto
+update public.profiles
+set role = 'admin',
+    role_id = (select id from public.roles where name = 'admin')
+where email = 'admin@ilumax.ve';
+
+-- 3) Verificar el usuario admin
+select id, email, role, role_id
+from public.profiles
+where email = 'admin@ilumax.ve';
+```
+
+## 14) Categorías
 
 ```sql
 create table if not exists public.categories (
@@ -137,7 +346,7 @@ with check (
 );
 ```
 
-## 4) Productos
+## 15) Productos
 
 ```sql
 create table if not exists public.products (
@@ -182,7 +391,7 @@ before update on public.products
 for each row execute procedure public.set_updated_at();
 ```
 
-## 5) Solicitudes
+## 16) Solicitudes
 
 ```sql
 create table if not exists public.solicitudes (
@@ -235,7 +444,7 @@ before update on public.solicitudes
 for each row execute procedure public.set_updated_at();
 ```
 
-## 6) Items de la solicitud
+## 17) Items de la solicitud
 
 ```sql
 create table if not exists public.solicitud_items (
@@ -305,7 +514,7 @@ with check (
 );
 ```
 
-## 7) Bucket de imágenes del catálogo
+## 18) Bucket de imágenes del catálogo
 
 La app sube archivos a `productos-bucket` desde [app/api/admin/upload/route.ts](app/api/admin/upload/route.ts).
 
@@ -352,24 +561,51 @@ using (
 );
 ```
 
-## 8) Verificación rápida
+## 19) Verificación rápida
 
 Ejecuta estas comprobaciones para confirmar que todo quedó bien:
 
 ```sql
+-- Tablas principales
 select table_name
 from information_schema.tables
 where table_schema = 'public'
-  and table_name in ('profiles','categories','products','solicitudes','solicitud_items');
+  and table_name in ('profiles','roles','modules','role_permissions','categories','products','solicitudes','solicitud_items');
 
+-- Roles insertados
+select id, name, description from public.roles order by name;
+
+-- Módulos insertados
+select id, name, slug from public.modules order by name;
+
+-- Permisos del rol admin (debe mostrar can_read = true en todos)
+select r.name as rol, m.name as modulo, rp.can_read, rp.can_write, rp.can_delete
+from public.role_permissions rp
+join public.roles r on r.id = rp.role_id
+join public.modules m on m.id = rp.module_id
+where r.name = 'admin'
+order by m.name;
+
+-- Permisos del rol client (solo lectura en productos y solicitudes)
+select r.name as rol, m.name as modulo, rp.can_read, rp.can_write, rp.can_delete
+from public.role_permissions rp
+join public.roles r on r.id = rp.role_id
+join public.modules m on m.id = rp.module_id
+where r.name = 'client'
+order by m.name;
+
+-- Bucket
 select id, name, public
 from storage.buckets
 where id = 'productos-bucket';
 ```
 
-## 9) Notas importantes
+## 20) Notas importantes
 
-- La app lee los roles desde `public.profiles.role`.
+- La app lee los roles desde `public.profiles.role` (valores: `admin` o `client`). La tabla `roles` + `role_permissions` permite gestionar permisos finos por módulo.
+- Todo usuario nuevo registrado en la app recibe automáticamente rol `client` (ver trigger `handle_new_user`).
+- Cuando un cliente inicia sesión, `app/dashboard/page.tsx` muestra **su** historial de solicitudes (filtrado por `user_id`). La página `/dashboard` es el "Mis Solicitudes" del cliente.
+- Cuando un administrador inicia sesión, se le redirige a `/admin` (dashboard administrativo) gracias a `requireAdmin()` en `app/admin/layout.tsx` y la redirección en `app/dashboard/page.tsx`.
 - La autenticación y la creación de usuarios se gestiona con Supabase Auth.
 - Si cambias el nombre del bucket, también debes cambiar la ruta de carga en [app/api/admin/upload/route.ts](app/api/admin/upload/route.ts).
 - Revisa que las variables de entorno apunten al mismo proyecto de Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SERVICE_ROLE_KEY`.

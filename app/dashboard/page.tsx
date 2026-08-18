@@ -1,8 +1,62 @@
-import { requireUser, getUserRole } from '@/lib/auth'
+import { requireUser } from '@/lib/auth'
+import { getUserRole } from '@/services/auth-server'
 import { redirect } from 'next/navigation'
+import { getRequestsByUser } from '@/services/requests'
 import { ArrowLeft, ClipboardList, UserRound } from 'lucide-react'
 
+/**
+ * Dashboard del cliente.
+ * Los datos se obtienen a través de /services/requests.
+ */
 export default async function DashboardPage() {
-  const { supabase, user } = await requireUser(); if (await getUserRole(user.id) === 'admin') redirect('/admin'); const { data: orders } = await supabase.from('solicitudes').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-  return <main className="min-h-screen bg-slate-50 p-5 text-slate-950 dark:bg-slate-950 dark:text-white"><div className="mx-auto max-w-5xl"><header className="flex items-center justify-between py-5"><a href="/" className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} /> ilumaX</a><form action="/auth/signout" method="post"><button className="text-sm text-slate-500">Cerrar sesión</button></form></header><div className="mt-12"><p className="font-mono text-xs uppercase tracking-widest text-cyan-600">Mi espacio</p><h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">Hola, {user.user_metadata?.name ?? user.email?.split('@')[0]}.</h1></div><div className="mt-10 grid gap-5 md:grid-cols-2"><div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"><UserRound className="text-cyan-500" /><h2 className="mt-8 font-medium">Perfil</h2><p className="mt-2 text-sm text-slate-500">{user.email}</p><p className="mt-1 text-sm text-slate-500">{user.user_metadata?.phone ?? 'Agrega tu teléfono para recibir asesoría.'}</p></div><div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"><ClipboardList className="text-cyan-500" /><h2 className="mt-8 font-medium">Solicitudes</h2><p className="mt-2 text-3xl font-semibold">{orders?.length ?? 0}</p><p className="text-sm text-slate-500">solicitudes registradas</p></div></div><section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"><h2 className="font-medium">Historial reciente</h2>{!orders?.length ? <p className="py-10 text-sm text-slate-500">Todavía no tienes solicitudes. <a href="/" className="text-cyan-600 underline">Explora el catálogo.</a></p> : <div className="mt-5 space-y-3">{orders.map((order) => <div key={order.id} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800"><span className="font-mono text-xs">#{order.id.slice(0, 8)}</span><span className="capitalize text-slate-500">{order.status}</span><strong>${Number(order.total_usd).toFixed(2)}</strong></div>)}</div>}</section></div></main>
+  const { user } = await requireUser()
+  if (await getUserRole(user) === 'admin') redirect('/admin')
+  const { data: orders } = await getRequestsByUser(user.id)
+
+  return (
+    <main className="min-h-screen bg-slate-50 p-5 text-slate-950 dark:bg-slate-950 dark:text-white">
+      <div className="mx-auto max-w-5xl">
+        <header className="flex items-center justify-between py-5">
+          <a href="/" className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} /> ilumaX</a>
+          <form action="/auth/signout" method="post">
+            <button className="text-sm text-slate-500">Cerrar sesión</button>
+          </form>
+        </header>
+        <div className="mt-12">
+          <p className="font-mono text-xs uppercase tracking-widest text-cyan-600">Mi espacio</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">Hola, {user.user_metadata?.name ?? user.email?.split('@')[0]}.</h1>
+        </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+            <UserRound className="text-cyan-500" />
+            <h2 className="mt-8 font-medium">Perfil</h2>
+            <p className="mt-2 text-sm text-slate-500">{user.email}</p>
+            <p className="mt-1 text-sm text-slate-500">{user.user_metadata?.phone ?? 'Agrega tu teléfono para recibir asesoría.'}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+            <ClipboardList className="text-cyan-500" />
+            <h2 className="mt-8 font-medium">Solicitudes</h2>
+            <p className="mt-2 text-3xl font-semibold">{orders?.length ?? 0}</p>
+            <p className="text-sm text-slate-500">solicitudes registradas</p>
+          </div>
+        </div>
+        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="font-medium">Historial reciente</h2>
+          {!orders?.length ? (
+            <p className="py-10 text-sm text-slate-500">Todavía no tienes solicitudes. <a href="/" className="text-cyan-600 underline">Explora el catálogo.</a></p>
+          ) : (
+            <div className="mt-5 space-y-3">
+              {orders.map((order) => (
+                <div key={order.id} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
+                  <span className="font-mono text-xs">#{order.id.slice(0, 8)}</span>
+                  <span className="capitalize text-slate-500">{order.status}</span>
+                  <strong>${Number(order.total_usd).toFixed(2)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  )
 }

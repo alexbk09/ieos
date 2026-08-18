@@ -1,7 +1,69 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { createProduct, deleteProduct, updateProduct } from '@/services/catalog'
 
-export async function POST(request: Request) { const { supabase } = await requireAdmin(); const body = await request.json(); const payload = { name: String(body.name ?? '').trim(), slug: String(body.slug ?? '').trim(), description: body.description ?? null, price_usd: Number(body.price_usd ?? 0), stock: Math.max(0, Number(body.stock ?? 0)), image_url: body.image_url || null, category_id: body.category_id || null, featured: Boolean(body.featured) }; if (!payload.name || !payload.slug || !Number.isFinite(payload.price_usd)) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }); const { data, error } = await supabase.from('products').insert(payload).select('*').single(); if (error) return NextResponse.json({ error: error.message }, { status: 400 }); return NextResponse.json({ product: data }) }
-export async function PATCH(request: Request) { const { supabase } = await requireAdmin(); const body = await request.json(); const id = String(body.id ?? ''); if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 }); const { data, error } = await supabase.from('products').update({ name: body.name, slug: body.slug, description: body.description ?? null, price_usd: Number(body.price_usd), stock: Math.max(0, Number(body.stock)), image_url: body.image_url || null, category_id: body.category_id || null, featured: Boolean(body.featured) }).eq('id', id).select('*').single(); if (error) return NextResponse.json({ error: error.message }, { status: 400 }); return NextResponse.json({ product: data }) }
-export async function DELETE(request: Request) { const { supabase } = await requireAdmin(); const id = new URL(request.url).searchParams.get('id'); if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 }); const { error } = await supabase.from('products').delete().eq('id', id); if (error) return NextResponse.json({ error: error.message }, { status: 400 }); return NextResponse.json({ ok: true }) }
+/**
+ * API: Crear un nuevo producto.
+ * Toda la lógica de datos vive en /services/catalog.
+ */
+export async function POST(request: Request) {
+  const { user } = await requireAdmin()
+  const body = await request.json()
 
+  const payload = {
+    name: String(body.name ?? '').trim(),
+    slug: String(body.slug ?? '').trim(),
+    description: body.description ?? null,
+    price_usd: Number(body.price_usd ?? 0),
+    stock: Math.max(0, Number(body.stock ?? 0)),
+    image_url: body.image_url || null,
+    featured: Boolean(body.featured),
+    category_ids: Array.isArray(body.category_ids) ? body.category_ids.filter(Boolean) : [],
+    images: Array.isArray(body.images) ? body.images.filter(Boolean) : [],
+  }
+
+  if (!payload.name || !payload.slug || !Number.isFinite(payload.price_usd)) {
+    return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+  }
+
+  const result = await createProduct(payload)
+  if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
+  return NextResponse.json({ product: result.data })
+}
+
+/**
+ * API: Actualizar un producto existente.
+ */
+export async function PATCH(request: Request) {
+  await requireAdmin()
+  const body = await request.json()
+  const id = String(body.id ?? '')
+  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+
+  const result = await updateProduct(id, {
+    name: body.name,
+    slug: body.slug,
+    description: body.description ?? null,
+    price_usd: Number(body.price_usd),
+    stock: Math.max(0, Number(body.stock)),
+    image_url: body.image_url || null,
+    featured: Boolean(body.featured),
+    category_ids: Array.isArray(body.category_ids) ? body.category_ids.filter(Boolean) : [],
+    images: Array.isArray(body.images) ? body.images.filter(Boolean) : [],
+  })
+  if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
+  return NextResponse.json({ product: result.data })
+}
+
+/**
+ * API: Eliminar un producto.
+ */
+export async function DELETE(request: Request) {
+  await requireAdmin()
+  const id = new URL(request.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+
+  const result = await deleteProduct(id)
+  if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
+  return NextResponse.json({ ok: true })
+}

@@ -2,36 +2,28 @@
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
+import { getBrowserUser, getBrowserUserRole, signInWithEmail, signUpWithEmail } from '@/services/auth-client'
 import { ArrowLeft, LoaderCircle, LockKeyhole } from 'lucide-react'
 
-function normalizeRole(value: unknown): 'admin' | 'user' {
-  const raw = String(value ?? '').toLowerCase().trim()
-  if (raw === 'admin' || raw === '1' || value === 1) return 'admin'
-  return 'user'
-}
-
+/**
+ * Página de login/registro.
+ * No realiza llamadas directas a Supabase: toda la lógica pasa por /services/auth.
+ */
 export default function LoginPage() {
   const router = useRouter()
   const [register, setRegister] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  /** Redirige al usuario según su rol tras iniciar sesión. */
   async function redirectByRole() {
-    const supabase = createClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
+    const user = await getBrowserUser()
+    if (!user) {
       router.push('/')
       return
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    const role = normalizeRole(profile?.role ?? user.app_metadata?.role ?? user.user_metadata?.role)
+    // El rol se obtiene a través del servicio de auth (capa de datos).
+    const role = await getBrowserUserRole(user)
 
     if (role === 'admin') {
       toast.success('Bienvenido administrador. Redirigiendo al panel.')
@@ -39,10 +31,11 @@ export default function LoginPage() {
       return
     }
 
-    toast.success('Sesión iniciada. Redirigiendo al catálogo.')
-    router.push('/')
+    toast.success('Sesión iniciada. Redirigiendo a tus solicitudes.')
+    router.push('/dashboard')
   }
 
+  /** Maneja el envío del formulario de login o registro. */
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsSubmitting(true)
@@ -50,20 +43,12 @@ export default function LoginPage() {
     const form = new FormData(event.currentTarget)
     const email = String(form.get('email'))
     const password = String(form.get('password'))
-    const supabase = createClient()
 
     try {
       if (register) {
-        const result = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-            data: {
-              name: form.get('name'),
-              phone: form.get('phone')
-            }
-          }
+        const result = await signUpWithEmail(email, password, {
+          name: form.get('name'),
+          phone: form.get('phone'),
         })
 
         if (result.error) {
@@ -77,7 +62,7 @@ export default function LoginPage() {
         return
       }
 
-      const result = await supabase.auth.signInWithPassword({ email, password })
+      const result = await signInWithEmail(email, password)
 
       if (result.error) {
         toast.error('No pudimos iniciar sesión. Revisa tus credenciales e inténtalo de nuevo.')

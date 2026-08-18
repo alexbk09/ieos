@@ -1,8 +1,211 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Modal } from '@/components/ui/modal'
+import { DataTable, type TableColumn } from '@/components/ui/data-table'
+import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 
 type Category = { id: string; name: string; slug: string; description: string | null }
-export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) { const [categories, setCategories] = useState(initialCategories); const [form, setForm] = useState<Partial<Category> | null>(null); async function save() { if (!form?.name || !form.slug) return toast.error('Completa nombre y slug'); const response = await fetch('/api/admin/categories', { method: form.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }); const result = await response.json(); if (!response.ok) return toast.error(result.error); setCategories((current) => form.id ? current.map((item) => item.id === form.id ? result.category : item) : [...current, result.category]); setForm(null); toast.success('Categoría guardada') } async function remove(id: string) { if (!confirm('¿Eliminar esta categoría?')) return; const response = await fetch(`/api/admin/categories?id=${id}`, { method: 'DELETE' }); if (!response.ok) return toast.error('No se pudo eliminar'); setCategories((current) => current.filter((item) => item.id !== id)); toast.success('Categoría eliminada') } return <div className="grid gap-6 lg:grid-cols-[1fr_360px]"><section className="rounded-3xl border border-border bg-card p-6"><div className="mb-6 flex items-center justify-between"><div><h2 className="font-medium">Categorías activas</h2><p className="mt-1 text-sm text-muted-foreground">{categories.length} grupos de productos</p></div><button onClick={() => setForm({ name: '', slug: '', description: '' })} className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground"><Plus size={16} /> Nueva</button></div><div className="grid gap-3 sm:grid-cols-2">{categories.map((category) => <div key={category.id} className="rounded-2xl border border-border p-4"><div className="flex items-start justify-between"><div><h3 className="font-medium">{category.name}</h3><p className="mt-1 font-mono text-xs text-muted-foreground">/{category.slug}</p></div><div className="flex gap-1"><button onClick={() => setForm(category)} className="rounded-full p-2 hover:bg-muted"><Pencil size={14} /></button><button onClick={() => remove(category.id)} className="rounded-full p-2 text-destructive hover:bg-muted"><Trash2 size={14} /></button></div></div><p className="mt-4 text-sm text-muted-foreground">{category.description || 'Sin descripción'}</p></div>)}</div></section>{form && <section className="rounded-3xl border border-border bg-card p-6"><div className="flex justify-between"><h2 className="font-medium">{form.id ? 'Editar categoría' : 'Nueva categoría'}</h2><button onClick={() => setForm(null)} className="text-sm text-muted-foreground">Cancelar</button></div><div className="mt-6 grid gap-4"><label className="grid gap-2 text-sm">Nombre<input value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none" /></label><label className="grid gap-2 text-sm">Slug<input value={form.slug ?? ''} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none" /></label><label className="grid gap-2 text-sm">Descripción<textarea value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className="rounded-xl border border-input bg-background px-3 py-2.5 outline-none" /></label><button onClick={save} className="rounded-xl bg-primary px-4 py-3 text-sm text-primary-foreground">Guardar categoría</button></div></section>}</div> }
+
+/** Estado del formulario del modal. */
+type CategoryForm = {
+  id?: string
+  name: string
+  slug: string
+  description: string
+}
+
+/**
+ * Gestor de categorías (CRUD).
+ * Utiliza componentes UI reutilizables: Modal premium y DataTable con filtros.
+ * La lógica de datos se delega en las API routes; la UI es independiente de Supabase.
+ */
+export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
+  const [categories, setCategories] = useState(initialCategories)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [form, setForm] = useState<CategoryForm>({ name: '', slug: '', description: '' })
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  /** Abre el modal para crear una categoría nueva. */
+  function openCreate() {
+    setForm({ name: '', slug: '', description: '' })
+    setModalOpen(true)
+  }
+
+  /** Abre el modal para editar una categoría existente. */
+  function openEdit(category: Category) {
+    setForm({ id: category.id, name: category.name, slug: category.slug, description: category.description ?? '' })
+    setModalOpen(true)
+  }
+
+  /** Guarda una categoría nueva o editada. */
+  async function save() {
+    if (!form.name.trim() || !form.slug.trim()) {
+      toast.error('Completa nombre y slug')
+      return
+    }
+
+    setSaving(true)
+    const response = await fetch('/api/admin/categories', {
+      method: form.id ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    const result = await response.json()
+    setSaving(false)
+
+    if (!response.ok) {
+      toast.error(result.error ?? 'No se pudo guardar la categoría')
+      return
+    }
+
+    setCategories((current) =>
+      form.id ? current.map((item) => (item.id === form.id ? result.category : item)) : [...current, result.category],
+    )
+    setModalOpen(false)
+    toast.success(form.id ? 'Categoría actualizada' : 'Categoría creada')
+  }
+
+  /** Elimina una categoría. */
+  async function remove(id: string) {
+    if (!confirm('¿Eliminar esta categoría?')) return
+
+    setDeletingId(id)
+    const response = await fetch(`/api/admin/categories?id=${id}`, { method: 'DELETE' })
+    setDeletingId(null)
+
+    if (!response.ok) {
+      toast.error('No se pudo eliminar')
+      return
+    }
+
+    setCategories((current) => current.filter((item) => item.id !== id))
+    toast.success('Categoría eliminada')
+  }
+
+  /** Columnas de la tabla de categorías. */
+  const columns: TableColumn<Category>[] = [
+    {
+      key: 'name',
+      header: 'Categoría',
+      sortable: true,
+      render: (category) => (
+        <div className="flex items-center gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-foreground">
+            <FolderKanban size={16} />
+          </div>
+          <div>
+            <p className="font-medium">{category.name}</p>
+            <p className="font-mono text-xs text-muted-foreground">/{category.slug}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'description',
+      header: 'Descripción',
+      hiddenMobile: true,
+      render: (category) => (
+        <p className="max-w-md truncate text-muted-foreground">{category.description || 'Sin descripción'}</p>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      headerClassName: 'w-24',
+      cellClassName: 'text-right',
+      render: (category) => (
+        <div className="flex justify-end gap-1">
+          <button
+            onClick={() => openEdit(category)}
+            aria-label={`Editar ${category.name}`}
+            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={() => remove(category.id)}
+            disabled={deletingId === category.id}
+            aria-label={`Eliminar ${category.name}`}
+            className="grid size-8 place-items-center rounded-lg text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+          >
+            {deletingId === category.id ? (
+              <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Trash2 size={14} />
+            )}
+          </button>
+        </div>
+      ),
+    },
+  ]
+
+  return (
+    <div className="grid gap-6">
+      <DataTable
+        data={categories}
+        columns={columns}
+        rowKey={(c) => c.id}
+        searchKeys={(c) => `${c.name} ${c.slug} ${c.description ?? ''}`}
+        searchPlaceholder="Buscar categorías…"
+        emptyMessage="No se encontraron categorías"
+        noDataMessage="Aún no hay categorías"
+        toolbar={
+          <button
+            onClick={openCreate}
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+          >
+            <Plus size={15} /> Nueva categoría
+          </button>
+        }
+      />
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={form.id ? 'Editar categoría' : 'Nueva categoría'}
+        description={form.id ? 'Actualiza la información de la categoría.' : 'Crea una nueva categoría para tus productos.'}
+        icon={<FolderKanban size={18} />}
+        footer={
+          <>
+            <button
+              onClick={() => setModalOpen(false)}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <FormSubmitButton loading={saving} onClick={save}>
+              {form.id ? 'Guardar cambios' : 'Crear categoría'}
+            </FormSubmitButton>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <FormInput
+            label="Nombre"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Ej: Iluminación LED"
+            autoFocus
+          />
+          <FormInput
+            label="Slug"
+            value={form.slug}
+            onChange={(e) => setForm({ ...form, slug: e.target.value })}
+            placeholder="Ej: iluminacion-led"
+            hint="Usado en la URL del catálogo."
+          />
+          <FormTextarea
+            label="Descripción"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Describe brevemente esta categoría…"
+          />
+        </div>
+      </Modal>
+    </div>
+  )
+}
