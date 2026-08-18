@@ -1,33 +1,24 @@
 # ilumax
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+Aplicación Next.js para ilumaX: catálogo de iluminación, solicitudes y paneles protegidos por Supabase.
 
-## Built with v0
-
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
-
-[Continue working on v0 →](https://v0.app/chat/projects/prj_RzS5h3DgjVo0TNVqGFnJ9iazteaA)
-
-## Getting Started
-
-First, run the development server:
+## Desarrollo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+El runtime usa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` con fallback a `NEXT_PUBLIC_SUPABASE_ANON_KEY`. La creación de solicitudes pasa por `POST /api/solicitudes`, donde el servidor valida sesión, cantidades, stock y precios actuales antes de insertar `solicitudes` y `solicitud_items`.
 
-## Learn More
+Para habilitar imágenes desde administración, configura el bucket público `productos-bucket` y estas políticas:
 
-To learn more, take a look at the following resources:
+```sql
+insert into storage.buckets (id, name, public) values ('productos-bucket', 'productos-bucket', true) on conflict (id) do update set public = true;
+create policy "Public product images" on storage.objects for select using (bucket_id = 'productos-bucket');
+create policy "Admins upload product images" on storage.objects for insert to authenticated with check (bucket_id = 'productos-bucket' and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+create policy "Admins update product images" on storage.objects for update to authenticated using (bucket_id = 'productos-bucket' and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')) with check (bucket_id = 'productos-bucket' and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+Los roles se resuelven desde `profiles.role`, nunca desde metadata editable del usuario. El aviso administrativo puede conectarse posteriormente a un proveedor de correo/webhook mediante variables de servidor; no se exponen secretos al cliente.
