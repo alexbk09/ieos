@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowUpRight, CircleUserRound, Globe2, Menu, Moon, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Sun, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 type Product = { id: string; name: string; slug: string; description: string; price_usd: number; stock: number; image_url: string; colors: string[]; specifications: Record<string, string>; category_id?: string; featured?: boolean }
 
@@ -34,15 +35,16 @@ export function Storefront() {
   const total = cart.reduce((sum, item) => sum + item.price_usd * item.quantity, 0)
   const count = cart.reduce((sum, item) => sum + item.quantity, 0)
 
-  function add(product: Product) { setCart((current) => { const found = current.find((item) => item.id === product.id); return found ? current.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) : [...current, { ...product, quantity: 1 }] }); setCartOpen(true) }
+  function add(product: Product) { setCart((current) => { const found = current.find((item) => item.id === product.id); return found ? current.map((item) => item.id === product.id ? { ...item, quantity: Math.min(item.quantity + 1, product.stock) } : item) : [...current, { ...product, quantity: 1 }] }); setCartOpen(true); toast.success(`${product.name} agregado a tu solicitud`) }
   function change(id: string, amount: number) { setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: item.quantity + amount } : item).filter((item) => item.quantity > 0)) }
   async function requestOrder() {
     const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setRequested(true); return }
-    const { data } = await supabase.from('solicitudes').insert({ user_id: user.id, total_usd: total, exchange_rate: RATE }).select('id').single()
-    const id = data?.id ?? crypto.randomUUID().slice(0, 8).toUpperCase()
-    const message = encodeURIComponent(`Hola ilumaX, mi nombre es ${user.user_metadata?.name ?? user.email} y deseo procesar la Solicitud #${id}. Adjunto mi carrito con ${count} producto(s). Total: ${money(total)} / ${bolivars(total)}.`)
-    window.open(`https://wa.me/584120000000?text=${message}`, '_blank'); setCart([]); setCartOpen(false)
+    if (!user) { toast.error('Inicia sesión para enviar tu solicitud'); setRequested(true); return }
+    const response = await fetch('/api/solicitudes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: cart.map((item) => ({ product_id: item.id, quantity: item.quantity })) }) })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) { toast.error(result.error === 'stock_or_quantity_invalid' ? 'Revisa las cantidades disponibles.' : 'No pudimos crear la solicitud. Inténtalo de nuevo.'); return }
+    const message = encodeURIComponent(`Hola ilumaX, mi nombre es ${user.email} y deseo procesar la Solicitud #${result.id}. Adjunto mi carrito con ${count} producto(s). Total: ${money(result.total)} / ${bolivars(result.total)}.`)
+    window.open(`https://wa.me/584120000000?text=${message}`, '_blank'); setCart([]); setCartOpen(false); toast.success('Solicitud creada. Abriendo WhatsApp.')
   }
 
   return <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
