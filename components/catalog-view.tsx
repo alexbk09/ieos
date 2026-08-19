@@ -6,6 +6,7 @@ import { LoaderCircle, Search } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useDarkMode } from '@/hooks/use-dark-mode'
@@ -32,12 +33,15 @@ type CatalogProduct = {
  * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
  * y el mismo ProductCard para cada producto.
  */
-export function CatalogView({ initialProducts, total, categories, navLinks = [], brand }: {
+export function CatalogView({ initialProducts, total, categories, navLinks = [], brand, footer, social, brandAddress }: {
   initialProducts: CatalogProduct[]
   total: number
   categories: CatalogCategory[]
   navLinks?: HeaderNavLink[]
   brand?: Partial<HeaderBrand>
+  footer?: { copyright?: string; slogan?: string }
+  social?: { instagram?: string; linkedin?: string; email?: string }
+  brandAddress?: string
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
@@ -121,10 +125,10 @@ export function CatalogView({ initialProducts, total, categories, navLinks = [],
 
   // El menú de navegación es el mismo en toda la tienda: lo define SiteHeader (DEFAULT_NAV_LINKS).
   return (
-    <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
+    <div className={`${dark ? 'dark' : ''} flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50`}>
       <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} brand={brand} />
 
-      <main className="mx-auto grid max-w-7xl gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
+      <main className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
         {/* Panel de filtros */}
         <aside className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 h-fit lg:sticky lg:top-24">
           <h2 className="font-semibold">Filtros</h2>
@@ -193,6 +197,8 @@ export function CatalogView({ initialProducts, total, categories, navLinks = [],
       {selected && (
         <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />
       )}
+
+      <SiteFooter footer={footer} brand={{ name: brand?.name, address: brandAddress }} social={social} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onChange={change} total={cartTotal} onSubmit={requestOrder} submitting={submitting} requested={requested} exchangeRate={exchangeRate} />
     </div>

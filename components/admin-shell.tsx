@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BarChart3, ClipboardList, FolderTree, LogOut, Menu, Package, Settings2, Users, X } from 'lucide-react'
+import { SiteFooter } from '@/components/site-footer'
 
 const links = [
   { href: '/admin', label: 'Resumen', icon: BarChart3 },
@@ -65,8 +66,27 @@ function AdminNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [siteFooter, setSiteFooter] = useState<{ footer: { copyright?: string; slogan?: string }; brand: { name: string; address: string }; social: { instagram?: string; linkedin?: string; email?: string } } | null>(null)
 
-  return <div className="min-h-screen bg-background text-foreground">
+  // Obtiene la configuración del footer desde la API pública de site_settings.
+  // Usa la API (no Supabase directo) y es cacheada en CDN por 60s.
+  useEffect(() => {
+    let active = true
+    fetch('/api/site-settings')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('No se pudo cargar la configuración'))))
+      .then((data) => {
+        if (!active || !data?.settings) return
+        setSiteFooter({
+          footer: data.settings.footer_texts,
+          brand: { name: data.settings.company_name, address: data.settings.address },
+          social: data.settings.social_links,
+        })
+      })
+      .catch((err) => console.error('AdminShell: no se pudo cargar el footer', err))
+    return () => { active = false }
+  }, [])
+
+  return <div className="flex min-h-screen flex-col bg-background text-foreground">
     {/* Sidebar fijo en escritorio (lg+) */}
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card p-6 lg:flex">
       <AdminNav pathname={pathname} />
@@ -96,7 +116,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
     </header>
 
-    <main className="lg:pl-72">{children}</main>
+    <main className="flex-1 lg:pl-72">{children}</main>
+
+    <div className="lg:pl-72">
+      <SiteFooter
+        variant="admin"
+        footer={siteFooter?.footer}
+        brand={siteFooter?.brand}
+        social={siteFooter?.social}
+      />
+    </div>
   </div>
 }
 

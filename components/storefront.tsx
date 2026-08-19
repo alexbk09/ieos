@@ -7,6 +7,7 @@ import { ArrowUpRight, Globe2, Search, Sparkles, Star } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useDarkMode } from '@/hooks/use-dark-mode'
@@ -122,7 +123,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
 
-  return <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
+  return <div className={`${dark ? 'dark' : ''} flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50`}>
     <SiteHeader
       dark={dark}
       onToggleDark={toggle}
@@ -131,7 +132,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
       navLinks={navLinks}
       brand={{ name: brand.name, tagline: brand.tagline, logoUrl: brand.logoUrl, iconUrl: brand.iconUrl }}
     />
-    <main>
+    <main className="flex-1">
       <section id="inicio" className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
         <div>
           <p className="mb-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[.28em] text-cyan-600"><Sparkles size={14} /> {hero.eyebrow ?? brand.tagline}</p>
@@ -202,7 +203,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
         </form>
       </section>
     </main>
-    <footer className="border-t border-slate-200 px-5 py-7 dark:border-slate-800"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-3 text-xs text-slate-500 sm:flex-row"><span>{cfg.footer.copyright ?? `© 2025 ${brand.name}. ${brand.address}.`}</span><span>{cfg.footer.slogan ?? 'Iluminamos ideas.'}</span></div></footer>
+    <SiteFooter footer={cfg.footer} brand={{ name: brand.name, address: brand.address }} social={cfg.social} />
 
     {selected && (
       <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />

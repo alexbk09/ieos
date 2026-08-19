@@ -22,6 +22,9 @@ export default async function CatalogPage() {
       categories={categories}
       navLinks={settings.nav_links}
       brand={{ name: settings.company_name, tagline: settings.tagline, logoUrl: settings.logo_url, iconUrl: settings.icon_url }}
+      footer={settings.footer_texts}
+      social={settings.social_links}
+      brandAddress={settings.address}
     />
   )
 }
