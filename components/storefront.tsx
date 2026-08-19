@@ -32,7 +32,7 @@ const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes(
  */
 export function Storefront({ initialProducts, exchangeRate }: { initialProducts?: Product[]; exchangeRate: number }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
-  const { dark, toggle } = usDarkMode()
+  const { dark, toggle } = useDarkMode()
   const { cart, add, change, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Todos')
