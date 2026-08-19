@@ -10,7 +10,6 @@ import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/s
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
-import { useDarkMode } from '@/hooks/use-dark-mode'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 
 // ---------- Tipos ----------
@@ -94,7 +93,6 @@ const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes(
  */
 export function Storefront({ initialProducts, settings }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings> }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
-  const { dark, toggle } = useDarkMode()
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
   const [query, setQuery] = useState('')
@@ -123,10 +121,8 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
 
-  return <div className={`${dark ? 'dark' : ''} flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50`}>
+  return <div className="flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
     <SiteHeader
-      dark={dark}
-      onToggleDark={toggle}
       cartCount={count}
       onOpenCart={() => setCartOpen(true)}
       navLinks={navLinks}

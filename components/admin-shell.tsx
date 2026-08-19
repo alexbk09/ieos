@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { BarChart3, ClipboardList, FolderTree, LogOut, Menu, Package, Settings2, UserRound, Users, X } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 
 const links = [
@@ -24,12 +25,15 @@ const links = [
 function AdminNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
     <>
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">iX</span>
-        <div>
-          <p className="font-semibold tracking-tight">iluma<span className="text-accent-foreground">X</span></p>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">iX</span>
+          <div>
+            <p className="font-semibold tracking-tight">iluma<span className="text-accent-foreground">X</span></p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
+          </div>
         </div>
+        <ThemeToggle />
       </div>
 
       <nav className="mt-10 space-y-2">
@@ -103,7 +107,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
           </div>
         </div>
-        <UserMenu />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <UserMenu />
+        </div>
       </div>
 
       <nav className="mt-10 flex-1 space-y-2">
@@ -156,6 +163,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
       <div className="flex items-center gap-2">
         <p className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:block">Panel de control</p>
+        <ThemeToggle />
         <UserMenu />
       </div>
     </header>

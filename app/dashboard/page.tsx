@@ -5,6 +5,7 @@ import { getRequestsByUser } from '@/services/requests'
 import { getOfficialExchangeRate } from '@/services/exchange-rate'
 import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
 import { ArrowLeft, BadgeDollarSign, ClipboardList } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 
 /**
@@ -24,9 +25,12 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-50 p-5 text-slate-950 dark:bg-slate-950 dark:text-white">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between py-5">
+        <header className="flex items-center justify-between gap-3 py-5">
           <a href="/" className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} /> ilumaX</a>
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </header>
         <div className="mt-12">
           <p className="font-mono text-xs uppercase tracking-widest text-cyan-600">Mi espacio</p>

@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth'
 import { getProfile } from '@/services/profiles'
 import { getUserRole } from '@/services/auth-server'
 import { ProfileForm } from '@/components/profile-form'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
@@ -22,15 +23,18 @@ export default async function ProfilePage() {
     <main className="min-h-screen bg-slate-50 p-5 text-slate-950 dark:bg-slate-950 dark:text-white">
       <div className="mx-auto max-w-3xl">
         {/* Encabezado con navegación */}
-        <header className="flex items-center justify-between py-5">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500">
-            <ArrowLeft size={16} /> Volver a ilumaX
-          </Link>
-          {isAdmin && (
-            <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-slate-500">
-              <ShieldCheck size={16} /> Panel admin
+        <header className="flex items-center justify-between gap-3 py-5">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500">
+              <ArrowLeft size={16} /> Volver a ilumaX
             </Link>
-          )}
+            {isAdmin && (
+              <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-slate-500">
+                <ShieldCheck size={16} /> Panel admin
+              </Link>
+            )}
+          </div>
+          <ThemeToggle />
         </header>
 
         {/* Título */}

@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { getBrowserUser, getBrowserUserRole, signInWithEmail, signUpWithEmail } from '@/services/auth-client'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { ArrowLeft, LoaderCircle, LockKeyhole } from 'lucide-react'
 
 /**
@@ -78,9 +79,12 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-blue-950 p-5 text-white">
       <div className="w-full max-w-md">
-        <a href="/" className="mb-12 inline-flex items-center gap-2 text-sm text-slate-300">
-          <ArrowLeft size={16} /> Volver a ilumaX
-        </a>
+        <div className="mb-12 flex items-center justify-between">
+          <a href="/" className="inline-flex items-center gap-2 text-sm text-slate-300">
+            <ArrowLeft size={16} /> Volver a ilumaX
+          </a>
+          <ThemeToggle />
+        </div>
 
         <div className="mb-8">
           <span className="grid size-10 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span>

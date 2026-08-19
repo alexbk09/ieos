@@ -9,7 +9,6 @@ import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/s
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
-import { useDarkMode } from '@/hooks/use-dark-mode'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 
 type CatalogCategory = { id: string; name: string; slug: string }
@@ -56,8 +55,7 @@ export function CatalogView({ initialProducts, total, categories, navLinks = [],
   const pageRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Estado compartido con la portada: carrito funcional y modo oscuro persistente.
-  const { dark, toggle } = useDarkMode()
+  // Estado compartido con la portada: carrito funcional.
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
 
@@ -125,8 +123,8 @@ export function CatalogView({ initialProducts, total, categories, navLinks = [],
 
   // El menú de navegación es el mismo en toda la tienda: lo define SiteHeader (DEFAULT_NAV_LINKS).
   return (
-    <div className={`${dark ? 'dark' : ''} flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50`}>
-      <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} brand={brand} />
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+      <SiteHeader cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} brand={brand} />
 
       <main className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
         {/* Panel de filtros */}

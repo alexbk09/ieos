@@ -26,6 +26,30 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = { colorScheme: 'light dark', themeColor: '#071d49' }
 
+/** Script inline que aplica el tema guardado ANTES de la hidratación (evita parpadeo). */
+const darkModeInit = `
+  (function () {
+    try {
+      var stored = localStorage.getItem('ilumax-dark-mode');
+      if (stored === 'true') {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  })();
+`
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es" className="bg-slate-50"><body className="antialiased">{children}<ToastProvider />{process.env.NODE_ENV === 'production' && <Analytics />}<WhatsAppButton /></body></html>
+  return (
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: darkModeInit }} />
+      </head>
+      <body className="antialiased">
+        {children}
+        <ToastProvider />
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <WhatsAppButton />
+      </body>
+    </html>
+  )
 }

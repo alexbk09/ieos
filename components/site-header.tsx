@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CircleUserRound, Menu, Moon, ShoppingBag, Sun, X } from 'lucide-react'
+import { CircleUserRound, Menu, ShoppingBag, X } from 'lucide-react'
 import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 
 type SessionRole = 'admin' | 'client' | null
@@ -35,9 +36,7 @@ const DEFAULT_BRAND: HeaderBrand = { name: 'ilumaX', tagline: 'Arquitectura de l
  * Los valores de marca y navegación provienen de site_settings; si no llegan,
  * se usan los por defecto para que la tienda siga funcionando.
  */
-export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks, brand }: {
-  dark: boolean
-  onToggleDark: () => void
+export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
   cartCount: number
   onOpenCart: () => void
   navLinks?: HeaderNavLink[]
@@ -88,7 +87,7 @@ export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks
         </nav>
 
         <div className="flex items-center gap-2">
-          <button aria-label="Cambiar tema" onClick={onToggleDark} className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700">{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
+          <ThemeToggle />
 
           {sessionRole ? (
             <UserMenu />
