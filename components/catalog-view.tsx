@@ -116,16 +116,10 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
     setSelectedCategories((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
   }
 
-  // Enlaces del menú de navegación del catálogo completo.
-  const navLinks = [
-    { href: '/#catalogo', label: 'Inicio' },
-    { href: '/#studio', label: 'Studio' },
-    { href: '/#contacto', label: 'Contacto' },
-  ]
-
+  // El menú de navegación es el mismo en toda la tienda: lo define SiteHeader (DEFAULT_NAV_LINKS).
   return (
     <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
-      <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} />
+      <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} />
 
       <main className="mx-auto grid max-w-7xl gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
         {/* Panel de filtros */}

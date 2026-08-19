@@ -40,16 +40,9 @@ export function Storefront({ initialProducts, exchangeRate }: { initialProducts?
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
 
-  // Enlaces del menú de navegación (misma estructura que el catálogo completo).
-  const navLinks = [
-    { href: '#catalogo', label: 'Catálogo' },
-    { href: '#studio', label: 'Studio' },
-    { href: '#contacto', label: 'Contacto' },
-    { href: '/catalogo', label: 'Ver catálogo completo', highlight: true },
-  ]
-
+  // El menú de navegación es el mismo en toda la tienda: lo define SiteHeader (DEFAULT_NAV_LINKS).
   return <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
-    <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} />
+    <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} />
     <main>
       <section id="inicio" className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
         <div>

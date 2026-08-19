@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { getBrowserUser } from '@/services/auth-client'
 import { WHATSAPP_NUMBER } from '@/lib/constants'
@@ -26,10 +26,15 @@ export type CartProduct = {
 /** Ítem del carrito: producto + cantidad. */
 export type CartItem = CartProduct & { quantity: number }
 
+const CART_STORAGE_KEY = 'ilumax-cart'
+
 /**
  * Hook de carrito de compra compartido entre la portada y el catálogo completo.
  * Maneja agregar productos, cambiar cantidades, abrir/cerrar el panel
  * y enviar la solicitud por WhatsApp con la sesión activa.
+ *
+ * El carrito persiste en localStorage, por lo que NO se pierde al navegar
+ * entre la portada y el catálogo completo (u otras páginas del sitio).
  *
  * @param exchangeRate Tasa oficial del día para mostrar totales en bolívares.
  */
@@ -38,6 +43,28 @@ export function useCart(exchangeRate: number) {
   const [cartOpen, setCartOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [requested, setRequested] = useState(false)
+
+  // Carga el carrito guardado al montar (solo navegador).
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CART_STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as CartItem[]
+        if (Array.isArray(parsed)) setCart(parsed)
+      }
+    } catch {
+      // Si el dato guardado está corrupto, simplemente se ignora.
+    }
+  }, [])
+
+  // Persiste el carrito cada vez que cambia para conservarlo entre rutas.
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
+    } catch {
+      // Si localStorage no está disponible, el carrito vive solo en memoria.
+    }
+  }, [cart])
 
   /** Agrega un producto al carrito respetando el stock disponible. */
   const add = useCallback((product: CartProduct) => {

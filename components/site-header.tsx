@@ -7,9 +7,25 @@ import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
 type SessionRole = 'admin' | 'client' | null
 
 /**
+ * Enlaces de navegación por defecto compartidos por TODAS las páginas públicas
+ * (portada y catálogo completo). Vive en el SiteHeader para garantizar que
+ * el menú sea exactamente el mismo en cualquier ruta.
+ */
+const DEFAULT_NAV_LINKS = [
+  { href: '/', label: 'Inicio' },
+  { href: '/#studio', label: 'Studio' },
+  { href: '/#contacto', label: 'Contacto' },
+  { href: '/catalogo', label: 'Catálogo completo', highlight: true },
+]
+
+/**
  * Encabezado compartido de la tienda (portada y catálogo completo).
  * Incluye: logo, navegación, modo oscuro, botón de sesión según el rol
  * del usuario autenticado y botón del carrito con contador.
+ *
+ * Por defecto usa DEFAULT_NAV_LINKS, por lo que el menú es idéntico en
+ * la portada y el catálogo. Si una página necesita enlaces adicionales,
+ * los puede pasar con navLinks (se combinan con los por defecto).
  */
 export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks = [] }: {
   dark: boolean
@@ -20,6 +36,9 @@ export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sessionRole, setSessionRole] = useState<SessionRole>(null)
+
+  // Combina los enlaces por defecto con los adicionales que pase la página.
+  const links = [...DEFAULT_NAV_LINKS, ...navLinks]
 
   // Verifica la sesión al montar para mostrar el botón correcto (iniciar sesión, mis solicitudes o panel admin).
   useEffect(() => {
@@ -38,7 +57,7 @@ export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks
         <a href="/" className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span><span className="text-lg font-semibold tracking-[-0.05em]">iluma<span className="text-cyan-500">X</span></span></a>
 
         <nav className="hidden items-center gap-8 text-sm text-slate-500 md:flex dark:text-slate-300">
-          {navLinks.map((link) => (
+          {links.map((link) => (
             <a key={link.href} href={link.href} className={link.highlight ? 'font-semibold text-cyan-600' : ''}>{link.label}</a>
           ))}
         </nav>
@@ -63,7 +82,7 @@ export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks
       {menuOpen && (
         <div className="border-t border-slate-200 px-5 py-4 md:hidden dark:border-slate-800">
           <div className="flex flex-col gap-4 text-sm">
-            {navLinks.map((link) => (
+            {links.map((link) => (
               <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className={link.highlight ? 'font-semibold text-cyan-600' : ''}>{link.label}</a>
             ))}
             {sessionRole === 'admin' ? <a href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-cyan-600">Panel admin</a> : sessionRole === 'client' ? <a href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-cyan-600">Mis Solicitudes</a> : <a href="/login" onClick={() => setMenuOpen(false)}>Mi cuenta</a>}
