@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
-import { EXCHANGE_RATE, LOCAL_IMAGES_PREFIX, LOW_STOCK_ALERT, WHATSAPP_NUMBER } from '@/lib/constants'
+import { LOCAL_IMAGES_PREFIX, WHATSAPP_NUMBER } from '@/lib/constants'
 import { ArrowUpRight, CircleUserRound, ClipboardList, Globe2, Menu, Moon, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Sun, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { ProductCard, type CardProduct } from '@/components/product-card'
+import { ProductDetailModal } from '@/components/product-detail-modal'
+import { moneyUsd, formatBolivars, formatRate } from '@/lib/currency'
 
 // ---------- Tipos ----------
 type Product = { id: string; name: string; slug: string; description: string | null; price_usd: number; stock: number; image_url: string; colors?: string[]; specifications?: Record<string, string>; category_id?: string | null; featured?: boolean; categories?: { id: string; name: string; slug: string; description: string | null }[]; images?: { id: string; url: string; alt_text: string | null; sort_order: number }[] }
@@ -19,20 +22,15 @@ const fallbackProducts: Product[] = [
 
 const categories = ['Todos', 'Iluminación LED', 'Revestimiento 3D', 'Perfiles y accesorios']
 
-/** Devuelve la categoría visible de un producto. */
+/** Devuelve la categoría visible de un producto (fallback para productos sin categoría). */
 const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes('Tile') ? 'Revestimiento 3D' : 'Iluminación LED')
-
-/** Formatea un monto en USD con locale venezolano. */
-const money = (n: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(n)
-
-/** Convierte USD a bolívares usando la tasa fija. */
-const bolivars = (n: number) => `Bs. ${(n * EXCHANGE_RATE).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
 
 /**
  * Componente principal de la tienda.
  * Muestra los 6 productos destacados, permite armar un carrito y enviar la solicitud por WhatsApp.
+ * Usa la tasa oficial del día (dolarapi.com) para mostrar el precio en bolívares.
  */
-export function Storefront({ initialProducts }: { initialProducts?: Product[] }) {
+export function Storefront({ initialProducts, exchangeRate }: { initialProducts?: Product[]; exchangeRate: number }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
   const [dark, setDark] = useState(false)
   const [query, setQuery] = useState('')
@@ -90,7 +88,7 @@ export function Storefront({ initialProducts }: { initialProducts?: Product[] })
     const result = await response.json().catch(() => ({}))
     setSubmitting(false)
     if (!response.ok) { toast.error(result.error === 'stock_or_quantity_invalid' ? 'Revisa las cantidades disponibles.' : 'No pudimos crear la solicitud. Inténtalo de nuevo.'); return }
-    const message = encodeURIComponent(`Hola ilumaX, mi nombre es ${user.email} y deseo procesar la Solicitud #${result.id}. Adjunto mi carrito con ${count} producto(s). Total: ${money(result.total)} / ${bolivars(result.total)}.`)
+    const message = encodeURIComponent(`Hola ilumaX, mi nombre es ${user.email} y deseo procesar la Solicitud #${result.id}. Adjunto mi carrito con ${count} producto(s). Total: ${moneyUsd(result.total)} / ${formatBolivars(result.total, exchangeRate)}.`)
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank')
     setCart([]); setCartOpen(false); toast.success('Solicitud creada. Abriendo WhatsApp.')
   }
@@ -142,22 +140,7 @@ export function Storefront({ initialProducts }: { initialProducts?: Product[] })
         </div>
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((product) => (
-            <article key={product.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <button onClick={() => setSelected(product)} className="relative block w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <img src={product.image_url} alt={product.name} className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
-                <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${product.stock < LOW_STOCK_ALERT ? 'bg-amber-100 text-amber-700' : 'bg-white/90 text-blue-950'}`}>{product.stock} en stock</span>
-              </button>
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div><p className="text-xs text-cyan-600">{categoryFor(product)}</p><h3 className="mt-1 font-medium">{product.name}</h3></div>
-                  <button onClick={() => add(product)} aria-label={`Agregar ${product.name}`} className="grid size-9 place-items-center rounded-full bg-cyan-400 text-blue-950 transition hover:bg-blue-950 hover:text-white"><Plus size={17} /></button>
-                </div>
-                <div className="mt-5 flex items-end justify-between">
-                  <div><p className="font-semibold">{money(product.price_usd)}</p><p className="text-xs text-slate-400">{bolivars(product.price_usd)}</p></div>
-                  <button onClick={() => setSelected(product)} className="text-xs text-slate-500 underline underline-offset-4">Ver detalles</button>
-                </div>
-              </div>
-            </article>
+            <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={add} onViewDetails={setSelected} />
           ))}
         </div>
         <div className="mt-10 text-center">
@@ -198,20 +181,7 @@ export function Storefront({ initialProducts }: { initialProducts?: Product[] })
     <footer className="border-t border-slate-200 px-5 py-7 dark:border-slate-800"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-3 text-xs text-slate-500 sm:flex-row"><span>© 2025 ilumaX. Caracas, Venezuela.</span><span>Iluminamos ideas.</span></div></footer>
 
     {selected && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-blue-950/60 p-5 backdrop-blur-sm" onClick={() => setSelected(null)}>
-        <div onClick={(e) => e.stopPropagation()} className="relative grid max-h-[90vh] max-w-3xl overflow-auto rounded-3xl bg-white dark:bg-slate-900 md:grid-cols-2">
-          <button onClick={() => setSelected(null)} aria-label="Cerrar" className="absolute right-4 top-4 z-10 grid size-9 place-items-center rounded-full bg-white/80 text-blue-950"><X size={17} /></button>
-          <img src={selected.image_url} alt={selected.name} className="aspect-square w-full object-cover" />
-          <div className="p-7">
-            <p className="font-mono text-xs uppercase tracking-widest text-cyan-600">{categoryFor(selected)}</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">{selected.name}</h2>
-            <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-300">{selected.description}</p>
-            <div className="mt-7 grid grid-cols-2 gap-3">{Object.entries(selected.specifications ?? {}).map(([key, value]) => <div key={key} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800"><p className="font-mono text-[10px] uppercase text-slate-400">{key}</p><p className="mt-1 text-sm font-medium">{value}</p></div>)}</div>
-            <p className="mt-7 text-2xl font-semibold">{money(selected.price_usd)} <span className="text-sm font-normal text-slate-400">· {bolivars(selected.price_usd)}</span></p>
-            <button onClick={() => { add(selected); setSelected(null) }} className="mt-6 w-full rounded-full bg-blue-950 px-5 py-3 text-sm font-medium text-white hover:bg-cyan-500 hover:text-blue-950">Agregar a solicitud</button>
-          </div>
-        </div>
-      </div>
+      <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />
     )}
 
     {cartOpen && (
@@ -227,7 +197,7 @@ export function Storefront({ initialProducts }: { initialProducts?: Product[] })
                 <img src={item.image_url} alt="" className="size-16 rounded-xl object-cover" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-slate-500">{money(item.price_usd)} · {bolivars(item.price_usd)}</p>
+                  <p className="text-xs text-slate-500">{moneyUsd(item.price_usd)} · {formatBolivars(item.price_usd, exchangeRate)}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <button onClick={() => change(item.id, -1)} className="grid size-6 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Minus size={12} /></button>
                     <span className="w-4 text-center text-xs">{item.quantity}</span>
@@ -238,7 +208,7 @@ export function Storefront({ initialProducts }: { initialProducts?: Product[] })
             ))}
           </div>
           <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
-            <div className="flex justify-between"><span className="text-sm text-slate-500">Total estimado</span><div className="text-right"><p className="font-semibold">{money(total)}</p><p className="text-xs text-slate-400">{bolivars(total)} · tasa {EXCHANGE_RATE}</p></div></div>
+            <div className="flex justify-between"><span className="text-sm text-slate-500">Total estimado</span><div className="text-right"><p className="font-semibold">{moneyUsd(total)}</p><p className="text-xs text-slate-400">{formatBolivars(total, exchangeRate)} · tasa {formatRate(exchangeRate)}</p></div></div>
             <button disabled={!cart.length || submitting} onClick={requestOrder} className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-blue-950 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? 'Enviando solicitud…' : 'Confirmar por WhatsApp'} <ArrowUpRight size={16} /></button>
             {requested && <p className="mt-3 text-center text-xs text-cyan-600">Inicia sesión para generar tu Solicitud ID.</p>}
           </div>

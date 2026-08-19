@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CATALOG_PAGE_SIZE } from '@/lib/constants'
 import { LoaderCircle, Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { ProductCard, type CardProduct } from '@/components/product-card'
+import { ProductDetailModal } from '@/components/product-detail-modal'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogProduct = {
@@ -19,14 +22,17 @@ type CatalogProduct = {
   images?: { id: string; url: string; alt_text: string | null; sort_order: number }[]
 }
 
-/** Formatea un monto en USD. */
-const money = (n: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(n)
-
 /**
  * Vista de catálogo completo con filtros e infinite scroll.
  * Carga productos de 10 en 10 desde /api/catalog.
+ * Usa la misma card (ProductCard) que el inicio y el modal ampliado de detalle.
  */
-export function CatalogView({ initialProducts, total, categories }: { initialProducts: CatalogProduct[]; total: number; categories: CatalogCategory[] }) {
+export function CatalogView({ initialProducts, total, categories, exchangeRate }: {
+  initialProducts: CatalogProduct[]
+  total: number
+  categories: CatalogCategory[]
+  exchangeRate: number
+}) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
   const [slug, setSlug] = useState('')
@@ -36,6 +42,7 @@ export function CatalogView({ initialProducts, total, categories }: { initialPro
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(initialProducts.length < total)
   const [totalCount, setTotalCount] = useState(total)
+  const [selected, setSelected] = useState<CatalogProduct | null>(null)
   const pageRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -99,6 +106,11 @@ export function CatalogView({ initialProducts, total, categories }: { initialPro
   /** Alterna una categoría en el filtro. */
   function toggleCategory(id: string) {
     setSelectedCategories((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
+  }
+
+  /** Agregar al carrito desde el catálogo (aviso informativo; el carrito vive en la portada). */
+  function addToCart(product: CatalogProduct) {
+    toast.success(`${product.name} agregado a tu solicitud`)
   }
 
   return (
@@ -165,25 +177,7 @@ export function CatalogView({ initialProducts, total, categories }: { initialPro
             <>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {products.map((product) => (
-                  <article key={product.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <button className="relative block w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                      {product.images?.[0] ? (
-                        <img src={product.images[0].url} alt={product.name} className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
-                      ) : (
-                        <img src={product.image_url} alt={product.name} className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
-                      )}
-                      <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${product.stock < 20 ? 'bg-amber-100 text-amber-700' : 'bg-white/90 text-blue-950'}`}>{product.stock} en stock</span>
-                    </button>
-                    <div className="p-5">
-                      <p className="text-xs text-cyan-600">{product.categories?.[0]?.name ?? 'General'}</p>
-                      <h3 className="mt-1 font-medium">{product.name}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-300">{product.description}</p>
-                      <div className="mt-4 flex items-end justify-between">
-                        <p className="font-semibold">{money(product.price_usd)}</p>
-                        <span className="text-xs text-slate-400">/{product.slug}</span>
-                      </div>
-                    </div>
-                  </article>
+                  <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={addToCart} onViewDetails={setSelected} />
                 ))}
               </div>
 
@@ -194,6 +188,10 @@ export function CatalogView({ initialProducts, total, categories }: { initialPro
           )}
         </section>
       </main>
+
+      {selected && (
+        <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={addToCart} />
+      )}
     </div>
   )
 }

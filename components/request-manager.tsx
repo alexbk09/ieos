@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronDown, ClipboardList, LoaderCircle, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status'
+import { formatBolivars, moneyUsd } from '@/lib/currency'
 
 type Item = { id: string; product_name: string; quantity: number; unit_price_usd: number }
 type Request = { id: string; user_id: string; status: string; total_usd: number; created_at: string; solicitud_items: Item[] }
@@ -11,8 +12,9 @@ type Request = { id: string; user_id: string; status: string; total_usd: number;
 /**
  * Gestor de solicitudes (CRUD de estado).
  * La lógica de datos se delega en las API routes; la UI es independiente de Supabase.
+ * Muestra montos en USD y Bs usando la tasa oficial del día (dolarapi.com).
  */
-export function RequestManager({ initialRequests }: { initialRequests: Request[] }) {
+export function RequestManager({ initialRequests, exchangeRate }: { initialRequests: Request[]; exchangeRate: number }) {
   const [requests, setRequests] = useState(initialRequests)
   const [open, setOpen] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -63,7 +65,10 @@ export function RequestManager({ initialRequests }: { initialRequests: Request[]
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="hidden text-sm font-semibold sm:block">${Number(request.total_usd).toFixed(2)}</span>
+                <div className="hidden text-right sm:block">
+                  <p className="text-sm font-semibold">{moneyUsd(Number(request.total_usd))}</p>
+                  <p className="text-xs text-muted-foreground">{formatBolivars(Number(request.total_usd), exchangeRate)}</p>
+                </div>
                 <span className="rounded-full bg-accent/25 px-3 py-1 text-xs text-accent-foreground">
                   {REQUEST_STATUS_LABELS[request.status] ?? request.status}
                 </span>
@@ -77,12 +82,18 @@ export function RequestManager({ initialRequests }: { initialRequests: Request[]
                   {request.solicitud_items?.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span>{item.quantity} × {item.product_name}</span>
-                      <span className="text-muted-foreground">${Number(item.unit_price_usd).toFixed(2)}</span>
+                      <div className="text-right">
+                        <p className="text-muted-foreground">{moneyUsd(Number(item.unit_price_usd))}</p>
+                        <p className="text-xs text-muted-foreground">{formatBolivars(Number(item.unit_price_usd), exchangeRate)}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-                  <p className="font-semibold">Total: ${Number(request.total_usd).toFixed(2)}</p>
+                  <div>
+                    <p className="font-semibold">Total: {moneyUsd(Number(request.total_usd))}</p>
+                    <p className="text-xs text-muted-foreground">{formatBolivars(Number(request.total_usd), exchangeRate)}</p>
+                  </div>
                   <div className="flex items-center gap-2">
                     {updatingId === request.id && <LoaderCircle size={15} className="animate-spin text-muted-foreground" />}
                     <select

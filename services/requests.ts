@@ -1,11 +1,12 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { EXCHANGE_RATE } from '@/lib/constants'
 import { normalizeCartItems } from '@/lib/price-calculator'
+import { getOfficialExchangeRate } from '@/services/exchange-rate'
 import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status.mjs'
 
 /**
  * Servicio de solicitudes (pedidos).
  * Capa única de acceso a Supabase para la gestión de solicitudes.
+ * Usa la tasa oficial del día (dolarapi.com) al crear solicitudes.
  */
 
 // ---------- Tipos ----------
@@ -39,7 +40,8 @@ export type CreateRequestResult =
 
 /**
  * Crea una nueva solicitud desde el carrito del cliente.
- * Valida stock real de cada producto y calcula el total en USD.
+ * Valida stock real de cada producto, calcula el total en USD
+ * y guarda la tasa oficial del día (dolarapi.com).
  * @param userId ID del usuario autenticado.
  * @param items Ítems del carrito.
  * @returns { id, total } de la solicitud creada.
@@ -59,9 +61,12 @@ export async function createRequest(userId: string, items: NewRequestItem[]): Pr
 
   const { items: validItems, total } = result
 
+  // Obtiene la tasa oficial del día para guardarla en la solicitud.
+  const { rate } = await getOfficialExchangeRate()
+
   const { data: solicitud, error } = await supabase
     .from('solicitudes')
-    .insert({ user_id: userId, total_usd: total, exchange_rate: EXCHANGE_RATE })
+    .insert({ user_id: userId, total_usd: total, exchange_rate: rate })
     .select('id')
     .single()
   if (error || !solicitud) return { error: 'solicitud_failed' }

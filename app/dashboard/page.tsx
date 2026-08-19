@@ -2,16 +2,22 @@ import { requireUser } from '@/lib/auth'
 import { getUserRole } from '@/services/auth-server'
 import { redirect } from 'next/navigation'
 import { getRequestsByUser } from '@/services/requests'
-import { ArrowLeft, ClipboardList, UserRound } from 'lucide-react'
+import { getOfficialExchangeRate } from '@/services/exchange-rate'
+import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
+import { ArrowLeft, BadgeDollarSign, ClipboardList, UserRound } from 'lucide-react'
 
 /**
  * Dashboard del cliente.
  * Los datos se obtienen a través de /services/requests.
+ * Muestra la tasa oficial del día (dolarapi.com) y los montos en Bs + USD.
  */
 export default async function DashboardPage() {
   const { user } = await requireUser()
   if (await getUserRole(user) === 'admin') redirect('/admin')
-  const { data: orders } = await getRequestsByUser(user.id)
+  const [{ data: orders }, { rate }] = await Promise.all([
+    getRequestsByUser(user.id),
+    getOfficialExchangeRate(),
+  ])
 
   return (
     <main className="min-h-screen bg-slate-50 p-5 text-slate-950 dark:bg-slate-950 dark:text-white">
@@ -27,11 +33,11 @@ export default async function DashboardPage() {
           <h1 className="mt-3 text-4xl font-semibold tracking-[-.06em]">Hola, {user.user_metadata?.name ?? user.email?.split('@')[0]}.</h1>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-            <UserRound className="text-cyan-500" />
-            <h2 className="mt-8 font-medium">Perfil</h2>
-            <p className="mt-2 text-sm text-slate-500">{user.email}</p>
-            <p className="mt-1 text-sm text-slate-500">{user.user_metadata?.phone ?? 'Agrega tu teléfono para recibir asesoría.'}</p>
+          <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/5 p-6">
+            <BadgeDollarSign className="text-cyan-500" />
+            <h2 className="mt-8 font-medium">Tasa oficial del día</h2>
+            <p className="mt-2 text-3xl font-semibold">Bs. {formatRate(rate)}</p>
+            <p className="mt-1 text-xs text-slate-500">Fuente: dolarapi.com</p>
           </div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
             <ClipboardList className="text-cyan-500" />
@@ -47,10 +53,13 @@ export default async function DashboardPage() {
           ) : (
             <div className="mt-5 space-y-3">
               {orders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
+                <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
                   <span className="font-mono text-xs">#{order.id.slice(0, 8)}</span>
                   <span className="capitalize text-slate-500">{order.status}</span>
-                  <strong>${Number(order.total_usd).toFixed(2)}</strong>
+                  <div className="text-right">
+                    <strong>{moneyUsd(Number(order.total_usd))}</strong>
+                    <p className="text-xs text-slate-400">{formatBolivars(Number(order.total_usd), rate)}</p>
+                  </div>
                 </div>
               ))}
             </div>
