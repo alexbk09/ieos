@@ -1,26 +1,36 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, UserRound } from 'lucide-react'
+import { LayoutDashboard, LogOut, UserRound } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
 import { getBrowserProfile } from '@/services/profiles-client'
 import { UserAvatar } from '@/components/user-avatar'
 
 /**
  * Menú de usuario en el header.
  * Muestra el avatar (imagen o iniciales) y al hacer clic despliega
- * dos opciones: "Mi Perfil" y "Cerrar sesión".
+ * las opciones: "Panel admin" (solo administradores), "Mi Perfil" y
+ * "Cerrar sesión".
  * Funciona tanto para administradores como para clientes.
  */
 export function UserMenu() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [profile, setProfile] = useState<{ name?: string | null; avatar_url?: string | null } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Carga el perfil (nombre + avatar) al montar.
+  // Carga el perfil (nombre + avatar) y el rol del usuario al montar.
   useEffect(() => {
     let active = true
+    getBrowserUser().then(async (user) => {
+      if (!active) return
+      if (user) {
+        const role = await getBrowserUserRole(user)
+        if (active) setIsAdmin(role === 'admin')
+      }
+    })
     getBrowserProfile().then((data) => {
       if (active && data) {
         setProfile({ name: data.full_name ?? data.email, avatar_url: data.avatar_url })
@@ -79,6 +89,18 @@ export function UserMenu() {
 
           {/* Opciones del menú */}
           <div className="p-1.5">
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setOpen(false)
+                  router.push('/admin')
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <LayoutDashboard size={16} className="text-cyan-600" />
+                Panel admin
+              </button>
+            )}
             <button
               onClick={() => {
                 setOpen(false)
