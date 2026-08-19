@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Plus } from 'lucide-react'
 import { LOW_STOCK_ALERT } from '@/lib/constants'
 import { formatBolivars, moneyUsd } from '@/lib/currency'
@@ -41,7 +42,7 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
     <article className="group overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <button onClick={() => onViewDetails(product)} aria-label={`Ver detalles de ${product.name}`} className="relative block w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         {image ? (
-          <img src={image} alt={product.name} className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
+          <Image src={image} alt={product.name} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
           <div className="grid aspect-[1.1] w-full place-items-center bg-slate-100 text-slate-400 dark:bg-slate-800">Sin imagen</div>
         )}

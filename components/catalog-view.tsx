@@ -9,6 +9,7 @@ import { SiteHeader } from '@/components/site-header'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useDarkMode } from '@/hooks/use-dark-mode'
+import { useExchangeRate } from '@/hooks/use-exchange-rate'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogProduct = {
@@ -31,11 +32,10 @@ type CatalogProduct = {
  * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
  * y el mismo ProductCard para cada producto.
  */
-export function CatalogView({ initialProducts, total, categories, exchangeRate }: {
+export function CatalogView({ initialProducts, total, categories }: {
   initialProducts: CatalogProduct[]
   total: number
   categories: CatalogCategory[]
-  exchangeRate: number
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
@@ -52,6 +52,7 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
 
   // Estado compartido con la portada: carrito funcional y modo oscuro persistente.
   const { dark, toggle } = useDarkMode()
+  const exchangeRate = useExchangeRate()
   const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
 
   /** Reinicia y recarga la primera página con los filtros actuales. */

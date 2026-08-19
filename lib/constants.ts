@@ -18,8 +18,8 @@ export const PRODUCTS_BUCKET = 'productos-bucket'
 /** Número de WhatsApp para confirmación de pedidos. */
 export const WHATSAPP_NUMBER = '584122649707'
 
-/** Prefijo de ruta para imágenes locales del catálogo. */
-export const LOCAL_IMAGES_PREFIX = '/products/'
+/** Prefijo de ruta para imágenes locales del catálogo (WebP optimizadas). */
+export const LOCAL_IMAGES_PREFIX = '/products/webp/'
 
 /** Cantidad de productos por página en el catálogo (infinite scroll). */
 export const CATALOG_PAGE_SIZE = 10

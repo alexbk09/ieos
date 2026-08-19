@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Image from 'next/image'
 import { LOCAL_IMAGES_PREFIX } from '@/lib/constants'
 import { ArrowUpRight, Globe2, Search, Sparkles, Star } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
@@ -9,15 +10,16 @@ import { SiteHeader } from '@/components/site-header'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useDarkMode } from '@/hooks/use-dark-mode'
+import { useExchangeRate } from '@/hooks/use-exchange-rate'
 
 // ---------- Tipos ----------
 type Product = { id: string; name: string; slug: string; description: string | null; price_usd: number; stock: number; image_url: string; colors?: string[]; specifications?: Record<string, string>; category_id?: string | null; featured?: boolean; categories?: { id: string; name: string; slug: string; description: string | null }[]; images?: { id: string; url: string; alt_text: string | null; sort_order: number }[] }
 
 // ---------- Catálogo fallback (solo si no hay datos) ----------
 const fallbackProducts: Product[] = [
-  { id: '1', name: 'Panel LED Orbis 24W', slug: 'panel-led-orbis-24w', description: 'Iluminación uniforme para espacios contemporáneos.', price_usd: 28, stock: 42, image_url: `${LOCAL_IMAGES_PREFIX}panel-led.png`, colors: ['Blanco', 'Negro'], specifications: { voltage: '110-240V', watts: '24W', weight: '0.8 kg' }, featured: true },
-  { id: '2', name: 'Línea Aura 12W', slug: 'linea-aura-12w', description: 'Luz lineal para crear atmósferas limpias.', price_usd: 36, stock: 18, image_url: `${LOCAL_IMAGES_PREFIX}linea-aura.png`, colors: ['Blanco cálido', 'Blanco neutro'], specifications: { voltage: '12V', watts: '12W', weight: '0.4 kg' }, featured: true },
-  { id: '3', name: 'Wall Tile Nova', slug: 'wall-tile-nova', description: 'Revestimiento modular con presencia escultórica.', price_usd: 22.5, stock: 27, image_url: `${LOCAL_IMAGES_PREFIX}wall-tile.png`, colors: ['Arena', 'Grafito'], specifications: { dimensions: '50 x 50 cm', weight: '1.2 kg' }, featured: true },
+  { id: '1', name: 'Panel LED Orbis 24W', slug: 'panel-led-orbis-24w', description: 'Iluminación uniforme para espacios contemporáneos.', price_usd: 28, stock: 42, image_url: `${LOCAL_IMAGES_PREFIX}panel-led.webp`, colors: ['Blanco', 'Negro'], specifications: { voltage: '110-240V', watts: '24W', weight: '0.8 kg' }, featured: true },
+  { id: '2', name: 'Línea Aura 12W', slug: 'linea-aura-12w', description: 'Luz lineal para crear atmósferas limpias.', price_usd: 36, stock: 18, image_url: `${LOCAL_IMAGES_PREFIX}linea-aura.webp`, colors: ['Blanco cálido', 'Blanco neutro'], specifications: { voltage: '12V', watts: '12W', weight: '0.4 kg' }, featured: true },
+  { id: '3', name: 'Wall Tile Nova', slug: 'wall-tile-nova', description: 'Revestimiento modular con presencia escultórica.', price_usd: 22.5, stock: 27, image_url: `${LOCAL_IMAGES_PREFIX}wall-tile.webp`, colors: ['Arena', 'Grafito'], specifications: { dimensions: '50 x 50 cm', weight: '1.2 kg' }, featured: true },
 ]
 
 const categories = ['Todos', 'Iluminación LED', 'Revestimiento 3D', 'Perfiles y accesorios']
@@ -30,9 +32,10 @@ const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes(
  * Muestra los 6 productos destacados, permite armar un carrito y enviar la solicitud por WhatsApp.
  * Usa la tasa oficial del día (dolarapi.com) para mostrar el precio en bolívares.
  */
-export function Storefront({ initialProducts, exchangeRate }: { initialProducts?: Product[]; exchangeRate: number }) {
+export function Storefront({ initialProducts }: { initialProducts?: Product[] }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
   const { dark, toggle } = useDarkMode()
+  const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Todos')
@@ -61,7 +64,7 @@ export function Storefront({ initialProducts, exchangeRate }: { initialProducts?
         </div>
         <div className="relative overflow-hidden rounded-[2rem] bg-blue-950 p-5 text-white">
           <div className="absolute right-8 top-8 rounded-full border border-cyan-300/30 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-cyan-300">Colección 2025</div>
-          <img src={`${LOCAL_IMAGES_PREFIX}linea-aura.png`} alt="Línea Aura 12W" className="aspect-square w-full rounded-[1.5rem] object-cover opacity-90" />
+          <Image src={`${LOCAL_IMAGES_PREFIX}linea-aura.webp`} alt="Línea Aura 12W" width={600} height={600} priority className="aspect-square w-full rounded-[1.5rem] object-cover opacity-90" />
           <div className="absolute bottom-10 left-10"><p className="font-mono text-xs uppercase tracking-widest text-cyan-300">01 / 03</p><p className="mt-2 text-xl font-medium">La luz como material</p></div>
         </div>
       </section>

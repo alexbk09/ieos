@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { ChevronLeft, ChevronRight, ImagePlus } from 'lucide-react'
 
 type CarouselImage = { id?: string; url: string; alt_text?: string | null }
@@ -19,7 +20,7 @@ export function ProductCarousel({ images, alt, className = '' }: { images: Carou
 
   return (
     <div className={`group relative overflow-hidden ${className}`}>
-      <img src={current.url} alt={current.alt_text || alt} className="size-full object-cover" />
+      <Image src={current.url} alt={current.alt_text || alt} width={800} height={600} loading="lazy" className="size-full object-cover" />
       {showControls && (
         <>
           <button aria-label="Anterior" onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + list.length) % list.length) }} className="absolute left-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-blue-950 opacity-0 transition group-hover:opacity-100 hover:bg-white"><ChevronLeft size={16} /></button>

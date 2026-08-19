@@ -1,17 +1,12 @@
 import { Storefront } from '@/components/storefront'
 import { getFeaturedProducts } from '@/services/catalog'
-import { getOfficialExchangeRate } from '@/services/exchange-rate'
 
-/**
- * Página de inicio.
- * Obtiene los 6 productos destacados (featured) desde Supabase,
- * la tasa oficial del dólar y los normaliza antes de pasárselos al Storefront.
- */
+/** ISR: la portada se sirve desde CDN y se revalida cada 5 min. */
+export const revalidate = 300
+
+/** Página de inicio con ISR. La tasa del dólar se obtiene en cliente (useExchangeRate) sin bloquear el render. */
 export default async function Home() {
-  const [{ products }, { rate }] = await Promise.all([
-    getFeaturedProducts(),
-    getOfficialExchangeRate(),
-  ])
+  const { products } = await getFeaturedProducts()
 
   // Normaliza image_url (Supabase devuelve null) y garantiza que colors/specifications existan.
   const normalized = (products ?? []).map((p) => ({
@@ -21,5 +16,5 @@ export default async function Home() {
     specifications: p.specifications ?? {},
   }))
 
-  return <Storefront initialProducts={normalized} exchangeRate={rate} />
+  return <Storefront initialProducts={normalized} />
 }

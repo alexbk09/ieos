@@ -5,6 +5,7 @@ import { CATALOG_PAGE_SIZE } from '@/lib/constants'
 /**
  * API pública del catálogo con paginación (infinite scroll).
  * Filtros: from, search, slug, minPrice, maxPrice, categories (csv), featured.
+ * Cacheada en CDN por 60s con stale-while-revalidate (300s).
  */
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -31,11 +32,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: result.error.message }, { status: 400 })
   }
 
-  return NextResponse.json({
-    products: result.products,
-    total: result.total,
-    hasMore: result.hasMore,
-    pageSize: CATALOG_PAGE_SIZE,
-    from,
-  })
+  return NextResponse.json(
+    {
+      products: result.products,
+      total: result.total,
+      hasMore: result.hasMore,
+      pageSize: CATALOG_PAGE_SIZE,
+      from,
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'Vercel-CDN-Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    },
+  )
 }

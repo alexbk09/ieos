@@ -1,10 +1,12 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 import { CATALOG_PAGE_SIZE, FEATURED_PRODUCTS_LIMIT } from '@/lib/constants'
 
 /**
  * Servicio de catálogo.
  * Capa única de acceso a Supabase para productos y categorías.
  * Los componentes NUNCA deben llamar a supabase.from() directamente.
+ * Las consultas públicas (portada, catálogo, categorías) usan el cliente público (SSG+ISR).
  */
 
 // ---------- Tipos ----------
@@ -98,9 +100,9 @@ export async function getProductsWithCategories() {
   }
 }
 
-/** Obtiene los productos destacados (favoritos) para la portada. */
+/** Obtiene los productos destacados (favoritos) para la portada. Cliente público → SSG+ISR. */
 export async function getFeaturedProducts() {
-  const supabase = await createServerClient()
+  const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
@@ -113,7 +115,7 @@ export async function getFeaturedProducts() {
 
 /** Obtiene los IDs de productos que pertenecen a las categorías dadas. */
 async function getProductIdsByCategories(categoryIds: string[]) {
-  const supabase = await createServerClient()
+  const supabase = createPublicClient()
   const { data } = await supabase.from('product_categories').select('product_id').in('category_id', categoryIds)
   return [...new Set((data ?? []).map((row: any) => row.product_id))]
 }
@@ -121,9 +123,10 @@ async function getProductIdsByCategories(categoryIds: string[]) {
 /**
  * Devuelve una página del catálogo con filtros aplicados.
  * Pensado para infinite scroll: entrega 10 productos por llamada.
+ * Cliente público → SSG+ISR.
  */
 export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
-  const supabase = await createServerClient()
+  const supabase = createPublicClient()
 
   let query = supabase
     .from('products')
@@ -148,7 +151,7 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
 
 /**
  * Crea un producto con sus categorías (N:N) e imágenes múltiples.
- * Valida que al menos exista una categoría.
+ * Requiere sesión de admin — usa cliente servidor.
  */
 export async function createProduct(payload: ProductInput) {
   const supabase = await createServerClient()
@@ -197,6 +200,7 @@ export async function createProduct(payload: ProductInput) {
 
 /**
  * Actualiza un producto incluyendo sus categorías (N:N) e imágenes.
+ * Requiere sesión de admin — usa cliente servidor.
  */
 export async function updateProduct(id: string, payload: ProductInput) {
   const supabase = await createServerClient()
@@ -260,9 +264,9 @@ export async function getInventorySummary() {
 
 // ---------- Categorías ----------
 
-/** Obtiene todas las categorías ordenadas por nombre. */
+/** Obtiene todas las categorías ordenadas por nombre. Cliente público → SSG+ISR. */
 export async function getCategories() {
-  const supabase = await createServerClient()
+  const supabase = createPublicClient()
   return supabase.from('categories').select('*').order('name')
 }
 
