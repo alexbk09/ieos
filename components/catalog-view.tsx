@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CATALOG_PAGE_SIZE } from '@/lib/constants'
 import { LoaderCircle, Search } from 'lucide-react'
-import { toast } from 'sonner'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
+import { SiteHeader } from '@/components/site-header'
+import { CartDrawer } from '@/components/cart-drawer'
+import { useCart } from '@/hooks/use-cart'
+import { useDarkMode } from '@/hooks/use-dark-mode'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogProduct = {
@@ -25,7 +28,8 @@ type CatalogProduct = {
 /**
  * Vista de catálogo completo con filtros e infinite scroll.
  * Carga productos de 10 en 10 desde /api/catalog.
- * Usa la misma card (ProductCard) que el inicio y el modal ampliado de detalle.
+ * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
+ * y el mismo ProductCard para cada producto.
  */
 export function CatalogView({ initialProducts, total, categories, exchangeRate }: {
   initialProducts: CatalogProduct[]
@@ -45,6 +49,10 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
   const [selected, setSelected] = useState<CatalogProduct | null>(null)
   const pageRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Estado compartido con la portada: carrito funcional y modo oscuro persistente.
+  const { dark, toggle } = useDarkMode()
+  const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
 
   /** Reinicia y recarga la primera página con los filtros actuales. */
   const resetAndLoad = useCallback(async () => {
@@ -108,20 +116,16 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
     setSelectedCategories((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
   }
 
-  /** Agregar al carrito desde el catálogo (aviso informativo; el carrito vive en la portada). */
-  function addToCart(product: CatalogProduct) {
-    toast.success(`${product.name} agregado a tu solicitud`)
-  }
+  // Enlaces del menú de navegación del catálogo completo.
+  const navLinks = [
+    { href: '/#catalogo', label: 'Inicio' },
+    { href: '/#studio', label: 'Studio' },
+    { href: '/#contacto', label: 'Contacto' },
+  ]
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-          <a href="/" className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span><span className="text-lg font-semibold tracking-[-0.05em]">iluma<span className="text-cyan-500">X</span></span></a>
-          <nav className="hidden items-center gap-8 text-sm text-slate-500 md:flex"><a href="/#catalogo">Inicio</a><a href="/#studio">Studio</a><a href="/#contacto">Contacto</a></nav>
-          <a href="/" className="rounded-full border border-slate-300 px-4 py-2 text-sm">Volver</a>
-        </div>
-      </header>
+    <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
+      <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} />
 
       <main className="mx-auto grid max-w-7xl gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
         {/* Panel de filtros */}
@@ -177,7 +181,7 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
             <>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={addToCart} onViewDetails={setSelected} />
+                  <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={add} onViewDetails={setSelected} />
                 ))}
               </div>
 
@@ -190,8 +194,10 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
       </main>
 
       {selected && (
-        <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={addToCart} />
+        <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />
       )}
+
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onChange={change} total={cartTotal} onSubmit={requestOrder} submitting={submitting} requested={requested} exchangeRate={exchangeRate} />
     </div>
   )
 }

@@ -1,17 +1,17 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
-import { LOCAL_IMAGES_PREFIX, WHATSAPP_NUMBER } from '@/lib/constants'
-import { ArrowUpRight, CircleUserRound, ClipboardList, Globe2, Menu, Moon, Minus, Plus, Search, ShoppingBag, Sparkles, Star, Sun, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { useMemo, useState } from 'react'
+import { LOCAL_IMAGES_PREFIX } from '@/lib/constants'
+import { ArrowUpRight, Globe2, Search, Sparkles, Star } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
-import { moneyUsd, formatBolivars, formatRate } from '@/lib/currency'
+import { SiteHeader } from '@/components/site-header'
+import { CartDrawer } from '@/components/cart-drawer'
+import { useCart } from '@/hooks/use-cart'
+import { useDarkMode } from '@/hooks/use-dark-mode'
 
 // ---------- Tipos ----------
 type Product = { id: string; name: string; slug: string; description: string | null; price_usd: number; stock: number; image_url: string; colors?: string[]; specifications?: Record<string, string>; category_id?: string | null; featured?: boolean; categories?: { id: string; name: string; slug: string; description: string | null }[]; images?: { id: string; url: string; alt_text: string | null; sort_order: number }[] }
-type CartItem = Product & { quantity: number }
 
 // ---------- Catálogo fallback (solo si no hay datos) ----------
 const fallbackProducts: Product[] = [
@@ -32,81 +32,24 @@ const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes(
  */
 export function Storefront({ initialProducts, exchangeRate }: { initialProducts?: Product[]; exchangeRate: number }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
-  const [dark, setDark] = useState(false)
+  const { dark, toggle } = usDarkMode()
+  const { cart, add, change, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Todos')
-  const [cart, setCart] = useState<CartItem[]>([])
   const [selected, setSelected] = useState<Product | null>(null)
-  const [cartOpen, setCartOpen] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [requested, setRequested] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [sessionRole, setSessionRole] = useState<'admin' | 'client' | null>(null)
-
-  // Verifica la sesión al montar.
-  useEffect(() => {
-    let active = true
-    getBrowserUser().then(async (user) => {
-      if (!active || !user) { if (active) setSessionRole(null); return }
-      const role = await getBrowserUserRole(user)
-      if (active) setSessionRole(role === 'admin' ? 'admin' : 'client')
-    })
-    return () => { active = false }
-  }, [])
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
-  const total = cart.reduce((sum, item) => sum + item.price_usd * item.quantity, 0)
-  const count = cart.reduce((sum, item) => sum + item.quantity, 0)
 
-  /** Agrega un producto al carrito respetando el stock. */
-  function add(product: Product) {
-    setCart((current) => {
-      const found = current.find((item) => item.id === product.id)
-      return found
-        ? current.map((item) => (item.id === product.id ? { ...item, quantity: Math.min(item.quantity + 1, product.stock) } : item))
-        : [...current, { ...product, quantity: 1 }]
-    })
-    setCartOpen(true)
-    toast.success(`${product.name} agregado a tu solicitud`)
-  }
-
-  /** Cambia la cantidad de un ítem del carrito. */
-  function change(id: string, amount: number) {
-    setCart((current) => current.map((item) => (item.id === id ? { ...item, quantity: item.quantity + amount } : item)).filter((item) => item.quantity > 0))
-  }
-
-  /** Envía la solicitud actual. */
-  async function requestOrder() {
-    const user = await getBrowserUser()
-    if (!user) { toast.error('Inicia sesión para enviar tu solicitud'); setRequested(true); return }
-    setSubmitting(true)
-    const response = await fetch('/api/solicitudes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: cart.map((item) => ({ product_id: item.id, quantity: item.quantity })) }),
-    })
-    const result = await response.json().catch(() => ({}))
-    setSubmitting(false)
-    if (!response.ok) { toast.error(result.error === 'stock_or_quantity_invalid' ? 'Revisa las cantidades disponibles.' : 'No pudimos crear la solicitud. Inténtalo de nuevo.'); return }
-    const message = encodeURIComponent(`Hola ilumaX, mi nombre es ${user.email} y deseo procesar la Solicitud #${result.id}. Adjunto mi carrito con ${count} producto(s). Total: ${moneyUsd(result.total)} / ${formatBolivars(result.total, exchangeRate)}.`)
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank')
-    setCart([]); setCartOpen(false); toast.success('Solicitud creada. Abriendo WhatsApp.')
-  }
+  // Enlaces del menú de navegación (misma estructura que el catálogo completo).
+  const navLinks = [
+    { href: '#catalogo', label: 'Catálogo' },
+    { href: '#studio', label: 'Studio' },
+    { href: '#contacto', label: 'Contacto' },
+    { href: '/catalogo', label: 'Ver catálogo completo', highlight: true },
+  ]
 
   return <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-        <a href="#inicio" className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span><span className="text-lg font-semibold tracking-[-0.05em]">iluma<span className="text-cyan-500">X</span></span></a>
-        <nav className="hidden items-center gap-8 text-sm text-slate-500 md:flex dark:text-slate-300"><a href="#catalogo">Catálogo</a><a href="#studio">Studio</a><a href="#contacto">Contacto</a><a href="/catalogo" className="font-semibold text-cyan-600">Ver catálogo completo</a></nav>
-        <div className="flex items-center gap-2">
-          <button aria-label="Cambiar tema" onClick={() => setDark(!dark)} className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700">{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
-          {sessionRole === 'admin' ? <a href="/admin" className="hidden items-center gap-2 rounded-full bg-blue-950 px-4 py-2.5 text-xs font-semibold text-white md:flex">Panel admin</a> : sessionRole === 'client' ? <a href="/dashboard" className="hidden items-center gap-2 rounded-full bg-blue-950 px-4 py-2.5 text-xs font-semibold text-white md:flex"><ClipboardList size={14} />Mis Solicitudes</a> : <a href="/login" aria-label="Cuenta" className="hidden size-10 place-items-center rounded-full border border-slate-200 md:grid dark:border-slate-700"><CircleUserRound size={17} /></a>}
-          <button aria-label="Abrir carrito" onClick={() => setCartOpen(true)} className="relative grid size-10 place-items-center rounded-full bg-blue-950 text-white"><ShoppingBag size={17} />{count > 0 && <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-cyan-400 text-[10px] font-bold text-blue-950">{count}</span>}</button>
-          <button aria-label="Menú" onClick={() => setMenuOpen(!menuOpen)} className="grid size-10 place-items-center md:hidden"><Menu size={19} /></button>
-        </div>
-      </div>
-      {menuOpen && <div className="border-t border-slate-200 px-5 py-4 md:hidden dark:border-slate-800"><div className="flex flex-col gap-4 text-sm"><a href="#catalogo">Catálogo</a><a href="#studio">Studio</a><a href="#contacto">Contacto</a><a href="/catalogo" className="font-semibold text-cyan-600">Catálogo completo</a>{sessionRole === 'admin' ? <a href="/admin" className="font-semibold text-cyan-600">Panel admin</a> : sessionRole === 'client' ? <a href="/dashboard" className="font-semibold text-cyan-600">Mis Solicitudes</a> : <a href="/login">Mi cuenta</a>}</div></div>}
-    </header>
+    <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} />
     <main>
       <section id="inicio" className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
         <div>
@@ -170,7 +113,7 @@ export function Storefront({ initialProducts, exchangeRate }: { initialProducts?
             <a href="mailto:hola@ilumax.ve" aria-label="Enviar correo" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Globe2 size={17} /></a>
           </div>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); setRequested(true) }} className="grid gap-3">
+        <form onSubmit={(e) => { e.preventDefault(); }} className="grid gap-3">
           <input required placeholder="Tu nombre" className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
           <input required type="email" placeholder="Correo electrónico" className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
           <textarea required placeholder="Cuéntanos sobre tu proyecto" rows={4} className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
@@ -184,36 +127,6 @@ export function Storefront({ initialProducts, exchangeRate }: { initialProducts?
       <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />
     )}
 
-    {cartOpen && (
-      <div className="fixed inset-0 z-50 bg-blue-950/40" onClick={() => setCartOpen(false)}>
-        <aside onClick={(e) => e.stopPropagation()} className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-white p-6 dark:bg-slate-900">
-          <div className="flex items-center justify-between">
-            <div><p className="font-mono text-xs uppercase tracking-widest text-cyan-600">Tu selección</p><h2 className="mt-1 text-2xl font-semibold">Solicitud</h2></div>
-            <button onClick={() => setCartOpen(false)} aria-label="Cerrar carrito"><X size={20} /></button>
-          </div>
-          <div className="mt-8 flex-1 space-y-4 overflow-y-auto">
-            {cart.length === 0 ? <p className="py-12 text-center text-sm text-slate-500">Aún no has agregado piezas.</p> : cart.map((item) => (
-              <div key={item.id} className="flex gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
-                <img src={item.image_url} alt="" className="size-16 rounded-xl object-cover" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-slate-500">{moneyUsd(item.price_usd)} · {formatBolivars(item.price_usd, exchangeRate)}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <button onClick={() => change(item.id, -1)} className="grid size-6 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Minus size={12} /></button>
-                    <span className="w-4 text-center text-xs">{item.quantity}</span>
-                    <button onClick={() => change(item.id, 1)} className="grid size-6 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Plus size={12} /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-slate-200 pt-5 dark:border-slate-800">
-            <div className="flex justify-between"><span className="text-sm text-slate-500">Total estimado</span><div className="text-right"><p className="font-semibold">{moneyUsd(total)}</p><p className="text-xs text-slate-400">{formatBolivars(total, exchangeRate)} · tasa {formatRate(exchangeRate)}</p></div></div>
-            <button disabled={!cart.length || submitting} onClick={requestOrder} className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-blue-950 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? 'Enviando solicitud…' : 'Confirmar por WhatsApp'} <ArrowUpRight size={16} /></button>
-            {requested && <p className="mt-3 text-center text-xs text-cyan-600">Inicia sesión para generar tu Solicitud ID.</p>}
-          </div>
-        </aside>
-      </div>
-    )}
+    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onChange={change} total={total} onSubmit={requestOrder} submitting={submitting} requested={requested} exchangeRate={exchangeRate} />
   </div>
 }
