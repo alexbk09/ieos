@@ -256,6 +256,35 @@ export async function deleteProduct(id: string) {
   return supabase.from('products').delete().eq('id', id)
 }
 
+/**
+ * Crea múltiples productos en una sola operación (carga masiva por Excel).
+ * Cada producto mantiene sus relaciones N:N con categorías e imágenes.
+ * Requiere sesión de admin — usa cliente servidor.
+ */
+export async function createProductsBulk(items: ProductInput[]) {
+  if (items.length === 0) return { products: [], errors: null }
+  const supabase = await createServerClient()
+
+  const successful: Product[] = []
+  const errors: { row: number; error: string }[] = []
+
+  // Nota: Supabase insert no soporta relacional N:N en un solo insert,
+  // así que procesamos por lotes secuenciales para mantener simplicidad y claridad.
+  for (let i = 0; i < items.length; i++) {
+    const payload = items[i]
+    const result = await createProduct(payload)
+    if (result.error) {
+      errors.push({ row: i + 2, error: result.error.message }) // +2 para compensar encabezado (fila 1 = títulos)
+    } else if (result.data) {
+      successful.push(result.data)
+      // Evitar sobrecargar la base: pausa muy corta si hay muchos lotes
+      if (i > 0 && i % 50 === 0) await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+  }
+
+  return { products: successful, errors }
+}
+
 /** Obtiene el resumen del inventario. */
 export async function getInventorySummary() {
   const supabase = await createServerClient()

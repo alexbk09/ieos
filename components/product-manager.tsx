@@ -1,14 +1,29 @@
 'use client'
 
 import { useState } from 'react'
-import { ImagePlus, Package, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { BulkUploadModal } from '@/components/bulk-upload-modal'
 
 type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number }
 type Category = { id: string; name: string; slug: string }
+
+/** Producto importado desde Excel (devuelto por la API). */
+type ImportedProduct = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  price_usd: number
+  stock: number
+  image_url: string | null
+  featured: boolean
+  categories?: Category[]
+}
+
 type Product = {
   id: string
   name: string
@@ -47,10 +62,34 @@ function productUrls(product?: Product) {
 export function ProductManager({ initialProducts, categories }: { initialProducts: Product[]; categories: Category[] }) {
   const [products, setProducts] = useState(initialProducts)
   const [modalOpen, setModalOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [editing, setEditing] = useState<EditorState | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  /** Agrega productos recién importados a la lista visible. */
+  function handleImported(imported: ImportedProduct[]) {
+    setProducts((current) => {
+      const existing = new Set(current.map((p) => p.id))
+      const newProducts = imported
+        .filter((p) => !existing.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          description: p.description ?? null,
+          price_usd: Number(p.price_usd ?? 0),
+          stock: Number(p.stock ?? 0),
+          image_url: p.image_url ?? null,
+          category_id: p.categories?.[0]?.id ?? null,
+          featured: Boolean(p.featured),
+          categories: p.categories ?? [],
+        } as Product))
+      return [...newProducts, ...current]
+    })
+    setBulkOpen(false)
+  }
 
   /** Abre el modal para crear un producto nuevo. */
   function startNew() {
@@ -261,13 +300,28 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
         emptyMessage="No se encontraron productos"
         noDataMessage="Aún no hay productos"
         toolbar={
-          <button
-            onClick={startNew}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
-          >
-            <Plus size={15} /> Nuevo producto
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setBulkOpen(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              <FileSpreadsheet size={15} /> Carga masiva
+            </button>
+            <button
+              onClick={startNew}
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+            >
+              <Plus size={15} /> Nuevo producto
+            </button>
+          </div>
         }
+      />
+
+      <BulkUploadModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        categories={categories}
+        onImported={handleImported}
       />
 
       <Modal

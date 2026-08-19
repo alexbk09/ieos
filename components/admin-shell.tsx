@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { BarChart3, ClipboardList, FolderTree, LogOut, Menu, Package, Users, X } from 'lucide-react'
+import { BarChart3, ClipboardList, FolderTree, LogOut, Menu, Package, Settings2, Users, X } from 'lucide-react'
 
 const links = [
   { href: '/admin', label: 'Resumen', icon: BarChart3 },
@@ -11,6 +11,7 @@ const links = [
   { href: '/admin/categorias', label: 'Categorías', icon: FolderTree },
   { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
   { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList },
+  { href: '/admin/configuracion', label: 'Configuración', icon: Settings2 },
 ]
 
 /**

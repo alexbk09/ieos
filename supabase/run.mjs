@@ -335,11 +335,11 @@ Posibles causas y soluciones:
       select table_name
       from information_schema.tables
       where table_schema = 'public'
-        and table_name in ('profiles','roles','modules','role_permissions','categories','products','solicitudes','solicitud_items','_migrations')
+        and table_name in ('profiles','roles','modules','role_permissions','categories','products','solicitudes','solicitud_items','site_settings','_migrations')
       order by table_name
     `)
     const existingTables = new Set(tables.map(t => t.table_name))
-    const expectedTables = ['profiles','roles','modules','role_permissions','categories','products','solicitudes','solicitud_items','_migrations']
+    const expectedTables = ['profiles','roles','modules','role_permissions','categories','products','solicitudes','solicitud_items','site_settings','_migrations']
     printInfo('\n  Tablas:')
     for (const t of expectedTables) {
       if (existingTables.has(t)) printOk(`${t}`)

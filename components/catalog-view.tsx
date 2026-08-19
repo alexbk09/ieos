@@ -5,7 +5,7 @@ import { CATALOG_PAGE_SIZE } from '@/lib/constants'
 import { LoaderCircle, Search } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
-import { SiteHeader } from '@/components/site-header'
+import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useDarkMode } from '@/hooks/use-dark-mode'
@@ -32,10 +32,12 @@ type CatalogProduct = {
  * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
  * y el mismo ProductCard para cada producto.
  */
-export function CatalogView({ initialProducts, total, categories }: {
+export function CatalogView({ initialProducts, total, categories, navLinks = [], brand }: {
   initialProducts: CatalogProduct[]
   total: number
   categories: CatalogCategory[]
+  navLinks?: HeaderNavLink[]
+  brand?: Partial<HeaderBrand>
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
@@ -120,7 +122,7 @@ export function CatalogView({ initialProducts, total, categories }: {
   // El menú de navegación es el mismo en toda la tienda: lo define SiteHeader (DEFAULT_NAV_LINKS).
   return (
     <div className={dark ? 'dark min-h-screen bg-slate-950 text-slate-50' : 'min-h-screen bg-slate-50 text-slate-950'}>
-      <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} />
+      <SiteHeader dark={dark} onToggleDark={toggle} cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} brand={brand} />
 
       <main className="mx-auto grid max-w-7xl gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
         {/* Panel de filtros */}
