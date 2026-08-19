@@ -138,12 +138,12 @@ export function CatalogView({ initialProducts, total, categories, exchangeRate }
               <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="/mi-producto" className="rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-2 text-sm">
+            <div className="grid grid-cols-1 gap-3">
+              <label className="grid gap-1 text-sm">
                 <span className="font-medium">Precio mín.</span>
                 <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="0" className="rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
               </label>
-              <label className="grid gap-2 text-sm">
+              <label className="grid gap-1 text-sm">
                 <span className="font-medium">Precio máx.</span>
                 <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="999" className="rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
               </label>
