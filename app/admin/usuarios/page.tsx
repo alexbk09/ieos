@@ -41,10 +41,10 @@ export default async function UsersPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <span className="grid size-9 place-items-center rounded-full bg-accent/30 font-semibold text-accent-foreground">
-                          {(profile.name || 'U').slice(0, 1).toUpperCase()}
+                          {(profile.full_name || 'U').slice(0, 1).toUpperCase()}
                         </span>
                         <div>
-                          <p className="font-medium">{profile.name || 'Sin nombre'}</p>
+                          <p className="font-medium">{profile.full_name || 'Sin nombre'}</p>
                           <p className="font-mono text-xs text-muted-foreground">{profile.id.slice(0, 12)}…</p>
                         </div>
                       </div>

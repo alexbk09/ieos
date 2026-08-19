@@ -46,6 +46,15 @@ export async function signUpWithEmail(email: string, password: string, metadata:
 }
 
 /**
+ * Actualiza la contraseña del usuario autenticado.
+ * @param newPassword Nueva contraseña (mínimo 6 caracteres).
+ */
+export async function updatePassword(newPassword: string) {
+  const supabase = createBrowserClient()
+  return supabase.auth.updateUser({ password: newPassword })
+}
+
+/**
  * Obtiene el rol del usuario autenticado.
  *
  * Prioridad de fuentes:

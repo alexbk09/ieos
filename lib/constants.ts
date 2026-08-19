@@ -12,8 +12,23 @@ export const LOW_STOCK_ALERT = 20
 /** Tamaño máximo permitido para subir imágenes (5 MB). */
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
 
+/** Tamaño máximo permitido para subir avatares (2 MB). */
+export const AVATAR_MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024
+
+/** Calidad de compresión WebP para imágenes subidas al storage. */
+export const WEBP_QUALITY = 80
+
+/** Ancho máximo en píxeles para redimensionar imágenes (mantiene proporción). */
+export const IMAGE_MAX_WIDTH = 1200
+
+/** Ancho máximo en píxeles para avatares (mantiene proporción). */
+export const AVATAR_IMAGE_MAX_WIDTH = 512
+
 /** Bucket de Supabase Storage para imágenes de productos. */
 export const PRODUCTS_BUCKET = 'productos-bucket'
+
+/** Bucket de Supabase Storage para avatares de usuario. */
+export const AVATARS_BUCKET = 'avatars-bucket'
 
 /** Número de WhatsApp para confirmación de pedidos. */
 export const WHATSAPP_NUMBER = '584122649707'

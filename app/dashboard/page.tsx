@@ -4,12 +4,14 @@ import { redirect } from 'next/navigation'
 import { getRequestsByUser } from '@/services/requests'
 import { getOfficialExchangeRate } from '@/services/exchange-rate'
 import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
-import { ArrowLeft, BadgeDollarSign, ClipboardList, UserRound } from 'lucide-react'
+import { ArrowLeft, BadgeDollarSign, ClipboardList } from 'lucide-react'
+import { UserMenu } from '@/components/user-menu'
 
 /**
  * Dashboard del cliente.
  * Los datos se obtienen a través de /services/requests.
  * Muestra la tasa oficial del día (dolarapi.com) y los montos en Bs + USD.
+ * El UserMenu permite acceder a Mi Perfil y cerrar sesión.
  */
 export default async function DashboardPage() {
   const { user } = await requireUser()
@@ -24,9 +26,7 @@ export default async function DashboardPage() {
       <div className="mx-auto max-w-5xl">
         <header className="flex items-center justify-between py-5">
           <a href="/" className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} /> ilumaX</a>
-          <form action="/auth/signout" method="post">
-            <button className="text-sm text-slate-500">Cerrar sesión</button>
-          </form>
+          <UserMenu />
         </header>
         <div className="mt-12">
           <p className="font-mono text-xs uppercase tracking-widest text-cyan-600">Mi espacio</p>

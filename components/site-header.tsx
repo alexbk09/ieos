@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CircleUserRound, ClipboardList, Menu, Moon, ShoppingBag, Sun, X } from 'lucide-react'
+import { CircleUserRound, Menu, Moon, ShoppingBag, Sun, X } from 'lucide-react'
 import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
+import { UserMenu } from '@/components/user-menu'
 
 type SessionRole = 'admin' | 'client' | null
 
@@ -89,10 +90,8 @@ export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks
         <div className="flex items-center gap-2">
           <button aria-label="Cambiar tema" onClick={onToggleDark} className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700">{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
 
-          {sessionRole === 'admin' ? (
-            <a href="/admin" className="hidden items-center gap-2 rounded-full bg-blue-950 px-4 py-2.5 text-xs font-semibold text-white md:flex">Panel admin</a>
-          ) : sessionRole === 'client' ? (
-            <a href="/dashboard" className="hidden items-center gap-2 rounded-full bg-blue-950 px-4 py-2.5 text-xs font-semibold text-white md:flex"><ClipboardList size={14} />Mis Solicitudes</a>
+          {sessionRole ? (
+            <UserMenu />
           ) : (
             <a href="/login" aria-label="Cuenta" className="hidden size-10 place-items-center rounded-full border border-slate-200 md:grid dark:border-slate-700"><CircleUserRound size={17} /></a>
           )}
@@ -109,7 +108,9 @@ export function SiteHeader({ dark, onToggleDark, cartCount, onOpenCart, navLinks
             {links.map((link) => (
               <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={link.highlight ? 'font-semibold text-cyan-600' : ''}>{link.label}</a>
             ))}
-            {sessionRole === 'admin' ? <a href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-cyan-600">Panel admin</a> : sessionRole === 'client' ? <a href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-cyan-600">Mis Solicitudes</a> : <a href="/login" onClick={() => setMenuOpen(false)}>Mi cuenta</a>}
+            {sessionRole === 'admin' ? <a href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-cyan-600">Panel admin</a> : sessionRole === 'client' ? <a href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-cyan-600">Mis Solicitudes</a> : null}
+            {sessionRole && <a href="/perfil" onClick={() => setMenuOpen(false)}>Mi Perfil</a>}
+            {!sessionRole && <a href="/login" onClick={() => setMenuOpen(false)}>Mi cuenta</a>}
           </div>
         </div>
       )}
