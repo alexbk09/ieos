@@ -38,6 +38,10 @@ export type Request = {
   id: string
   user_id: string
   status: string
+  subtotal_usd?: number
+  discount_percent?: number
+  discount_amount_usd?: number
+  payment_method?: 'cash_divisa' | 'transfer_divisa' | 'other'
   total_usd: number
   exchange_rate: number
   created_at: string
@@ -87,7 +91,7 @@ export async function createRequest(userId: string, items: NewRequestItem[]): Pr
 
   const { data: solicitud, error } = await supabase
     .from('solicitudes')
-    .insert({ user_id: userId, total_usd: total, exchange_rate: rate })
+    .insert({ user_id: userId, subtotal_usd: total, total_usd: total, discount_percent: 0, discount_amount_usd: 0, exchange_rate: rate })
     .select('id')
     .single()
   if (error || !solicitud) return { error: 'solicitud_failed' }

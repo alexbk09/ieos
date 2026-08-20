@@ -21,6 +21,7 @@ type ImportedProduct = {
   description: string | null
   price_usd: number
   stock: number
+  costo_inicial?: number
   image_url: string | null
   featured: boolean
   categories?: Category[]
@@ -99,7 +100,7 @@ export function ProductManager({
           description: p.description ?? null,
           price_usd: Number(p.price_usd ?? 0),
           stock: Number(p.stock ?? 0),
-          costo_inicial: 0,
+          costo_inicial: Number(p.costo_inicial ?? 0),
           image_url: p.image_url ?? null,
           category_id: p.categories?.[0]?.id ?? null,
           featured: Boolean(p.featured),
@@ -260,6 +261,17 @@ export function ProductManager({
       sortable: true,
       sortValue: (p) => Number(p.price_usd),
       render: (product) => <span className="font-medium">${Number(product.price_usd).toFixed(2)}</span>,
+    },
+    {
+      key: 'costo',
+      header: 'Costo inicial',
+      sortable: true,
+      sortValue: (p) => Number(p.costo_inicial),
+      render: (product) => (
+        <span className="font-medium text-muted-foreground">
+          ${Number(product.costo_inicial ?? 0).toFixed(2)}
+        </span>
+      ),
     },
     {
       key: 'stock',

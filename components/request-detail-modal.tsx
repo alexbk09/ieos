@@ -127,7 +127,19 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
 
           {/* Totales y estado */}
           <section className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="space-y-1.5">
+              {Number(request.subtotal_usd) > 0 && (
+                <div className="flex items-center justify-between gap-8 text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium">{moneyUsd(Number(request.subtotal_usd))}</span>
+                </div>
+              )}
+              {Number(request.discount_amount_usd) > 0 && (
+                <div className="flex items-center justify-between gap-8 text-sm">
+                  <span className="text-muted-foreground">Descuento {Number(request.discount_percent) > 0 ? `${Number(request.discount_percent)}%` : ''}</span>
+                  <span className="font-medium text-destructive">-{moneyUsd(Number(request.discount_amount_usd))}</span>
+                </div>
+              )}
               <p className="text-xs uppercase tracking-widest text-muted-foreground">Total</p>
               <p className="text-xl font-semibold">{moneyUsd(Number(request.total_usd))}</p>
               <p className="text-sm text-muted-foreground">{formatBolivars(Number(request.total_usd), exchangeRate)}</p>

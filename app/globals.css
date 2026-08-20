@@ -34,3 +34,23 @@
 
 html { scroll-behavior: smooth; }
 ::selection { background: oklch(0.84 0.14 195); color: oklch(0.14 0.04 255); }
+
+/* ============================================================
+   Estilos de impresión para cotizaciones.
+   Oculta la UI del panel y muestra solo la cotización.
+   ============================================================ */
+@media print {
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 24px !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+}
