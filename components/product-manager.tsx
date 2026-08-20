@@ -10,6 +10,8 @@ import { BulkUploadModal } from '@/components/bulk-upload-modal'
 
 type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number }
 type Category = { id: string; name: string; slug: string }
+type Marca = { id: string; nombre: string }
+type Proveedor = { id: string; nombre: string }
 
 /** Producto importado desde Excel (devuelto por la API). */
 type ImportedProduct = {
@@ -31,8 +33,11 @@ type Product = {
   description: string | null
   price_usd: number
   stock: number
+  costo_inicial: number
   image_url: string | null
   category_id: string | null
+  marca_id: string | null
+  proveedor_id: string | null
   featured: boolean
   categories?: Category[]
   images?: ProductImage[]
@@ -46,6 +51,9 @@ type EditorState = {
   description?: string | null
   price_usd?: number
   stock?: number
+  costo_inicial?: number
+  marca_id?: string
+  proveedor_id?: string
   featured?: boolean
   images?: string[]
   category_ids?: string[]
@@ -59,7 +67,17 @@ function productUrls(product?: Product) {
   return [...new Set(urls)]
 }
 
-export function ProductManager({ initialProducts, categories }: { initialProducts: Product[]; categories: Category[] }) {
+export function ProductManager({
+  initialProducts,
+  categories,
+  marcas,
+  proveedores,
+}: {
+  initialProducts: Product[]
+  categories: Category[]
+  marcas: Marca[]
+  proveedores: Proveedor[]
+}) {
   const [products, setProducts] = useState(initialProducts)
   const [modalOpen, setModalOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -81,6 +99,7 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
           description: p.description ?? null,
           price_usd: Number(p.price_usd ?? 0),
           stock: Number(p.stock ?? 0),
+          costo_inicial: 0,
           image_url: p.image_url ?? null,
           category_id: p.categories?.[0]?.id ?? null,
           featured: Boolean(p.featured),
@@ -99,6 +118,9 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
       description: '',
       price_usd: 0,
       stock: 0,
+      costo_inicial: 0,
+      marca_id: '',
+      proveedor_id: '',
       featured: false,
       category_ids: categories[0] ? [categories[0].id] : [],
       images: [],
@@ -115,6 +137,9 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
       description: product.description,
       price_usd: product.price_usd,
       stock: product.stock,
+      costo_inicial: product.costo_inicial ?? 0,
+      marca_id: product.marca_id ?? '',
+      proveedor_id: product.proveedor_id ?? '',
       featured: product.featured,
       images: productUrls(product),
       category_ids: (product.categories ?? []).map((c) => c.id),
@@ -321,6 +346,8 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
         categories={categories}
+        marcas={marcas}
+        proveedores={proveedores}
         onImported={handleImported}
       />
 
@@ -372,8 +399,8 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
               placeholder="Describe las características del producto…"
             />
 
-            {/* Precio y stock */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Precio, costo y stock */}
+            <div className="grid gap-4 sm:grid-cols-3">
               <FormInput
                 label="Precio USD"
                 type="number"
@@ -381,6 +408,15 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
                 step="0.01"
                 value={editing.price_usd ?? 0}
                 onChange={(e) => updateField('price_usd', Number(e.target.value))}
+              />
+              <FormInput
+                label="Costo inicial USD"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editing.costo_inicial ?? 0}
+                onChange={(e) => updateField('costo_inicial', Number(e.target.value))}
+                hint="Costo de adquisición (opcional)."
               />
               <FormInput
                 label="Stock"
@@ -412,6 +448,36 @@ export function ProductManager({ initialProducts, categories }: { initialProduct
                     </label>
                   )
                 })}
+              </div>
+            </div>
+
+            {/* Marca y Proveedor */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2 text-sm">
+                <span className="font-medium">Marca</span>
+                <select
+                  value={editing.marca_id ?? ''}
+                  onChange={(e) => updateField('marca_id', e.target.value)}
+                  className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">Sin marca</option>
+                  {marcas.map((marca) => (
+                    <option key={marca.id} value={marca.id}>{marca.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2 text-sm">
+                <span className="font-medium">Proveedor</span>
+                <select
+                  value={editing.proveedor_id ?? ''}
+                  onChange={(e) => updateField('proveedor_id', e.target.value)}
+                  className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map((proveedor) => (
+                    <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

@@ -4,8 +4,8 @@ import { createProductsBulk } from '@/services/catalog'
 
 /**
  * API: Carga masiva de productos desde Excel.
- * Recibe un arreglo de productos validados y los crea uno a uno
- * para mantener las relaciones N:N con categorías e imágenes.
+ * Recibe un arreglo de productos ya parseados (nombres de marca/proveedor/categoría
+ * incluidos). La lógica de resolución/creación automática vive en /services/catalog.
  */
 export async function POST(request: Request) {
   await requireAdmin()
@@ -24,7 +24,6 @@ export async function POST(request: Request) {
   const normalized = items.map((item: any, index: number) => {
     const name = String(item.name ?? '').trim()
     const slug = String(item.slug ?? '').trim()
-    const categoryIds = Array.isArray(item.category_ids) ? item.category_ids.filter(Boolean) : []
 
     return {
       name,
@@ -32,9 +31,17 @@ export async function POST(request: Request) {
       description: item.description || null,
       price_usd: Number(item.price_usd ?? 0),
       stock: Math.max(0, Math.floor(Number(item.stock ?? 0))),
+      costo_inicial: Number(item.costo_inicial ?? 0),
       image_url: item.image_url || null,
+      // Nombres desde el Excel: se resuelven o crean en el servicio
+      marca_nombre: item.marca_nombre ?? null,
+      proveedor_nombre: item.proveedor_nombre ?? null,
+      categoria_nombre: item.categoria_nombre ?? null,
+      // IDs ya resueltos (si el front ya los mandó)
+      marca_id: item.marca_id || null,
+      proveedor_id: item.proveedor_id || null,
       featured: Boolean(item.featured),
-      category_ids: categoryIds,
+      category_ids: Array.isArray(item.category_ids) ? item.category_ids.filter(Boolean) : [],
       images: Array.isArray(item.images) ? item.images.filter(Boolean) : [],
       _row: index + 2, // fila en Excel (1 = encabezado)
     }
@@ -47,9 +54,6 @@ export async function POST(request: Request) {
     if (!item.slug) invalidRows.push({ row: item._row, error: 'Falta el slug.' })
     if (!Number.isFinite(item.price_usd) || item.price_usd < 0) {
       invalidRows.push({ row: item._row, error: 'El precio debe ser un número válido mayor o igual a 0.' })
-    }
-    if (item.category_ids.length === 0) {
-      invalidRows.push({ row: item._row, error: 'Falta la categoría.' })
     }
   })
 
