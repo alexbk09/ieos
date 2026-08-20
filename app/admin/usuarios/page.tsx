@@ -1,72 +1,50 @@
 import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
-import { getProfiles } from '@/services/profiles'
-import { Users, ShieldCheck } from 'lucide-react'
+import { UserManager } from '@/components/user-manager'
+import { listAdminUsers } from '@/services/admin-users'
+import { getRolesWithPermissions } from '@/services/roles'
+import { Users } from 'lucide-react'
 
 /**
  * Página de administración de usuarios.
- * Los datos se obtienen a través de /services/profiles.
+ * Lista TODOS los usuarios de auth.users (admin + clientes),
+ * incluyendo aquellos sin fila en profiles (trigger no ejecutado),
+ * y permite crear usuarios nuevos asignándoles un rol personalizado.
  */
 export default async function UsersPage() {
   await requireAdmin()
-  const { data: profiles } = await getProfiles()
+  const [{ data: users, error }, { data: roles, error: rolesError }] = await Promise.all([
+    listAdminUsers(),
+    getRolesWithPermissions(),
+  ])
 
   return (
     <AdminShell>
-      <AdminPageHeader eyebrow="Comunidad" title="Usuarios" description="Consulta perfiles y roles de clientes registrados." />
+      <AdminPageHeader eyebrow="Comunidad" title="Usuarios" description="Gestiona perfiles, roles y creación de usuarios del sistema." />
       <div className="p-5 sm:p-8">
-        <section className="overflow-hidden rounded-3xl border border-border bg-card">
-          <div className="border-b border-border p-6">
-            <div className="flex items-center gap-3">
-              <Users className="text-cyan-600" size={20} />
-              <div>
-                <h2 className="font-medium">Clientes registrados</h2>
-                <p className="text-sm text-muted-foreground">{profiles?.length ?? 0} perfiles en tu plataforma</p>
-              </div>
-            </div>
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
+          <Users size={18} className="text-cyan-600" />
+          <div>
+            <h2 className="font-medium">Usuarios del sistema</h2>
+            <p className="text-sm text-muted-foreground">
+              {users?.length ?? 0} registrados · {users?.filter((u) => u.role === 'client').length ?? 0} clientes ·{' '}
+              {users?.filter((u) => u.role === 'admin').length ?? 0} administradores · {roles?.length ?? 0} roles disponibles
+            </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[650px] text-left text-sm">
-              <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-6 py-3">Usuario</th>
-                  <th className="px-6 py-3">Teléfono</th>
-                  <th className="px-6 py-3">Rol</th>
-                  <th className="px-6 py-3">Registro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {profiles?.map((profile) => (
-                  <tr key={profile.id} className="border-b border-border/70">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-9 place-items-center rounded-full bg-accent/30 font-semibold text-accent-foreground">
-                          {(profile.full_name || 'U').slice(0, 1).toUpperCase()}
-                        </span>
-                        <div>
-                          <p className="font-medium">{profile.full_name || 'Sin nombre'}</p>
-                          <p className="font-mono text-xs text-muted-foreground">{profile.id.slice(0, 12)}…</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{profile.phone || 'No indicado'}</td>
-                    <td className="px-6 py-4">
-                      {profile.role === 'admin' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-accent/30 px-2.5 py-1 text-xs text-accent-foreground">
-                          <ShieldCheck size={13} /> Administrador
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Cliente</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{new Date(profile.created_at).toLocaleDateString('es-VE')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!profiles?.length && <p className="p-10 text-center text-sm text-muted-foreground">Todavía no hay perfiles.</p>}
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+            No se pudieron cargar los usuarios: {error}
           </div>
-        </section>
+        )}
+        {rolesError && (
+          <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+            No se pudieron cargar los roles: {rolesError.message}
+          </div>
+        )}
+
+        <UserManager initialUsers={users ?? []} roles={roles ?? []} />
       </div>
     </AdminShell>
   )

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Palette, Plus, Save, Trash2, Upload, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Building2, ChevronRight, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Palette, Plus, Receipt, Save, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 import { cn } from '@/lib/utils'
@@ -56,6 +57,7 @@ async function uploadImage(file: File): Promise<string> {
  * /api/admin/site-settings; la UI es independiente de Supabase.
  */
 export function SiteSettingsManager({ initialSettings }: { initialSettings: SiteSettingsPayload }) {
+  const router = useRouter()
   const [form, setForm] = useState<SiteSettingsPayload>(initialSettings)
   const [active, setActive] = useState<SectionKey>('marca')
   const [saving, setSaving] = useState(false)
@@ -431,6 +433,21 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
               <Icon size={16} /> {label}
             </button>
           ))}
+
+          {/* Acceso a la gestión de facturación venezolana (SENIAT) */}
+          <div className="my-2 border-t border-border/70" />
+          <button
+            onClick={() => router.push('/admin/configuracion/facturacion')}
+            className="flex items-center justify-between gap-3 rounded-2xl bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-500/20 dark:text-cyan-400"
+          >
+            <span className="flex items-center gap-3">
+              <Receipt size={16} /> Facturación
+            </span>
+            <ChevronRight size={15} className="text-cyan-600/60" />
+          </button>
+          <p className="px-4 pt-1 text-[11px] leading-relaxed text-muted-foreground">
+            RIF, IVA, correlativos y facturas (normas SENIAT).
+          </p>
         </nav>
       </aside>
 
