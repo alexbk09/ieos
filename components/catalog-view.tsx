@@ -14,7 +14,6 @@ import { SearchableMultiSelect } from '@/components/ui/select-search'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogMarca = { id: string; nombre: string }
-type CatalogProveedor = { id: string; nombre: string }
 type CatalogProduct = {
   id: string
   name: string
@@ -38,7 +37,6 @@ function buildParams(filters: {
   maxPrice: string
   categories: string[]
   marcas: string[]
-  proveedores: string[]
 }) {
   const params = new URLSearchParams({ from: String(filters.from) })
   if (filters.search) params.set('search', filters.search)
@@ -47,7 +45,6 @@ function buildParams(filters: {
   if (filters.maxPrice) params.set('maxPrice', filters.maxPrice)
   if (filters.categories.length > 0) params.set('categories', filters.categories.join(','))
   if (filters.marcas.length > 0) params.set('marcas', filters.marcas.join(','))
-  if (filters.proveedores.length > 0) params.set('proveedores', filters.proveedores.join(','))
   return params
 }
 
@@ -58,8 +55,8 @@ function FilterLabel({ children }: { children: ReactNode }) {
 
 /**
  * Vista de catálogo completo con filtros modernos e infinite scroll.
- * Filtros: búsqueda por texto (nombre/slug), rango de precio, categorías,
- * marcas y proveedores con selección por buscador.
+ * Filtros: búsqueda por texto (nombre/slug), rango de precio, categorías
+ * y marcas con selección por buscador.
  * Los productos se cargan de 10 en 10 desde /api/catalog.
  * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
  * y el mismo ProductCard para cada producto.
@@ -69,7 +66,6 @@ export function CatalogView({
   total,
   categories,
   marcas = [],
-  proveedores = [],
   navLinks = [],
   brand,
   footer,
@@ -80,7 +76,6 @@ export function CatalogView({
   total: number
   categories: CatalogCategory[]
   marcas?: CatalogMarca[]
-  proveedores?: CatalogProveedor[]
   navLinks?: HeaderNavLink[]
   brand?: Partial<HeaderBrand>
   footer?: { copyright?: string; slogan?: string }
@@ -94,7 +89,6 @@ export function CatalogView({
   const [maxPrice, setMaxPrice] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedMarcas, setSelectedMarcas] = useState<string[]>([])
-  const [selectedProveedores, setSelectedProveedores] = useState<string[]>([])
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(initialProducts.length < total)
@@ -108,12 +102,11 @@ export function CatalogView({
   const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
 
   const activeFilterCount =
-    (search ? 1 : 0) + (slug ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length + selectedProveedores.length
+    (search ? 1 : 0) + (slug ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length
 
   /** Opciones para los selects con buscador. */
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }))
   const marcaOptions = marcas.map((m) => ({ value: m.id, label: m.nombre }))
-  const proveedorOptions = proveedores.map((p) => ({ value: p.id, label: p.nombre }))
 
   /** Reinicia y recarga la primera página con los filtros actuales. */
   const resetAndLoad = useCallback(async () => {
@@ -127,7 +120,6 @@ export function CatalogView({
       maxPrice,
       categories: selectedCategories,
       marcas: selectedMarcas,
-      proveedores: selectedProveedores,
     })
 
     const res = await fetch(`/api/catalog?${params}`)
@@ -136,7 +128,7 @@ export function CatalogView({
     setTotalCount(data.total ?? 0)
     setHasMore(data.hasMore ?? false)
     setLoading(false)
-  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, selectedProveedores])
+  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas])
 
   /** Carga la siguiente página (infinite scroll). */
   const loadMore = useCallback(async () => {
@@ -151,7 +143,6 @@ export function CatalogView({
       maxPrice,
       categories: selectedCategories,
       marcas: selectedMarcas,
-      proveedores: selectedProveedores,
     })
 
     const res = await fetch(`/api/catalog?${params}`)
@@ -160,14 +151,14 @@ export function CatalogView({
     setHasMore(data.hasMore ?? false)
     pageRef.current = next
     setLoading(false)
-  }, [loading, hasMore, search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, selectedProveedores])
+  }, [loading, hasMore, search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas])
 
   // Debounce de los filtros: recarga al escribir.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(resetAndLoad, 400)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, selectedProveedores, resetAndLoad])
+  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, resetAndLoad])
 
   // Intersection Observer para infinite scroll.
   useEffect(() => {
@@ -188,7 +179,6 @@ export function CatalogView({
     setMaxPrice('')
     setSelectedCategories([])
     setSelectedMarcas([])
-    setSelectedProveedores([])
   }
 
   const filterPanel = (
@@ -268,20 +258,6 @@ export function CatalogView({
             options={marcaOptions}
             placeholder="Todas las marcas"
             searchPlaceholder="Buscar marca…"
-          />
-        </div>
-      )}
-
-      {/* Proveedores con buscador */}
-      {proveedorOptions.length > 0 && (
-        <div className="grid gap-2">
-          <FilterLabel>Proveedores</FilterLabel>
-          <SearchableMultiSelect
-            values={selectedProveedores}
-            onChange={setSelectedProveedores}
-            options={proveedorOptions}
-            placeholder="Todos los proveedores"
-            searchPlaceholder="Buscar proveedor…"
           />
         </div>
       )}

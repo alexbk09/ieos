@@ -88,7 +88,6 @@ export type CatalogFilters = {
   maxPrice?: number
   categoryIds?: string[]
   marcaIds?: string[]
-  proveedorIds?: string[]
   featuredOnly?: boolean
 }
 
@@ -186,7 +185,6 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
   if (filters.featuredOnly) query = query.eq('featured', true)
   if (filters.categoryIds && filters.categoryIds.length > 0) query = query.in('id', await getProductIdsByCategories(filters.categoryIds))
   if (filters.marcaIds && filters.marcaIds.length > 0) query = query.in('marca_id', filters.marcaIds)
-  if (filters.proveedorIds && filters.proveedorIds.length > 0) query = query.in('proveedor_id', filters.proveedorIds)
 
   const { data, error, count } = await query
   if (error) return { products: null, total: 0, hasMore: false, error }
