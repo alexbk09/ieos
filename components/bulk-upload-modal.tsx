@@ -23,6 +23,7 @@ type BulkProduct = {
   marca_nombre?: string | null
   proveedor_nombre?: string | null
   categoria_nombre?: string | null
+  categoria_dos_nombre?: string | null
   marca_id?: string | null
   proveedor_id?: string | null
   featured: boolean
@@ -51,6 +52,7 @@ type ParseRow = {
   costo: number
   stock: number
   category: string
+  category2: string
   marca: string
   proveedor: string
   featured: boolean
@@ -61,7 +63,8 @@ type ParseRow = {
 /**
  * Genera y descarga la plantilla Excel guía.
  * Columnas: nombre, slug, descripcion, precio_usd, stock, categoria,
- *           featured, image_url, marca, proveedor, costo_inicial
+ *           featured, image_url, marca, proveedor, costo_inicial,
+ *           categoria_dos (al final)
  */
 function downloadTemplate() {
   const template = [
@@ -77,12 +80,13 @@ function downloadTemplate() {
       marca: 'Philips',
       proveedor: 'Distribuidora Eléctrica C.A.',
       costo_inicial: 12.5,
+      categoria_dos: 'Electrodomésticos',
     },
   ]
   const worksheet = XLSX.utils.json_to_sheet(template)
   worksheet['!cols'] = [
     { wch: 28 }, { wch: 28 }, { wch: 42 }, { wch: 12 }, { wch: 10 },
-    { wch: 18 }, { wch: 10 }, { wch: 34 }, { wch: 18 }, { wch: 28 }, { wch: 12 },
+    { wch: 18 }, { wch: 10 }, { wch: 34 }, { wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 22 },
   ]
 
   const workbook = XLSX.utils.book_new()
@@ -100,6 +104,7 @@ function downloadTemplate() {
     { Instrucción: '"marca" se crea automáticamente si no existe.' },
     { Instrucción: '"proveedor" se crea automáticamente si no existe.' },
     { Instrucción: '"costo_inicial" es el costo del producto (opcional, se usa 0 si se deja vacío).' },
+    { Instrucción: '"categoria_dos" es una segunda categoría opcional. Se crea si no existe y el producto puede tener varias categorías. Si se deja vacío, no se agrega.' },
   ]
   const instructionsSheet = XLSX.utils.json_to_sheet(instructions)
   instructionsSheet['!cols'] = [{ wch: 110 }]
@@ -179,6 +184,11 @@ export function BulkUploadModal({
 
         const parsed: ParseRow[] = rawRows.map((raw, index) => {
           const values = Object.values(raw)
+
+          // Posiciones de columnas:
+          // 0 nombre, 1 slug, 2 descripcion, 3 precio_usd, 4 stock, 5 categoria,
+          // 6 featured, 7 image_url, 8 marca, 9 proveedor, 10 costo_inicial,
+          // 11 categoria_dos
           const name = cleanCell(values[0] ?? '')
 
           // Genera un slug automáticamente si no viene en el Excel
@@ -198,6 +208,7 @@ export function BulkUploadModal({
             costo: parseNumber(values[10]),
             stock: Math.max(0, Math.floor(parseNumber(values[4]))),
             category: cleanCell(values[5] ?? ''),
+            category2: cleanCell(values[11] ?? ''),
             marca: cleanCell(values[8] ?? ''),
             proveedor: cleanCell(values[9] ?? ''),
             featured: parseFeatured(values[6]),
@@ -246,6 +257,7 @@ export function BulkUploadModal({
       marca_nombre: row.marca || null,
       proveedor_nombre: row.proveedor || null,
       categoria_nombre: row.category || null,
+      categoria_dos_nombre: row.category2 || null,
       featured: row.featured,
       category_ids: [],
     }))
@@ -401,6 +413,7 @@ export function BulkUploadModal({
         {fileName && (
           <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-xs text-muted-foreground">
             Las columnas <span className="font-mono text-cyan-700">categoria</span>,{' '}
+            <span className="font-mono text-cyan-700">categoria_dos</span>,{' '}
             <span className="font-mono text-cyan-700">marca</span> y{' '}
             <span className="font-mono text-cyan-700">proveedor</span> se crean automáticamente si no existen. Solo el
             nombre del producto es obligatorio.
@@ -427,7 +440,7 @@ export function BulkUploadModal({
                     <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Slug</th>
                     <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Precio</th>
                     <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Stock</th>
-                    <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Categoría</th>
+                    <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Categorías</th>
                     <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Estado</th>
                   </tr>
                 </thead>
@@ -439,7 +452,9 @@ export function BulkUploadModal({
                       <td className="hidden px-3 py-2 font-mono text-xs text-muted-foreground sm:table-cell">/{row.slug}</td>
                       <td className="px-3 py-2">${row.price.toFixed(2)}</td>
                       <td className="hidden px-3 py-2 sm:table-cell">{row.stock}</td>
-                      <td className="hidden px-3 py-2 sm:table-cell">{row.category || '—'}</td>
+                      <td className="hidden px-3 py-2 sm:table-cell">
+                        {[row.category, row.category2].filter(Boolean).join(', ') || '—'}
+                      </td>
                       <td className="px-3 py-2">
                         {row.validated ? (
                           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700">Válida</span>

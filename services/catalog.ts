@@ -63,6 +63,7 @@ export type ProductInput = {
   marca_nombre?: string | null
   proveedor_nombre?: string | null
   categoria_nombre?: string | null
+  categoria_dos_nombre?: string | null
 }
 
 /** Filtros del catálogo público. */
@@ -327,6 +328,7 @@ async function resolveBulkRelations(items: ProductInput[]) {
     if (item.marca_nombre?.trim()) marcasNombres.add(item.marca_nombre.trim())
     if (item.proveedor_nombre?.trim()) proveedoresNombres.add(item.proveedor_nombre.trim())
     if (item.categoria_nombre?.trim()) categoriasNombres.add(item.categoria_nombre.trim())
+    if (item.categoria_dos_nombre?.trim()) categoriasNombres.add(item.categoria_dos_nombre.trim())
   }
 
   // Traer todas las filas de cada tabla (una query paralela por entidad)
@@ -415,6 +417,10 @@ export async function createProductsBulk(items: ProductInput[]) {
         const id = categoriaMap.get(normalizeKey(item.categoria_nombre))!
         if (!category_ids.includes(id)) category_ids = [...category_ids, id]
         categoria_nombre = null
+      }
+      if (item.categoria_dos_nombre && categoriaMap.has(normalizeKey(item.categoria_dos_nombre))) {
+        const id = categoriaMap.get(normalizeKey(item.categoria_dos_nombre))!
+        if (!category_ids.includes(id)) category_ids = [...category_ids, id]
       }
       if (category_ids.length === 0) {
         errors.push({ row: index + 2, error: 'Falta la categoría (o el nombre no se pudo resolver).' })

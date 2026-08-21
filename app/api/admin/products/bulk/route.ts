@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       marca_nombre: item.marca_nombre ?? null,
       proveedor_nombre: item.proveedor_nombre ?? null,
       categoria_nombre: item.categoria_nombre ?? null,
+      categoria_dos_nombre: item.categoria_dos_nombre ?? null,
       // IDs ya resueltos (si el front ya los mandó)
       marca_id: item.marca_id || null,
       proveedor_id: item.proveedor_id || null,
