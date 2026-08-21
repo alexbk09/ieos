@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     name: String(body.name ?? '').trim(),
     slug: String(body.slug ?? '').trim(),
     description: body.description ?? null,
+    activa: body.activa !== false,
   })
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
   return NextResponse.json({ category: result.data })
@@ -40,6 +41,7 @@ export async function PATCH(request: Request) {
     name: body.name,
     slug: body.slug,
     description: body.description ?? null,
+    activa: body.activa !== false,
   })
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
   return NextResponse.json({ category: result.data })

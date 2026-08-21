@@ -1,13 +1,21 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BadgeCheck, BadgeX, FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 
-type Category = { id: string; name: string; slug: string; description: string | null }
+type Category = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  activa: boolean
+  created_at: string
+  updated_at: string
+}
 
 /** Estado del formulario del modal. */
 type CategoryForm = {
@@ -15,18 +23,21 @@ type CategoryForm = {
   name: string
   slug: string
   description: string
+  activa: boolean
 }
 
 /**
- * Gestor de categorías (CRUD).
+ * Gestor de categorías (CRUD + activar/desactivar).
  * Utiliza componentes UI reutilizables: Modal premium y DataTable con filtros.
+ * Solo las categorías activas aparecen en los filtros del catálogo.
  * La lógica de datos se delega en las API routes; la UI es independiente de Supabase.
  */
 export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
   const [categories, setCategories] = useState(initialCategories)
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<CategoryForm>({ name: '', slug: '', description: '' })
+  const [form, setForm] = useState<CategoryForm>({ name: '', slug: '', description: '', activa: true })
   const [saving, setSaving] = useState(false)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -51,20 +62,34 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
 
   /** Abre el modal para crear una categoría nueva. */
   function openCreate() {
-    setForm({ name: '', slug: '', description: '' })
+    setForm({ name: '', slug: '', description: '', activa: true })
     setModalOpen(true)
   }
 
   /** Abre el modal para editar una categoría existente. */
   function openEdit(category: Category) {
-    setForm({ id: category.id, name: category.name, slug: category.slug, description: category.description ?? '' })
+    setForm({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description ?? '',
+      activa: category.activa,
+    })
     setModalOpen(true)
+  }
+
+  /** Valida el formulario y devuelve el error si falta nombre o slug. */
+  function validate(): string | null {
+    if (!form.name.trim()) return 'El nombre de la categoría es obligatorio.'
+    if (!form.slug.trim()) return 'El slug de la categoría es obligatorio.'
+    return null
   }
 
   /** Guarda una categoría nueva o editada. */
   async function save() {
-    if (!form.name.trim() || !form.slug.trim()) {
-      toast.error('Completa nombre y slug')
+    const error = validate()
+    if (error) {
+      toast.error(error)
       return
     }
 
@@ -85,6 +110,32 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
     setModalOpen(false)
     refresh()
     toast.success(form.id ? 'Categoría actualizada' : 'Categoría creada')
+  }
+
+  /** Alterna el estado activo/inactivo de una categoría. */
+  async function toggleActiva(category: Category) {
+    setUpdatingId(category.id)
+    const response = await fetch('/api/admin/categories', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        description: category.description,
+        activa: !category.activa,
+      }),
+    })
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
+      toast.error(result.error ?? 'No se pudo cambiar el estado')
+      setUpdatingId(null)
+      return
+    }
+
+    setUpdatingId(null)
+    refresh()
+    toast.success(category.activa ? 'Categoría desactivada' : 'Categoría activada')
   }
 
   /** Elimina una categoría. */
@@ -110,6 +161,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
       key: 'name',
       header: 'Categoría',
       sortable: true,
+      sortValue: (c) => c.name,
       render: (category) => (
         <div className="flex items-center gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-foreground">
@@ -128,6 +180,31 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
       hiddenMobile: true,
       render: (category) => (
         <p className="max-w-md truncate text-muted-foreground">{category.description || 'Sin descripción'}</p>
+      ),
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      sortable: true,
+      sortValue: (c) => (c.activa ? 'Activa' : 'Inactiva'),
+      render: (category) => (
+        <button
+          onClick={() => toggleActiva(category)}
+          disabled={updatingId === category.id}
+          aria-label={category.activa ? `Desactivar ${category.name}` : `Activar ${category.name}`}
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+            category.activa ? 'bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25' : 'bg-muted text-muted-foreground hover:bg-muted/70'
+          }`}
+        >
+          {updatingId === category.id ? (
+            <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : category.activa ? (
+            <BadgeCheck size={13} />
+          ) : (
+            <BadgeX size={13} />
+          )}
+          {category.activa ? 'Activa' : 'Inactiva'}
+        </button>
       ),
     },
     {
@@ -167,7 +244,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
         data={categories}
         columns={columns}
         rowKey={(c) => c.id}
-        searchKeys={(c) => `${c.name} ${c.slug} ${c.description ?? ''}`}
+        searchKeys={(c) => `${c.name} ${c.slug} ${c.description ?? ''} ${c.activa ? 'activa' : 'inactiva'}`}
         searchPlaceholder="Buscar categorías…"
         emptyMessage="No se encontraron categorías"
         noDataMessage="Aún no hay categorías"
@@ -223,6 +300,25 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="Describe brevemente esta categoría…"
           />
+
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Activa</p>
+              <p className="text-xs text-muted-foreground">Solo las categorías activas aparecen en los filtros del catálogo.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.activa}
+              aria-label="Activar categoría"
+              onClick={() => setForm({ ...form, activa: !form.activa })}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${form.activa ? 'bg-emerald-500' : 'bg-muted'}`}
+            >
+              <span
+                className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${form.activa ? 'translate-x-5' : 'translate-x-0.5'}`}
+              />
+            </button>
+          </label>
         </div>
       </Modal>
     </div>

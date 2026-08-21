@@ -15,9 +15,13 @@ export async function GET(request: Request) {
   const minPriceRaw = url.searchParams.get('minPrice')
   const maxPriceRaw = url.searchParams.get('maxPrice')
   const categoriesRaw = url.searchParams.get('categories')
+  const marcasRaw = url.searchParams.get('marcas')
+  const proveedoresRaw = url.searchParams.get('proveedores')
   const minPrice = minPriceRaw ? Number(minPriceRaw) : undefined
   const maxPrice = maxPriceRaw ? Number(maxPriceRaw) : undefined
   const categoryIds = categoriesRaw ? categoriesRaw.split(',').filter(Boolean) : undefined
+  const marcaIds = marcasRaw ? marcasRaw.split(',').filter(Boolean) : undefined
+  const proveedorIds = proveedoresRaw ? proveedoresRaw.split(',').filter(Boolean) : undefined
 
   const result = await getCatalogPage({
     search,
@@ -25,6 +29,8 @@ export async function GET(request: Request) {
     minPrice: Number.isFinite(minPrice) ? minPrice : undefined,
     maxPrice: Number.isFinite(maxPrice) ? maxPrice : undefined,
     categoryIds,
+    marcaIds,
+    proveedorIds,
     featuredOnly: url.searchParams.get('featured') === 'true',
   }, from)
 

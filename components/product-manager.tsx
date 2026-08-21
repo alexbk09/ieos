@@ -1,17 +1,20 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { Building2, FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Tag, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { SearchableMultiSelect, SearchableSelect } from '@/components/ui/select-search'
 import { BulkUploadModal } from '@/components/bulk-upload-modal'
 
 type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number }
 type Category = { id: string; name: string; slug: string }
 type Marca = { id: string; nombre: string }
 type Proveedor = { id: string; nombre: string }
+type ProductMarca = { id: string; nombre: string; activa: boolean }
+type ProductProveedor = { id: string; nombre: string; rif: string | null; activo: boolean }
 
 /** Producto importado desde Excel (devuelto por la API). */
 type ImportedProduct = {
@@ -42,6 +45,8 @@ type Product = {
   featured: boolean
   categories?: Category[]
   images?: ProductImage[]
+  marca?: ProductMarca | null
+  proveedor?: ProductProveedor | null
 }
 
 /** Estado interno del formulario. Usa arreglos planos para categorías e imágenes. */
@@ -157,15 +162,6 @@ export function ProductManager({
     setEditing((current) => (current ? { ...current, [key]: value } : current))
   }
 
-  /** Alterna una categoría en la lista de categorías seleccionadas. */
-  function toggleCategory(id: string) {
-    setEditing((current) => {
-      if (!current) return current
-      const ids = current.category_ids ?? []
-      return { ...current, category_ids: ids.includes(id) ? ids.filter((c) => c !== id) : [...ids, id] }
-    })
-  }
-
   /** Guarda un producto nuevo o editado. */
   async function save() {
     if (!editing?.name || !editing.slug) {
@@ -228,6 +224,34 @@ export function ProductManager({
     setEditing((current) => (current ? { ...current, images: (current.images ?? []).filter((img) => img !== url) } : current))
   }
 
+  /**
+   * Opciones de marca para el formulario.
+   * Incluye la marca actual del producto en edición aunque esté inactiva,
+   * para que la selección no desaparezca al abrir el modal.
+   */
+  const marcaOptions = useMemo(() => {
+    const base = marcas.map((marca) => ({ value: marca.id, label: marca.nombre }))
+    const currentProduct = products.find((p) => p.id === editing?.id)
+    if (currentProduct?.marca && !base.some((o) => o.value === currentProduct.marca!.id)) {
+      base.unshift({ value: currentProduct.marca!.id, label: currentProduct.marca!.nombre })
+    }
+    return [{ value: '', label: 'Sin marca' }, ...base]
+  }, [marcas, products, editing?.id])
+
+  /**
+   * Opciones de proveedor para el formulario.
+   * Incluye el proveedor actual del producto en edición aunque esté inactivo,
+   * para que la selección no desaparezca al abrir el modal.
+   */
+  const proveedorOptions = useMemo(() => {
+    const base = proveedores.map((proveedor) => ({ value: proveedor.id, label: proveedor.nombre }))
+    const currentProduct = products.find((p) => p.id === editing?.id)
+    if (currentProduct?.proveedor && !base.some((o) => o.value === currentProduct.proveedor!.id)) {
+      base.unshift({ value: currentProduct.proveedor!.id, label: currentProduct.proveedor!.nombre })
+    }
+    return [{ value: '', label: 'Sin proveedor' }, ...base]
+  }, [proveedores, products, editing?.id])
+
   /** Columnas de la tabla de productos. */
   const columns: TableColumn<Product>[] = [
     {
@@ -289,6 +313,40 @@ export function ProductManager({
       ),
     },
     {
+      key: 'marca',
+      header: 'Marca',
+      sortable: true,
+      sortValue: (p) => p.marca?.nombre ?? '',
+      hiddenMobile: true,
+      render: (product) => (
+        product.marca ? (
+          <span className="inline-flex max-w-[160px] items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            <Tag size={11} className="shrink-0" />
+            <span className="truncate">{product.marca.nombre}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/60">—</span>
+        )
+      ),
+    },
+    {
+      key: 'proveedor',
+      header: 'Proveedor',
+      sortable: true,
+      sortValue: (p) => p.proveedor?.nombre ?? '',
+      hiddenMobile: true,
+      render: (product) => (
+        product.proveedor ? (
+          <span className="inline-flex max-w-[180px] items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            <Building2 size={11} className="shrink-0" />
+            <span className="truncate">{product.proveedor.nombre}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/60">—</span>
+        )
+      ),
+    },
+    {
       key: 'status',
       header: 'Estado',
       hiddenMobile: true,
@@ -336,7 +394,9 @@ export function ProductManager({
         data={products}
         columns={columns}
         rowKey={(p) => p.id}
-        searchKeys={(p) => `${p.name} ${p.slug} ${p.description ?? ''} ${(p.categories ?? []).map((c) => c.name).join(' ')}`}
+        searchKeys={(p) =>
+          `${p.name} ${p.slug} ${p.description ?? ''} ${(p.categories ?? []).map((c) => c.name).join(' ')} ${p.marca?.nombre ?? ''} ${p.proveedor?.nombre ?? ''}`
+        }
         searchPlaceholder="Buscar productos…"
         emptyMessage="No se encontraron productos"
         noDataMessage="Aún no hay productos"
@@ -445,56 +505,44 @@ export function ProductManager({
               />
             </div>
 
-            {/* Categorías */}
+            {/* Categorías con buscador */}
             <div className="grid gap-2 text-sm">
               <span className="font-medium">
                 Categorías <span className="font-normal text-muted-foreground">(selecciona una o varias)</span>
               </span>
-              <div className="grid max-h-44 gap-1.5 overflow-y-auto rounded-xl border border-input bg-background p-3">
-                {categories.map((category) => {
-                  const selected = (editing.category_ids ?? []).includes(category.id)
-                  return (
-                    <label key={category.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleCategory(category.id)}
-                        className="size-4 accent-primary"
-                      />
-                      <span>{category.name}</span>
-                    </label>
-                  )
-                })}
-              </div>
+              <SearchableMultiSelect
+                values={editing.category_ids ?? []}
+                onChange={(ids) => updateField('category_ids', ids)}
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="Selecciona categorías…"
+                searchPlaceholder="Buscar categoría…"
+                emptyText="Sin categorías que coincidan"
+              />
             </div>
 
-            {/* Marca y Proveedor */}
+            {/* Marca y Proveedor con buscador */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2 text-sm">
                 <span className="font-medium">Marca</span>
-                <select
+                <SearchableSelect
                   value={editing.marca_id ?? ''}
-                  onChange={(e) => updateField('marca_id', e.target.value)}
-                  className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-                >
-                  <option value="">Sin marca</option>
-                  {marcas.map((marca) => (
-                    <option key={marca.id} value={marca.id}>{marca.nombre}</option>
-                  ))}
-                </select>
+                  onChange={(value) => updateField('marca_id', value)}
+                  options={marcaOptions}
+                  placeholder="Seleccionar marca…"
+                  searchPlaceholder="Buscar marca…"
+                  emptyText="Sin marcas que coincidan"
+                />
               </div>
               <div className="grid gap-2 text-sm">
                 <span className="font-medium">Proveedor</span>
-                <select
+                <SearchableSelect
                   value={editing.proveedor_id ?? ''}
-                  onChange={(e) => updateField('proveedor_id', e.target.value)}
-                  className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-                >
-                  <option value="">Sin proveedor</option>
-                  {proveedores.map((proveedor) => (
-                    <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>
-                  ))}
-                </select>
+                  onChange={(value) => updateField('proveedor_id', value)}
+                  options={proveedorOptions}
+                  placeholder="Seleccionar proveedor…"
+                  searchPlaceholder="Buscar proveedor…"
+                  emptyText="Sin proveedores que coincidan"
+                />
               </div>
             </div>
 

@@ -34,6 +34,10 @@ export type Product = {
   images?: ProductImage[]
   colors?: string[]
   specifications?: Record<string, string>
+  /** Marca resuelta por la relación FK (solo cuando se incluye en el select). */
+  marca?: { id: string; nombre: string; activa: boolean } | null
+  /** Proveedor resuelto por la relación FK (solo cuando se incluye en el select). */
+  proveedor?: { id: string; nombre: string; rif: string | null; activo: boolean } | null
 }
 
 export type Category = {
@@ -41,6 +45,16 @@ export type Category = {
   name: string
   slug: string
   description: string | null
+  activa: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type CategoryInput = {
+  name: string
+  slug: string
+  description?: string | null
+  activa?: boolean
 }
 
 export type ProductInput = {
@@ -73,6 +87,8 @@ export type CatalogFilters = {
   minPrice?: number
   maxPrice?: number
   categoryIds?: string[]
+  marcaIds?: string[]
+  proveedorIds?: string[]
   featuredOnly?: boolean
 }
 
@@ -109,6 +125,8 @@ function mapProduct(row: any): Product {
           sort_order: pi.sort_order,
         }))
         .sort((a: any, b: any) => a.sort_order - b.sort_order) ?? [],
+    marca: row.marcas ?? row.marca ?? null,
+    proveedor: row.proveedores ?? row.proveedor ?? null,
   }
 }
 
@@ -167,6 +185,8 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
   if (filters.maxPrice !== undefined && Number.isFinite(filters.maxPrice)) query = query.lte('price_usd', filters.maxPrice)
   if (filters.featuredOnly) query = query.eq('featured', true)
   if (filters.categoryIds && filters.categoryIds.length > 0) query = query.in('id', await getProductIdsByCategories(filters.categoryIds))
+  if (filters.marcaIds && filters.marcaIds.length > 0) query = query.in('marca_id', filters.marcaIds)
+  if (filters.proveedorIds && filters.proveedorIds.length > 0) query = query.in('proveedor_id', filters.proveedorIds)
 
   const { data, error, count } = await query
   if (error) return { products: null, total: 0, hasMore: false, error }
@@ -464,16 +484,30 @@ export async function getCategories() {
   return supabase.from('categories').select('*').order('name')
 }
 
+/**
+ * Obtiene solo las categorías activas (para el filtro del catálogo público).
+ * Cliente público → SSG+ISR.
+ */
+export async function getCategoriesActivas() {
+  const supabase = createPublicClient()
+  return supabase.from('categories').select('id,name,slug').eq('activa', true).order('name')
+}
+
 /** Crea una nueva categoría. */
-export async function createCategory(payload: Pick<Category, 'name' | 'slug' | 'description'>) {
+export async function createCategory(payload: CategoryInput) {
   const supabase = await createServerClient()
   return supabase.from('categories').insert(payload).select('*').single()
 }
 
 /** Actualiza una categoría existente. */
-export async function updateCategory(id: string, payload: Pick<Category, 'name' | 'slug' | 'description'>) {
+export async function updateCategory(id: string, payload: CategoryInput) {
   const supabase = await createServerClient()
-  return supabase.from('categories').update(payload).eq('id', id).select('*').single()
+  return supabase
+    .from('categories')
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single()
 }
 
 /** Elimina una categoría (las relaciones N:N se borran en cascada, no los productos). */
