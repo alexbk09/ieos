@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { createRole, deleteRole, updateRole } from '@/services/roles'
+import { createRole, deleteRole, getRolesWithPermissions, updateRole } from '@/services/roles'
+
+/**
+ * API: Obtener todos los roles con sus permisos (vista admin).
+ * Se usa para refrescar la tabla después de cada mutación (crear/editar/eliminar).
+ */
+export async function GET() {
+  await requireAdmin()
+  const { data: roles, error } = await getRolesWithPermissions()
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ roles })
+}
 
 /**
  * API: Crear un nuevo rol con sus permisos por módulo.

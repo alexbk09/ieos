@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { createProveedor, deleteProveedor, updateProveedor } from '@/services/proveedores'
+import { createProveedor, deleteProveedor, getProveedores, updateProveedor } from '@/services/proveedores'
+
+/**
+ * API: Obtener todos los proveedores (vista admin).
+ * Se usa para refrescar la tabla después de cada mutación (crear/editar/eliminar).
+ */
+export async function GET() {
+  await requireAdmin()
+  const { data: proveedores } = await getProveedores()
+  return NextResponse.json({ proveedores })
+}
 
 /**
  * API: Crear un nuevo proveedor.

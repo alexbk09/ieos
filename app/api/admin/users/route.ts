@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { createAdminUser } from '@/services/admin-users'
+import { createAdminUser, listAdminUsers } from '@/services/admin-users'
+
+/**
+ * API: Obtener todos los usuarios (vista admin).
+ * Se usa para refrescar la tabla después de cada mutación (crear usuario).
+ */
+export async function GET() {
+  await requireAdmin()
+  const { data: users, error } = await listAdminUsers()
+  if (error) return NextResponse.json({ error }, { status: 400 })
+  return NextResponse.json({ users })
+}
 
 /**
  * API: Crear un nuevo usuario con asignación de rol.

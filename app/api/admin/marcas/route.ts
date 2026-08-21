@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { createMarca, deleteMarca, updateMarca } from '@/services/marcas'
+import { createMarca, deleteMarca, getMarcas, updateMarca } from '@/services/marcas'
+
+/**
+ * API: Obtener todas las marcas (vista admin).
+ * Se usa para refrescar la tabla después de cada mutación (crear/editar/eliminar).
+ */
+export async function GET() {
+  await requireAdmin()
+  const { data: marcas } = await getMarcas()
+  return NextResponse.json({ marcas })
+}
 
 /**
  * API: Crear una nueva marca.

@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { createProduct, deleteProduct, updateProduct } from '@/services/catalog'
+import { createProduct, deleteProduct, getProductsWithCategories, updateProduct } from '@/services/catalog'
+
+/**
+ * API: Obtener todos los productos con categorías e imágenes (vista admin).
+ * Se usa para refrescar la tabla completa después de cada mutación (crear/editar/eliminar/importar).
+ */
+export async function GET() {
+  await requireAdmin()
+  const { products, categories } = await getProductsWithCategories()
+  return NextResponse.json({ products, categories })
+}
 
 /**
  * API: Crear un nuevo producto.

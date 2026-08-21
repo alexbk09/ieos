@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Phone, Plus, ShieldCheck, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
@@ -47,6 +47,26 @@ export function UserManager({ initialUsers, roles }: { initialUsers: AdminUser[]
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<UserForm>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  /**
+   * Refresca la tabla desde el servidor después de cada mutación.
+   * Los filtros activos del DataTable (búsqueda, orden, página) se conservan
+   * porque la tabla los aplica sobre el nuevo arreglo automáticamente.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const response = await fetch('/api/admin/users', { cache: 'no-store' })
+      if (!response.ok) throw new Error('No se pudo refrescar la lista')
+      const result = await response.json()
+      setUsers(result.users ?? [])
+    } catch {
+      toast.error('Error al refrescar la tabla', { description: 'Los cambios podrían no reflejarse hasta recargar.' })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
 
   /** Valida los campos del formulario antes de enviar. */
   function validate(): string | null {
@@ -70,22 +90,17 @@ export function UserManager({ initialUsers, roles }: { initialUsers: AdminUser[]
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
-    const result = await response.json()
     setSaving(false)
 
     if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
       toast.error(result.error ?? 'No se pudo crear el usuario')
       return
     }
 
-    const savedUser: AdminUser = {
-      ...result.user,
-      role_name: form.role_id ? (roles.find((r) => r.id === form.role_id)?.name ?? null) : null,
-    }
-
-    setUsers((current) => [savedUser, ...current])
     setForm(EMPTY_FORM)
     setModalOpen(false)
+    refresh()
     toast.success('Usuario creado')
   }
 
@@ -163,6 +178,7 @@ export function UserManager({ initialUsers, roles }: { initialUsers: AdminUser[]
         emptyMessage="No se encontraron usuarios"
         noDataMessage="Aún no hay usuarios registrados"
         pageSize={8}
+        loading={refreshing}
         toolbar={
           <button
             onClick={() => setModalOpen(true)}

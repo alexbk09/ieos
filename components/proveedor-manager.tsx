@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { BadgeCheck, BadgeX, Building2, Mail, MapPin, Pencil, Phone, Plus, Trash2, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
@@ -57,6 +57,26 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
   const [saving, setSaving] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  /**
+   * Refresca la tabla desde el servidor después de cada mutación.
+   * Los filtros activos del DataTable (búsqueda, orden, página) se conservan
+   * porque la tabla los aplica sobre el nuevo arreglo automáticamente.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const response = await fetch('/api/admin/proveedores', { cache: 'no-store' })
+      if (!response.ok) throw new Error('No se pudo refrescar la lista')
+      const result = await response.json()
+      setProveedores(result.proveedores ?? [])
+    } catch {
+      toast.error('Error al refrescar la tabla', { description: 'Los cambios podrían no reflejarse hasta recargar.' })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
 
   /** Abre el modal para crear un proveedor nuevo. */
   function openCreate() {
@@ -101,18 +121,16 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
-    const result = await response.json()
     setSaving(false)
 
     if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
       toast.error(result.error ?? 'No se pudo guardar el proveedor')
       return
     }
 
-    setProveedores((current) =>
-      form.id ? current.map((item) => (item.id === form.id ? result.proveedor : item)) : [...current, result.proveedor],
-    )
     setModalOpen(false)
+    refresh()
     toast.success(form.id ? 'Proveedor actualizado' : 'Proveedor creado')
   }
 
@@ -133,16 +151,15 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
         activo: !proveedor.activo,
       }),
     })
-    const result = await response.json()
-
     if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
       toast.error(result.error ?? 'No se pudo cambiar el estado')
       setUpdatingId(null)
       return
     }
 
-    setProveedores((current) => current.map((item) => (item.id === proveedor.id ? result.proveedor : item)))
     setUpdatingId(null)
+    refresh()
     toast.success(proveedor.activo ? 'Proveedor desactivado' : 'Proveedor activado')
   }
 
@@ -159,7 +176,7 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
       return
     }
 
-    setProveedores((current) => current.filter((item) => item.id !== id))
+    refresh()
     toast.success('Proveedor eliminado')
   }
 
@@ -281,6 +298,7 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
         searchPlaceholder="Buscar por nombre, RIF, contacto o dirección…"
         emptyMessage="No se encontraron proveedores"
         noDataMessage="Aún no hay proveedores"
+        loading={refreshing}
         toolbar={
           <button
             onClick={openCreate}

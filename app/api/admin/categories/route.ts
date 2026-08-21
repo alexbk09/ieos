@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { createCategory, deleteCategory, updateCategory } from '@/services/catalog'
+import { createCategory, deleteCategory, getCategories, updateCategory } from '@/services/catalog'
+
+/**
+ * API: Obtener todas las categorías (vista admin).
+ * Se usa para refrescar la tabla después de cada mutación (crear/editar/eliminar).
+ */
+export async function GET() {
+  await requireAdmin()
+  const { data: categories } = await getCategories()
+  return NextResponse.json({ categories })
+}
 
 /**
  * API: Crear una nueva categoría.

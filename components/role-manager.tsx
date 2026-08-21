@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Eye, Pencil, Plus, Shield, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
@@ -48,6 +48,26 @@ export function RoleManager({ initialRoles, modules }: { initialRoles: Role[]; m
   const [form, setForm] = useState<RoleForm>({ name: '', description: '', permissions: {} })
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  /**
+   * Refresca la tabla desde el servidor después de cada mutación.
+   * Los filtros activos del DataTable (búsqueda, orden, página) se conservan
+   * porque la tabla los aplica sobre el nuevo arreglo automáticamente.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const response = await fetch('/api/admin/roles', { cache: 'no-store' })
+      if (!response.ok) throw new Error('No se pudo refrescar la lista')
+      const result = await response.json()
+      setRoles(result.roles ?? [])
+    } catch {
+      toast.error('Error al refrescar la tabla', { description: 'Los cambios podrían no reflejarse hasta recargar.' })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
 
   /** Construye el estado de permisos por módulo a partir de un rol. */
   function buildPermissions(role?: Role): PermissionState {
@@ -110,25 +130,16 @@ export function RoleManager({ initialRoles, modules }: { initialRoles: Role[]; m
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
-    const result = await response.json()
     setSaving(false)
 
     if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
       toast.error(result.error ?? 'No se pudo guardar el rol')
       return
     }
 
-    const savedRole: Role = {
-      ...result.role,
-      permissions: Object.entries(form.permissions)
-        .filter(([, p]) => p.can_read || p.can_write || p.can_delete)
-        .map(([module_id, p]) => ({ role_id: result.role.id, module_id, ...p })),
-    }
-
-    setRoles((current) =>
-      form.id ? current.map((item) => (item.id === form.id ? { ...item, ...savedRole } : item)) : [savedRole, ...current],
-    )
     setModalOpen(false)
+    refresh()
     toast.success(form.id ? 'Rol actualizado' : 'Rol creado')
   }
 
@@ -146,7 +157,7 @@ export function RoleManager({ initialRoles, modules }: { initialRoles: Role[]; m
       return
     }
 
-    setRoles((current) => current.filter((item) => item.id !== id))
+    refresh()
     toast.success('Rol eliminado')
   }
 
@@ -244,6 +255,7 @@ export function RoleManager({ initialRoles, modules }: { initialRoles: Role[]; m
         searchPlaceholder="Buscar roles…"
         emptyMessage="No se encontraron roles"
         noDataMessage="Aún no hay roles"
+        loading={refreshing}
         toolbar={
           <button
             onClick={openCreate}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
@@ -86,29 +86,33 @@ export function ProductManager({
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  /** Agrega productos recién importados a la lista visible. */
-  function handleImported(imported: ImportedProduct[]) {
-    setProducts((current) => {
-      const existing = new Set(current.map((p) => p.id))
-      const newProducts = imported
-        .filter((p) => !existing.has(p.id))
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: p.description ?? null,
-          price_usd: Number(p.price_usd ?? 0),
-          stock: Number(p.stock ?? 0),
-          costo_inicial: Number(p.costo_inicial ?? 0),
-          image_url: p.image_url ?? null,
-          category_id: p.categories?.[0]?.id ?? null,
-          featured: Boolean(p.featured),
-          categories: p.categories ?? [],
-        } as Product))
-      return [...newProducts, ...current]
-    })
+  /**
+   * Refresca la tabla de productos desde el servidor.
+   * Trae la lista completa (con imágenes, categorías, marca y proveedor)
+   * para que la tabla muestre siempre la información correcta. Los filtros
+   * activos del DataTable (búsqueda, orden, página) se conservan porque la
+   * tabla los aplica sobre el nuevo arreglo de datos automáticamente.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const response = await fetch('/api/admin/products', { cache: 'no-store' })
+      if (!response.ok) throw new Error('No se pudo refrescar la lista')
+      const result = await response.json()
+      setProducts(result.products ?? [])
+    } catch {
+      toast.error('Error al refrescar la tabla', { description: 'Los cambios podrían no reflejarse hasta recargar.' })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [])
+
+  /** Cuando termina la importación masiva, refresca la tabla completa con la información real del servidor. */
+  function handleImported(_imported: ImportedProduct[]) {
     setBulkOpen(false)
+    refresh()
   }
 
   /** Abre el modal para crear un producto nuevo. */
@@ -178,14 +182,14 @@ export function ProductManager({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editing),
     })
-    const result = await response.json()
     setSaving(false)
     if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
       toast.error('No se pudo guardar el producto', { description: result.error ?? 'Revisa la información e inténtalo de nuevo.' })
       return
     }
-    setProducts((current) => (editing.id ? current.map((p) => (p.id === editing.id ? result.product : p)) : [result.product, ...current]))
     setModalOpen(false)
+    refresh()
     toast.success('Producto guardado', { description: 'Los cambios quedaron publicados en el catálogo.' })
   }
 
@@ -199,7 +203,7 @@ export function ProductManager({
       toast.error('No se pudo eliminar', { description: 'El producto no pudo borrarse en este momento.' })
       return
     }
-    setProducts((current) => current.filter((p) => p.id !== id))
+    refresh()
     toast.success('Producto eliminado', { description: 'Se retiró del catálogo correctamente.' })
   }
 
@@ -336,6 +340,7 @@ export function ProductManager({
         searchPlaceholder="Buscar productos…"
         emptyMessage="No se encontraron productos"
         noDataMessage="Aún no hay productos"
+        loading={refreshing}
         toolbar={
           <div className="flex flex-wrap gap-2">
             <button
