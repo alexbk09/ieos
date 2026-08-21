@@ -35,22 +35,83 @@
 html { scroll-behavior: smooth; }
 ::selection { background: oklch(0.84 0.14 195); color: oklch(0.14 0.04 255); }
 
+/* Contenedor del portal de impresión.
+   Oculto en pantalla; solo se activa dentro de @media print
+   para que la cotización completa se imprima sin cortes. */
+.print-portal { display: none; }
+
 /* ============================================================
    Estilos de impresión para cotizaciones.
-   Oculta la UI del panel y muestra solo la cotización.
+   La vista impresa se renderiza en un portal directo al body
+   (fuera del modal), por lo que imprime completa sin cortes.
+
+   IMPORTANTE: usamos display:none (no visibility:hidden) para el
+   resto de la app. Con visibility:hidden los elementos siguen
+   ocupando espacio y empujan la cotización fuera de la página,
+   causando que solo se imprima el encabezado.
    ============================================================ */
 @media print {
-  body * { visibility: hidden !important; }
-  .print-area, .print-area * { visibility: visible !important; }
+  /* Oculta TODO el contenido de la app (panel admin, modales, toasts)
+     excepto el portal de impresión. display:none elimina el espacio
+     que estos ocupan, dejando la cotización al inicio del documento. */
+  body > *:not(.print-portal) {
+    display: none !important;
+  }
+  .print-portal { display: block !important; }
+
   .print-area {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
+    min-width: 100% !important;
     max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0 !important;
-    padding: 24px !important;
+    padding: 16px !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    background: #ffffff !important;
+    /* Fuerza la impresión de fondos y bordes de color sin depender
+       de la opción "Imprimir fondos" del navegador. */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
+
+  /* Legibilidad en papel: fuerza texto oscuro y bordes visibles
+     independientemente del tema (claro/oscuro) de la app. */
+  .print-area,
+  .print-area * {
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    background-color: transparent !important;
+  }
+  .print-area a { color: #0f766e !important; }
+  .print-area .text-muted-foreground { color: #6b7280 !important; }
+  .print-area .text-destructive { color: #b91c1c !important; }
+
+  /* Conserva la diferenciación visual de las tarjetas de totales:
+     cian = pago en divisas, verde = pago en bolívares. */
+  .print-area .text-cyan-700,
+  .print-area .dark\:text-cyan-400 { color: #0e7490 !important; }
+  .print-area .text-emerald-700,
+  .print-area .dark\:text-emerald-400 { color: #065f46 !important; }
+  .print-area .border-cyan-500\/40 { border-color: rgba(6, 182, 212, 0.45) !important; }
+  .print-area .border-emerald-500\/40 { border-color: rgba(16, 185, 129, 0.45) !important; }
+  .print-area .border-cyan-500\/20 { border-color: rgba(6, 182, 212, 0.25) !important; }
+  .print-area .border-emerald-500\/20 { border-color: rgba(16, 185, 129, 0.25) !important; }
+  .print-area .bg-cyan-500\/5 { background-color: rgba(6, 182, 212, 0.07) !important; }
+  .print-area .bg-emerald-500\/5 { background-color: rgba(16, 185, 129, 0.07) !important; }
+
+  .print-area img { max-height: 64px; }
+
+  /* Evita que las filas de la tabla se corten entre páginas. */
+  .print-area table { page-break-inside: auto; }
+  .print-area tr { page-break-inside: avoid; }
+  .print-area thead { display: table-header-group; }
+  .print-area tfoot { display: table-footer-group; }
 }

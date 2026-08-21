@@ -7,7 +7,12 @@ import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-
 import type { Product } from '@/services/catalog'
 import type { QuoteSettings } from '@/services/quotes'
 import { calculateQuoteTotals } from '@/lib/quote-calculator'
-import { formatBolivars, moneyUsd } from '@/lib/currency'
+import { formatBolivars, formatRate, moneyUsd } from '@/lib/currency'
+
+/** Redondea a 2 decimales (céntimos). */
+function round2(n: number): number {
+  return Math.round((Number(n) || 0) * 100) / 100
+}
 
 /** Propiedades del creador de cotizaciones. */
 type Props = {
@@ -35,8 +40,8 @@ type DraftItem = {
  * - Selección con cantidades.
  * - Descuento manual por el vendedor (%).
  * - Método de pago (efectivo divisas aplica descuento automático configurable).
- * - Cálculo en vivo de subtotal, descuento, total USD y Bs.
- * - Datos del cliente y nota al pie.
+ * - Cálculo en vivo con desglose claro: total en divisas (con descuento por
+ *   efectivo) y total en bolívares (sin ese descuento) para evitar confusión.
  */
 export function QuoteCreator({ products, exchangeRate, quoteSettings, onCreated, onClose }: Props) {
   // Datos del cliente.
@@ -52,6 +57,14 @@ export function QuoteCreator({ products, exchangeRate, quoteSettings, onCreated,
   const searchRef = useRef<HTMLInputElement>(null)
 
   const [submitting, setSubmitting] = useState(false)
+
+  /** Descuento manual en porcentaje (0-100). */
+  const manualPercent = Math.min(Math.max(Number(discountPercent || 0), 0), 100)
+  /** Descuento por efectivo en divisas (solo si aplica). */
+  const cashPercent =
+    paymentMethod === 'cash_divisa'
+      ? Math.min(Math.max(Number(quoteSettings.cash_divisa_discount_percent) || 0, 0), 100)
+      : 0
 
   /** Productos filtrados por la búsqueda (excluye ya agregados). */
   const searchResults = useMemo(() => {
@@ -98,6 +111,11 @@ export function QuoteCreator({ products, exchangeRate, quoteSettings, onCreated,
       },
     )
   }, [items, discountPercent, exchangeRate, quoteSettings.cash_divisa_discount_percent, paymentMethod])
+
+  /** Subtotal después del descuento manual (base para pago en bolívares). */
+  const subtotalAfterManual = round2(totals.subtotal_usd - (totals.subtotal_usd * manualPercent) / 100)
+  /** Monto en Bs. que pagaría si paga en bolívares (sin descuento efectivo). */
+  const totalPayBolivaresUsd = subtotalAfterManual
 
   /** Envía la cotización al servidor. */
   async function submit() {
@@ -307,29 +325,65 @@ export function QuoteCreator({ products, exchangeRate, quoteSettings, onCreated,
       {/* Totales */}
       {items.length > 0 && (
         <section className="rounded-2xl border border-border bg-muted/30 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumen de totales</p>
+
+          {/* Desglose de la cuenta */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">{moneyUsd(totals.subtotal_usd)}</span>
             </div>
-            {totals.discount_amount_usd > 0 && (
+            {manualPercent > 0 && (
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Descuento {totals.discount_percent > 0 ? `${totals.discount_percent}%` : ''}
-                  {totals.cash_divisa_discount_percent > 0 && paymentMethod === 'cash_divisa'
-                    ? ` + ${totals.cash_divisa_discount_percent}% efectivo`
-                    : ''}
-                </span>
-                <span className="font-medium text-destructive">-{moneyUsd(totals.discount_amount_usd)}</span>
+                <span className="text-muted-foreground">Descuento manual ({manualPercent}%)</span>
+                <span className="font-medium text-destructive">-{moneyUsd(round2((totals.subtotal_usd * manualPercent) / 100))}</span>
               </div>
             )}
-            <div className="flex items-center justify-between border-t border-border pt-2">
-              <span className="font-semibold">Total USD</span>
-              <span className="text-lg font-bold">{moneyUsd(totals.total_usd)}</span>
+            {cashPercent > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Descuento efectivo divisas ({cashPercent}%)</span>
+                <span className="font-medium text-destructive">-{moneyUsd(round2(totals.discount_amount_usd - (totals.subtotal_usd * manualPercent) / 100))}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Pago en divisas (USD) */}
+          <div className="mt-4 rounded-2xl border-2 border-cyan-500/40 bg-cyan-500/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-cyan-700 dark:text-cyan-400">💵 PAGO EN DIVISAS (USD)</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {cashPercent > 0
+                    ? 'Incluye el descuento por pago en efectivo en divisas'
+                    : 'Monto total a pagar en divisas'}
+                </p>
+              </div>
+              <p className="text-2xl font-black text-cyan-700 dark:text-cyan-400">{moneyUsd(totals.total_usd)}</p>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Total Bs. (tasa {exchangeRate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
-              <span className="font-medium">{formatBolivars(totals.total_usd, exchangeRate)}</span>
+            <div className="mt-2 flex items-center justify-between border-t border-cyan-500/20 pt-2 text-xs text-muted-foreground">
+              <span>Equivalente en Bs.</span>
+              <span className="font-semibold">{formatBolivars(totals.total_usd, exchangeRate)}</span>
+            </div>
+          </div>
+
+          {/* Pago en bolívares (Bs.) */}
+          <div className="mt-3 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">🇻🇪 PAGO EN BOLÍVARES (Bs.)</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {cashPercent > 0
+                    ? 'Sin el descuento por efectivo en divisas (aplica solo a pagos en divisas)'
+                    : 'Monto total a pagar en bolívares'}
+                </p>
+              </div>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                {formatBolivars(totalPayBolivaresUsd, exchangeRate)}
+              </p>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-emerald-500/20 pt-2 text-xs text-muted-foreground">
+              <span>Tasa BCV</span>
+              <span className="font-semibold">{formatRate(exchangeRate)} por USD</span>
             </div>
           </div>
         </section>

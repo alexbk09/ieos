@@ -518,11 +518,41 @@ function renderQuoteHtml(quote: Quote, companyName: string): string {
     `)
     .join('')
 
+  // ---------- Desglose de totales para el correo ----------
+  const subtotal = Number(quote.subtotal_usd) || 0
+  const manualPct = Math.min(Math.max(Number(quote.discount_percent) || 0, 0), 100)
+  const manualAmount = Math.round((subtotal * manualPct) / 100 * 100) / 100
+  const afterManual = Math.round((subtotal - manualAmount) * 100) / 100
+  const cashPct =
+    quote.payment_method === 'cash_divisa'
+      ? Math.min(Math.max(Number(quote.cash_divisa_discount_percent) || 0, 0), 100)
+      : 0
+  const cashAmount = Math.round((afterManual * cashPct) / 100 * 100) / 100
+  const totalUsd = Number(quote.total_usd) || 0
+  const rate = Number(quote.exchange_rate) || 0
+  // Si paga en bolívares NO aplica el descuento por efectivo en divisas.
+  const totalPayBsAmount = Math.round(afterManual * rate * 100) / 100
+
+  const fmtUsd = (n: number) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const fmtBs = (n: number) => `Bs. ${Number(n).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
   const discountRows = Number(quote.discount_amount_usd) > 0
     ? `
+      ${manualAmount > 0 ? `
       <tr>
-        <td style="padding:6px 12px;font-size:14px;color:#6b7280">Descuento (${Number(quote.discount_percent)}%${Number(quote.cash_divisa_discount_percent) > 0 && quote.payment_method === 'cash_divisa' ? ` + ${Number(quote.cash_divisa_discount_percent)}% efectivo` : ''})</td>
-        <td style="padding:6px 12px;font-size:14px;color:#dc2626;text-align:right;font-weight:600">-$${Number(quote.discount_amount_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="padding:6px 12px;font-size:14px;color:#6b7280">Descuento manual (${manualPct}%)</td>
+        <td style="padding:6px 12px;font-size:14px;color:#dc2626;text-align:right;font-weight:600">-${fmtUsd(manualAmount)}</td>
+      </tr>
+      ` : ''}
+      ${cashAmount > 0 ? `
+      <tr>
+        <td style="padding:6px 12px;font-size:14px;color:#6b7280">Descuento efectivo divisas (${cashPct}%)</td>
+        <td style="padding:6px 12px;font-size:14px;color:#dc2626;text-align:right;font-weight:600">-${fmtUsd(cashAmount)}</td>
+      </tr>
+      ` : ''}
+      <tr>
+        <td style="padding:6px 12px;font-size:14px;color:#6b7280">Descuento total</td>
+        <td style="padding:6px 12px;font-size:14px;color:#dc2626;text-align:right;font-weight:600">-${fmtUsd(Number(quote.discount_amount_usd))}</td>
       </tr>
     `
     : ''
@@ -565,23 +595,27 @@ function renderQuoteHtml(quote: Quote, companyName: string): string {
                 <tfoot>
                   <tr style="border-top:2px solid #e5e7eb">
                     <td colspan="3" style="padding:10px 12px;font-size:14px;color:#6b7280">Subtotal</td>
-                    <td style="padding:10px 12px;font-size:14px;color:#1f2937;text-align:right;font-weight:600">$${Number(quote.subtotal_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:10px 12px;font-size:14px;color:#1f2937;text-align:right;font-weight:600">${fmtUsd(subtotal)}</td>
                   </tr>
                   ${discountRows}
                   <tr>
-                    <td colspan="3" style="padding:10px 12px;font-size:16px;color:#111827;font-weight:700">Total USD</td>
-                    <td style="padding:10px 12px;font-size:16px;color:#111827;text-align:right;font-weight:700">$${Number(quote.total_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td colspan="3" style="padding:10px 12px;font-size:16px;color:#0e7490;font-weight:700">💵 Total en divisas (USD)</td>
+                    <td style="padding:10px 12px;font-size:16px;color:#0e7490;text-align:right;font-weight:700">${fmtUsd(totalUsd)}</td>
                   </tr>
                   <tr>
-                    <td colspan="3" style="padding:4px 12px 10px;font-size:14px;color:#6b7280">Total Bs. (tasa ${Number(quote.exchange_rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
-                    <td style="padding:4px 12px 10px;font-size:14px;color:#6b7280;text-align:right;font-weight:600">Bs. ${Number(quote.total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td colspan="3" style="padding:4px 12px 10px;font-size:14px;color:#6b7280">
+                      🇻🇪 Total en bolívares (sin descuento por efectivo en divisas) · Tasa ${Number(rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td style="padding:4px 12px 10px;font-size:14px;color:#065f46;text-align:right;font-weight:700">${fmtBs(totalPayBsAmount)}</td>
                   </tr>
                 </tfoot>
               </table>
 
-              ${quote.payment_method === 'cash_divisa' && Number(quote.cash_divisa_discount_percent) > 0 ? `
+              ${cashPct > 0 ? `
                 <p style="margin:20px 0 0;padding:14px 16px;background-color:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;font-size:13px;color:#065f46">
-                  <strong>💰 Descuento por pago en efectivo en divisas:</strong> Si el pago se realiza en efectivo en divisas, se aplica un <strong>${Number(quote.cash_divisa_discount_percent)}% de descuento</strong> sobre el total.
+                  <strong>💰 Importante:</strong> El descuento del <strong>${cashPct}% por pago en efectivo en divisas</strong> se aplica
+                  únicamente si el pago se realiza en divisas. Si el pago se realiza en bolívares, el monto a pagar es
+                  <strong>${fmtBs(totalPayBsAmount)}</strong> (${fmtUsd(afterManual)}).
                 </p>
               ` : ''}
 

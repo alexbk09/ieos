@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowRightLeft, ClipboardList, Eye, FileText, Package, Plus, Printer, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
@@ -54,6 +55,8 @@ export function QuoteManager({ initialQuotes, products, exchangeRate, quoteSetti
   const [converting, setConverting] = useState(false)
   const [sending, setSending] = useState(false)
   const [printing, setPrinting] = useState(false)
+  /** Cotización activa para imprimir desde el portal (fuera del modal). */
+  const [printQuoteData, setPrintQuoteData] = useState<Quote | null>(null)
 
   // ---------- Filtros ----------
 
@@ -154,14 +157,28 @@ export function QuoteManager({ initialQuotes, products, exchangeRate, quoteSetti
     }
   }
 
-  /** Imprime la cotización. */
+  /**
+   * Imprime la cotización.
+   * Renderiza la vista en un portal directo al body (fuera del modal,
+   * que tiene overflow-hidden y recorta el contenido), espera al render
+   * (doble frame para que el navegador aplique las reglas @media print
+   * y, sobre todo, el display:none del resto de la app) y ejecuta
+   * window.print(). Al cerrar el diálogo limpia el portal.
+   */
   function printQuote() {
+    if (!detailQuote) return
     setPrinting(true)
-    // Espera al render de la vista de impresión y ejecuta window.print().
-    setTimeout(() => {
-      window.print()
-      setPrinting(false)
-    }, 150)
+    setPrintQuoteData(detailQuote)
+    // Doble requestAnimationFrame: garantiza que React haya pintado el
+    // portal y que el navegador haya aplicado los estilos de impresión
+    // antes de abrir el diálogo de imprimir/guardar PDF.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print()
+        setPrintQuoteData(null)
+        setPrinting(false)
+      })
+    })
   }
 
   // ---------- Columnas ----------
@@ -403,17 +420,29 @@ export function QuoteManager({ initialQuotes, products, exchangeRate, quoteSetti
               )}
               <button
                 onClick={printQuote}
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm font-medium transition-colors hover:bg-muted"
+                disabled={printing}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
               >
-                <Printer size={15} /> Imprimir
+                {printing ? <RefreshCw size={15} className="animate-spin" /> : <Printer size={15} />}
+                {printing ? 'Preparando…' : 'Imprimir / PDF'}
               </button>
             </div>
           }
         >
-          {/* Vista de impresión de la cotización */}
-          <QuotePrintView quote={detailQuote} settings={siteSettings} invoiceSettings={invoiceSettings} />
+          {/* Vista previa dentro del modal (no participa en la impresión) */}
+          <QuotePrintView quote={detailQuote} settings={siteSettings} invoiceSettings={invoiceSettings} preview />
         </Modal>
       )}
+
+      {/* Portal de impresión: se monta fuera del modal directamente en el body
+          para que la cotización completa se imprima sin cortes. */}
+      {printQuoteData &&
+        createPortal(
+          <div className="print-portal">
+            <QuotePrintView quote={printQuoteData} settings={siteSettings} invoiceSettings={invoiceSettings} />
+          </div>,
+          document.body,
+        )}
     </section>
   )
 }
