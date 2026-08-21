@@ -11,7 +11,7 @@ import { createPublicClient } from '@/lib/supabase/public'
 // ---------- Tipos ----------
 export type Proveedor = {
   id: string
-  rif: string
+  rif: string | null
   nombre: string
   direccion: string | null
   contacto_nombre: string | null
@@ -23,7 +23,7 @@ export type Proveedor = {
 }
 
 export type ProveedorInput = {
-  rif: string
+  rif?: string | null
   nombre: string
   direccion?: string | null
   contacto_nombre?: string | null
@@ -60,14 +60,14 @@ export async function getProveedoresActivos(): Promise<{ data: Pick<Proveedor, '
 
 /**
  * Crea un nuevo proveedor.
+ * Solo el nombre es obligatorio; el RIF se puede completar después.
  * @param input Datos del proveedor.
  */
 export async function createProveedor(input: ProveedorInput): Promise<{ data: Proveedor | null; error: { message: string } | null }> {
   const supabase = await createServerClient()
 
-  const rif = input.rif.trim()
+  const rif = input.rif?.trim() ?? null
   const nombre = input.nombre.trim()
-  if (!rif) return { data: null, error: { message: 'El RIF es obligatorio.' } }
   if (!nombre) return { data: null, error: { message: 'El nombre del proveedor es obligatorio.' } }
 
   const { data, error } = await supabase
@@ -95,9 +95,8 @@ export async function createProveedor(input: ProveedorInput): Promise<{ data: Pr
 export async function updateProveedor(id: string, input: ProveedorInput): Promise<{ data: Proveedor | null; error: { message: string } | null }> {
   const supabase = await createServerClient()
 
-  const rif = input.rif.trim()
+  const rif = input.rif?.trim() ?? null
   const nombre = input.nombre.trim()
-  if (!rif) return { data: null, error: { message: 'El RIF es obligatorio.' } }
   if (!nombre) return { data: null, error: { message: 'El nombre del proveedor es obligatorio.' } }
 
   const { data, error } = await supabase

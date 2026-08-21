@@ -9,7 +9,7 @@ import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-
 
 type Proveedor = {
   id: string
-  rif: string
+  rif: string | null
   nombre: string
   direccion: string | null
   contacto_nombre: string | null
@@ -44,6 +44,7 @@ const EMPTY_FORM: ProveedorForm = {
 
 /**
  * Gestor de proveedores (CRUD + activar/desactivar).
+ * Solo el nombre es obligatorio; el RIF y demás campos se completan después.
  * Utiliza componentes UI reutilizables: Modal premium y DataTable con
  * búsqueda, ordenamiento y paginación.
  * La lógica de datos se delega en la API /api/admin/proveedores; la UI es
@@ -67,7 +68,7 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
   function openEdit(proveedor: Proveedor) {
     setForm({
       id: proveedor.id,
-      rif: proveedor.rif,
+      rif: proveedor.rif ?? '',
       nombre: proveedor.nombre,
       direccion: proveedor.direccion ?? '',
       contacto_nombre: proveedor.contacto_nombre ?? '',
@@ -78,9 +79,9 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
     setModalOpen(true)
   }
 
-  /** Valida el formulario y devuelve el error en pantalla si algo falta. */
+  /** Valida el formulario y devuelve el error en pantalla si algo falta.
+   *  Solo el nombre es obligatorio; el RIF es opcional. */
   function validate(): string | null {
-    if (!form.rif.trim()) return 'El RIF es obligatorio.'
     if (!form.nombre.trim()) return 'El nombre del proveedor es obligatorio.'
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return 'El email no es válido.'
     return null
@@ -123,7 +124,7 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: proveedor.id,
-        rif: proveedor.rif,
+        rif: proveedor.rif ?? '',
         nombre: proveedor.nombre,
         direccion: proveedor.direccion,
         contacto_nombre: proveedor.contacto_nombre,
@@ -176,7 +177,9 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
           </div>
           <div className="min-w-0">
             <p className="truncate font-medium">{proveedor.nombre}</p>
-            <p className="font-mono text-xs text-muted-foreground">RIF {proveedor.rif}</p>
+            <p className="font-mono text-xs text-muted-foreground">
+              {proveedor.rif ? `RIF ${proveedor.rif}` : 'Sin RIF'}
+            </p>
           </div>
         </div>
       ),
@@ -273,7 +276,7 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
         columns={columns}
         rowKey={(p) => p.id}
         searchKeys={(p) =>
-          `${p.nombre} ${p.rif} ${p.contacto_nombre ?? ''} ${p.email ?? ''} ${p.telefono ?? ''} ${p.direccion ?? ''} ${p.activo ? 'activo' : 'inactivo'}`
+          `${p.nombre} ${p.rif ?? ''} ${p.contacto_nombre ?? ''} ${p.email ?? ''} ${p.telefono ?? ''} ${p.direccion ?? ''} ${p.activo ? 'activo' : 'inactivo'}`
         }
         searchPlaceholder="Buscar por nombre, RIF, contacto o dirección…"
         emptyMessage="No se encontraron proveedores"
@@ -312,19 +315,19 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
         <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormInput
-              label="RIF"
-              value={form.rif}
-              onChange={(e) => setForm({ ...form, rif: e.target.value })}
-              placeholder="Ej: J-12345678-9"
-              autoFocus
-              required
-            />
-            <FormInput
               label="Nombre"
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               placeholder="Ej: Distribuidora Eléctrica C.A."
+              autoFocus
               required
+            />
+            <FormInput
+              label="RIF"
+              value={form.rif}
+              onChange={(e) => setForm({ ...form, rif: e.target.value })}
+              placeholder="Ej: J-12345678-9 (opcional)"
+              hint="Puedes dejarlo vacío y completarlo después."
             />
           </div>
 

@@ -4,6 +4,7 @@ import { createProveedor, deleteProveedor, updateProveedor } from '@/services/pr
 
 /**
  * API: Crear un nuevo proveedor.
+ * Solo el nombre es obligatorio; el RIF es opcional (se puede completar después).
  * Toda la lógica de datos vive en /services/proveedores.
  */
 export async function POST(request: Request) {
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
   const body = await request.json()
 
   const result = await createProveedor({
-    rif: String(body.rif ?? '').trim(),
+    rif: body.rif ? String(body.rif).trim() : null,
     nombre: String(body.nombre ?? '').trim(),
     direccion: body.direccion ?? null,
     contacto_nombre: body.contacto_nombre ?? null,
@@ -33,7 +34,7 @@ export async function PATCH(request: Request) {
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
   const result = await updateProveedor(id, {
-    rif: String(body.rif ?? '').trim(),
+    rif: body.rif ? String(body.rif).trim() : null,
     nombre: String(body.nombre ?? '').trim(),
     direccion: body.direccion ?? null,
     contacto_nombre: body.contacto_nombre ?? null,
