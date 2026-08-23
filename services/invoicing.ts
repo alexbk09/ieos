@@ -1,8 +1,11 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import {
   calculateInvoiceTotals,
+  isValidEmail,
   type InvoiceTotals,
 } from '@/lib/invoice-calculator'
+import nodemailer from 'nodemailer'
+import { moneyUsd } from '@/lib/currency'
 
 /**
  * Servicio de facturación venezolana (SENIAT).
@@ -328,6 +331,21 @@ export async function getInvoiceableRequests() {
 }
 
 /**
+ * Obtiene una factura por su ID (para envío por correo o detalle).
+ * @param id ID de la factura.
+ */
+export async function getInvoiceById(id: string) {
+  const supabase = await createServerClient()
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) return { data: null, error: { message: error.message } }
+  return { data: data ? mapInvoice(data) : null, error: null }
+}
+
+/**
  * Verifica si una solicitud ya tiene una factura emitida.
  * Contrato: Factura y notas deben asociarse a una única factura activa.
  * @param solicitudId ID de la solicitud.
@@ -484,3 +502,51 @@ export async function cancelInvoice(id: string, reason: string) {
   return { data: mapInvoice(data), error: null }
 }
 
+// ---------- Envío por correo ----------
+
+/**
+ * Envía la factura por correo usando nodemailer.
+ * Reutiliza las variables SMTP del módulo de cotizaciones.
+ */
+export async function sendInvoiceEmail(invoice: Invoice, companyName: string) {
+  const email = invoice.customer_email
+  if (!email || !isValidEmail(email)) {
+    return { ok: false as const, error: 'El correo del cliente es inválido' }
+  }
+
+  const host = process.env.SMTP_HOST
+  const port = Number(process.env.SMTP_PORT || 587)
+  const user = process.env.SMTP_USER
+  const pass = process.env.SMTP_PASS
+  const from = process.env.SMTP_FROM || user
+
+  if (!host || !user || !pass || !from) {
+    return { ok: false as const, error: 'SMTP no configurado. Agrega SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS y SMTP_FROM al .env' }
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: Number(process.env.SMTP_SECURE ?? 0) === 1,
+    auth: { user, pass },
+  })
+
+  const html = renderInvoiceEmailHtml(invoice, companyName)
+
+  try {
+    await transporter.sendMail({
+      from: `"${companyName}" <${from}>`,
+      to: email,
+      subject: `Factura ${invoice.invoice_number} · ${companyName}`,
+      html,
+    })
+    return { ok: true as const }
+  } catch (err: any) {
+    return { ok: false as const, error: err?.message ?? 'No se pudo enviar el correo' }
+  }
+}
+
+
+function renderInvoiceEmailHtml(inv: Invoice, cn: string) {
+  return 'Factura ' + inv.invoice_number + ' - Total: ' + moneyUsd(Number(inv.total)) + '\n'
+}

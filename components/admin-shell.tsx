@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, Building2, ClipboardList, FileText, FolderTree, LogOut, Menu, Package, Settings2, ShieldCheck, Tag, UserRound, Users, X } from 'lucide-react'
+import { BarChart3, Building2, ClipboardList, FileText, FolderTree, LogOut, Menu, Package, Receipt, Settings2, ShieldCheck, Tag, UserRound, Users, X } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
@@ -16,6 +16,7 @@ const links = [
   { href: '/admin/proveedores', label: 'Proveedores', icon: Building2 },
   { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
   { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText },
+  { href: '/admin/facturacion', label: 'Facturación', icon: Receipt },
   { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList },
   { href: '/admin/roles', label: 'Roles y permisos', icon: ShieldCheck },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings2 },

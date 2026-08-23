@@ -1,0 +1,20 @@
+import { appendFileSync } from 'fs'
+
+const L = String.fromCharCode(60)
+const R = String.fromCharCode(62)
+const A = []
+A.push('')
+A.push('type Props = { invoice: InvoicePrintData; preview?: boolean }')
+A.push('')
+A.push('export function InvoicePrintView({ invoice: inv, preview = false }: Props) {')
+A.push('  const items = inv.items ?? []')
+A.push('  const rate = Number(inv.exchange_rate) || 0')
+A.push('  const issued = new Date(inv.issued_at).toLocaleDateString("es-VE", { day: "2-digit", month: "long", year: "numeric" })')
+A.push('  return (')
+A.push('    ' + L + 'div' + R + ' className={cn(')
+A.push('      "mx-auto max-w-3xl rounded-2xl border border-border bg-card p-8 text-foreground shadow-sm",')
+A.push('      "print:border-0 print:shadow-none print:p-0 print:max-w-none",')
+A.push('      preview ? "print-preview" : "print-area",')
+A.push('    )}')
+appendFileSync('components/invoice-print-view.tsx', '\n' + A.join('\n'), 'utf8')
+console.log('G2')
