@@ -1,84 +1,98 @@
 import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
 import { getAdminDashboardData } from '@/services/requests'
-import { getOfficialExchangeRate } from '@/services/exchange-rate'
+import { getExchangeRates } from '@/services/exchange-rate'
 import { LOW_STOCK_ALERT } from '@/lib/constants'
 import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
-import { AlertTriangle, BadgeDollarSign, ClipboardList, Package, TrendingUp, Users } from 'lucide-react'
+import { rateSpread } from '@/lib/rate-spread-calculator'
+import { STATUS_COLORS, SalesBarChart, StatusDonutChart } from '@/components/admin-dashboard-charts'
+import { AlertTriangle, ArrowLeftRight, BadgeDollarSign, ClipboardList, Clock, Package, ShoppingBag, Users, Wallet, CheckCircle2 } from 'lucide-react'
 
-/**
- * Dashboard principal de administración.
- * La obtención de datos vive en /services/requests.
- * Muestra la tasa oficial del día (dolarapi.com) y precios en Bs + USD.
- */
+/** Últimos 7 días con etiqueta corta y clave ISO. */
+function last7Days() {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return { label: d.toLocaleDateString('es-VE', { weekday: 'short' }), key: d.toISOString().slice(0, 10) }
+  })
+}
+
+/** Dashboard admin con KPIs, tasas y gráficos. */
 export default async function AdminPage() {
   await requireAdmin()
-  const [[{ data: products }, { data: requests }, { data: profiles }], { rate }] = await Promise.all([
+  const [[{ data: products }, { data: requests }, { data: profiles }], { official, parallel }] = await Promise.all([
     getAdminDashboardData(),
-    getOfficialExchangeRate(),
+    getExchangeRates(),
   ])
 
-  const revenue = requests?.reduce((sum, item) => sum + Number(item.total_usd), 0) ?? 0
-  const lowStock = products?.filter((item) => item.stock < LOW_STOCK_ALERT).length ?? 0
+  const { spread } = rateSpread(official.rate, parallel.rate)
+  const reqs = requests ?? []
+  const revenue = reqs.reduce((sum, r) => sum + Number(r.total_usd), 0)
+  const completedRevenue = reqs.filter((r) => r.status === 'completed').reduce((sum, r) => sum + Number(r.total_usd), 0)
+  const pendingCount = reqs.filter((r) => r.status === 'pending').length
+  const lowStock = products?.filter((p) => p.stock < LOW_STOCK_ALERT).length ?? 0
+  const unitSales = reqs.flatMap((r) => r.solicitud_items ?? []).reduce((sum, it) => sum + Number(it.quantity), 0)
+
+  /** Ventas diarias de los últimos 7 días. */
+  const byDay = last7Days().map(({ label, key }) => ({ label, value: reqs.filter((r) => r.created_at?.slice(0, 10) === key).reduce((s, r) => s + Number(r.total_usd), 0) }))
+
+  /** Distribución de solicitudes por estado. */
+  const statusData = Object.entries(STATUS_COLORS).map(([status, color]) => ({ label: status.charAt(0).toUpperCase() + status.slice(1), value: reqs.filter((r) => r.status === status).length, color }))
+
+  /** Top 5 productos por unidades solicitadas. */
+  const topProducts = Object.values(reqs.flatMap((r) => r.solicitud_items ?? []).reduce<Record<string, { name: string; qty: number }>>((acc, it) => {
+    if (!acc[it.product_name]) acc[it.product_name] = { name: it.product_name, qty: 0 }
+    acc[it.product_name].qty += Number(it.quantity)
+    return acc
+  }, {})).sort((a, b) => b.qty - a.qty).slice(0, 5)
+
   const stats = [
-    [TrendingUp, 'Ventas estimadas', `${moneyUsd(revenue)}`],
-    [ClipboardList, 'Solicitudes', String(requests?.length ?? 0)],
-    [Package, 'Productos', String(products?.length ?? 0)],
-    [Users, 'Usuarios', String(profiles?.length ?? 0)],
+    [Wallet, 'Ingresos', moneyUsd(revenue), 'Todos los pedidos'],
+    [CheckCircle2, 'Completadas', moneyUsd(completedRevenue), 'Pedidos finalizados'],
+    [ShoppingBag, 'Unidades vendidas', String(unitSales), 'Suma de cantidades'],
+    [ClipboardList, 'Solicitudes', String(reqs.length), 'Pedidos registrados'],
+    [Clock, 'Pendientes', String(pendingCount), 'Requieren atención'],
   ] as const
 
   return (
     <AdminShell>
-      <AdminPageHeader eyebrow="Control center" title="Visión general" description="Todo lo importante de ilumaX, en un solo lugar." />
+      <AdminPageHeader eyebrow="Control center" title="Visión general" description="Métricas, tasas y estado del negocio en tiempo real." />
       <div className="p-5 sm:p-8">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/5 p-5">
-            <BadgeDollarSign size={20} className="text-cyan-600" />
-            <p className="mt-7 text-sm text-muted-foreground">Tasa oficial del día</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight">Bs. {formatRate(rate)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Fuente: dolarapi.com</p>
-          </div>
-          {stats.map(([Icon, label, value]) => (
-            <div key={label} className="rounded-3xl border border-border bg-card p-5">
-              <Icon size={20} className="text-cyan-600" />
-              <p className="mt-7 text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight">{value}</p>
-            </div>
+          <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/5 p-5"><BadgeDollarSign size={20} className="text-cyan-600" /><p className="mt-7 text-sm text-muted-foreground">Tasa oficial del día</p><p className="mt-1 text-3xl font-semibold tracking-tight">Bs. {formatRate(official.rate)}</p><p className="mt-1 text-xs text-muted-foreground">Fuente: dolarapi.com</p></div>
+          <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5"><ArrowLeftRight size={20} className="text-amber-600" /><p className="mt-7 text-sm text-muted-foreground">Tasa paralela del día</p><p className="mt-1 text-3xl font-semibold tracking-tight">Bs. {formatRate(parallel.rate)}</p><p className="mt-1 text-xs text-muted-foreground">Diferencia: Bs. {spread !== null ? spread.toFixed(2) : '—'}</p></div>
+          {stats.map(([Icon, label, value, sub]) => (
+            <div key={label} className="rounded-3xl border border-border bg-card p-5"><Icon size={20} className="text-cyan-600" /><p className="mt-7 text-sm text-muted-foreground">{label}</p><p className="mt-1 text-3xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{sub}</p></div>
           ))}
         </div>
+
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
           <section className="rounded-3xl border border-border bg-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-medium">Solicitudes recientes</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Seguimiento de pedidos de clientes</p>
-              </div>
-              <a href="/admin/solicitudes" className="text-sm text-cyan-600">Ver todas</a>
-            </div>
-            <div className="mt-5 space-y-3">
-              {requests?.slice(0, 5).map((request) => (
-                <a href="/admin/solicitudes" key={request.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 p-4 text-sm transition hover:bg-muted">
-                  <span className="font-mono text-xs">#{request.id.slice(0, 8).toUpperCase()}</span>
-                  <span className="text-muted-foreground">{request.status}</span>
-                  <div className="text-right">
-                    <strong>{moneyUsd(Number(request.total_usd))}</strong>
-                    <p className="text-xs font-normal text-muted-foreground">{formatBolivars(Number(request.total_usd), rate)}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-medium">Ventas (últimos 7 días)</h2><p className="mt-1 text-sm text-muted-foreground">Facturación diaria en USD</p></div><span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">Total: {moneyUsd(byDay.reduce((s, d) => s + d.value, 0))}</span></div>
+            <div className="mt-6"><SalesBarChart data={byDay} /></div>
           </section>
           <section className="rounded-3xl border border-border bg-card p-6">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className={lowStock ? 'text-amber-500' : 'text-cyan-600'} size={20} />
-              <div>
-                <h2 className="font-medium">Inventario</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Estado de existencias</p>
-              </div>
-            </div>
+            <h2 className="font-medium">Estado de solicitudes</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Distribución por estado</p>
+            <div className="mt-6"><StatusDonutChart data={statusData} /></div>
+          </section>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <section className="rounded-3xl border border-border bg-card p-6">
+            <div className="flex items-center gap-3"><AlertTriangle className={lowStock ? 'text-amber-500' : 'text-cyan-600'} size={20} /><div><h2 className="font-medium">Inventario</h2><p className="mt-1 text-sm text-muted-foreground">Estado de existencias</p></div></div>
             <p className="mt-8 text-5xl font-semibold">{lowStock}</p>
             <p className="mt-2 text-sm text-muted-foreground">productos con stock bajo</p>
             <a href="/admin/productos" className="mt-6 inline-flex rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground">Gestionar inventario</a>
+          </section>
+          <section className="rounded-3xl border border-border bg-card p-6 lg:col-span-2">
+            <div className="flex items-center justify-between"><div><h2 className="font-medium">Productos más vendidos</h2><p className="mt-1 text-sm text-muted-foreground">Top 5 por unidades solicitadas</p></div><a href="/admin/productos" className="text-sm text-cyan-600">Ver todos</a></div>
+            <div className="mt-5 space-y-3">
+              {topProducts.map((p, i) => (
+                <div key={p.name} className="flex items-center gap-3 rounded-2xl bg-muted/60 p-4 text-sm transition hover:bg-muted"><span className="font-mono text-xs text-muted-foreground">#{i + 1}</span><span className="truncate font-medium">{p.name}</span><span className="ml-auto rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{p.qty} uds</span></div>
+              ))}
+              {topProducts.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay ventas registradas.</p>}
+            </div>
           </section>
         </div>
       </div>

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getOfficialExchangeRate } from '@/services/exchange-rate'
+import { getExchangeRates } from '@/services/exchange-rate'
 
 /** API pública de tasa de cambio cacheada en CDN (5 min + stale-while-revalidate). */
 export async function GET() {
-  const { rate, source, updatedAt } = await getOfficialExchangeRate()
+  const { official, parallel } = await getExchangeRates()
 
   return NextResponse.json(
-    { rate, source, updatedAt },
+    { rate: official.rate, official, parallel },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',

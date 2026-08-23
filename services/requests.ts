@@ -208,7 +208,7 @@ export async function getAdminDashboardData() {
   const supabase = await createServerClient()
   return Promise.all([
     supabase.from('products').select('id,stock'),
-    supabase.from('solicitudes').select('id,total_usd,status,created_at').order('created_at', { ascending: false }),
+    supabase.from('solicitudes').select('id,total_usd,status,created_at,solicitud_items(quantity,product_name)').order('created_at', { ascending: false }),
     supabase.from('profiles').select('id'),
   ])
 }

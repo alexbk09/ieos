@@ -8,6 +8,7 @@ import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 import { SearchableMultiSelect, SearchableSelect } from '@/components/ui/select-search'
 import { BulkUploadModal } from '@/components/bulk-upload-modal'
+import { lossPerProductUnit } from '@/lib/rate-spread-calculator'
 
 type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number }
 type Category = { id: string; name: string; slug: string }
@@ -78,11 +79,15 @@ export function ProductManager({
   categories,
   marcas,
   proveedores,
+  officialRate,
+  parallelRate,
 }: {
   initialProducts: Product[]
   categories: Category[]
   marcas: Marca[]
   proveedores: Proveedor[]
+  officialRate: number
+  parallelRate: number
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [modalOpen, setModalOpen] = useState(false)
@@ -289,6 +294,14 @@ export function ProductManager({
       sortable: true,
       sortValue: (p) => Number(p.price_usd),
       render: (product) => <span className="font-medium">${Number(product.price_usd).toFixed(2)}</span>,
+    },
+    {
+      key: 'loss',
+      header: 'Pérdida USD',
+      sortable: true,
+      sortValue: (p) => { const { lossUsd } = lossPerProductUnit(Number(p.price_usd), officialRate, parallelRate); return lossUsd ?? 0 },
+      hiddenMobile: true,
+      render: (product) => { const { lossUsd } = lossPerProductUnit(Number(product.price_usd), officialRate, parallelRate); if (lossUsd === null) return <span className="text-xs text-muted-foreground/60">—</span>; return <span className="font-medium text-rose-600" title={`Diferencia entre tasa paralela y oficial: Bs. ${(parallelRate - officialRate).toFixed(2)} por USD`}>${lossUsd.toFixed(2)}</span> },
     },
     {
       key: 'costo',

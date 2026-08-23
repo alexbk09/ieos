@@ -3,17 +3,25 @@ import { EXCHANGE_RATE } from '@/lib/constants'
 /**
  * Servicio de tipo de cambio USD → Bs.
  * Consume la API pública de dolarapi.com (https://ve.dolarapi.com/v1/dolares).
- * Usa la fuente "oficial" y el campo `promedio` como valor de referencia.
+ * La API devuelve un arreglo con varias fuentes: "oficial" (BCV) y "paralelo".
+ * Se usa el campo `promedio` como valor de referencia de cada fuente.
  */
 
 export type ExchangeRateInfo = {
   rate: number
-  source: 'oficial' | 'fallback'
+  source: 'oficial' | 'paralelo' | 'fallback'
   updatedAt: string | null
+}
+
+/** Tasas oficial y paralela juntas para el dashboard. */
+export type ExchangeRatesInfo = {
+  official: ExchangeRateInfo
+  parallel: ExchangeRateInfo
 }
 
 const DOLAR_API_URL = 'https://ve.dolarapi.com/v1/dolares'
 const OFFICIAL_SOURCE = 'oficial'
+const PARALLEL_SOURCE = 'paralelo'
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 type DolarApiResponse = {
@@ -26,13 +34,23 @@ type DolarApiResponse = {
   fechaActualizacion: string
 }[]
 
-let cache: { data: ExchangeRateInfo; expiresAt: number } | null = null
+/** Caché compartida para ambas tasas (un solo fetch cada 5 min). */
+let cache: { data: ExchangeRatesInfo; expiresAt: number } | null = null
+
+/** Crea el objeto de respaldo cuando la API o una fuente no están disponibles. */
+function fallbackRates(): ExchangeRatesInfo {
+  return {
+    official: { rate: EXCHANGE_RATE, source: 'fallback', updatedAt: null },
+    parallel: { rate: EXCHANGE_RATE, source: 'fallback', updatedAt: null },
+  }
+}
 
 /**
- * Obtiene la tasa oficial del dólar (fuente "oficial" → `promedio`).
- * Si la API falla, devuelve la tasa constante de respaldo (EXCHANGE_RATE).
+ * Obtiene las tasas oficial y paralela del dólar en una sola llamada.
+ * Si una fuente no está disponible, usa la tasa constante de respaldo (EXCHANGE_RATE).
+ * Si la API falla por completo, ambas fuentes caen al respaldo con source "fallback".
  */
-export async function getOfficialExchangeRate(): Promise<ExchangeRateInfo> {
+export async function getExchangeRates(): Promise<ExchangeRatesInfo> {
   if (cache && cache.expiresAt > Date.now()) return cache.data
 
   try {
@@ -43,21 +61,40 @@ export async function getOfficialExchangeRate(): Promise<ExchangeRateInfo> {
     if (!response.ok) throw new Error(`dolarapi respondió ${response.status}`)
 
     const data: DolarApiResponse = await response.json()
-    const official = data.find((item) => item.fuente === OFFICIAL_SOURCE)
-    if (!official || typeof official.promedio !== 'number' || official.promedio <= 0) {
-      throw new Error('No se encontró la fuente oficial con promedio válido')
+
+    /** Extrae una fuente del arreglo y valida su promedio. */
+    function extractSource(sourceKey: string): ExchangeRateInfo {
+      const found = data.find((item) => item.fuente === sourceKey)
+      if (!found || typeof found.promedio !== 'number' || found.promedio <= 0) {
+        return { rate: EXCHANGE_RATE, source: 'fallback', updatedAt: null }
+      }
+      return {
+        rate: found.promedio,
+        source: sourceKey === OFFICIAL_SOURCE ? 'oficial' : 'paralelo',
+        updatedAt: found.fechaActualizacion,
+      }
     }
 
-    const result: ExchangeRateInfo = {
-      rate: official.promedio,
-      source: 'oficial',
-      updatedAt: official.fechaActualizacion,
+    const result: ExchangeRatesInfo = {
+      official: extractSource(OFFICIAL_SOURCE),
+      parallel: extractSource(PARALLEL_SOURCE),
     }
+
     cache = { data: result, expiresAt: Date.now() + CACHE_TTL_MS }
     return result
   } catch {
-    return { rate: EXCHANGE_RATE, source: 'fallback', updatedAt: null }
+    return fallbackRates()
   }
+}
+
+/**
+ * Obtiene solo la tasa oficial del dólar.
+ * Mantiene la firma original para compatibilidad con el resto del sistema.
+ * Internamente usa la misma caché compartida de getExchangeRates().
+ */
+export async function getOfficialExchangeRate(): Promise<ExchangeRateInfo> {
+  const { official } = await getExchangeRates()
+  return official
 }
 
 /**

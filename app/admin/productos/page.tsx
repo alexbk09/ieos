@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
 import { ProductManager } from '@/components/product-manager'
 import { getProductsWithCategories } from '@/services/catalog'
+import { getExchangeRates } from '@/services/exchange-rate'
 import { getMarcasActivas } from '@/services/marcas'
 import { getProveedoresActivos } from '@/services/proveedores'
 
@@ -11,10 +12,11 @@ import { getProveedoresActivos } from '@/services/proveedores'
  */
 export default async function ProductsPage() {
   await requireAdmin()
-  const [{ products, categories }, { data: marcas }, { data: proveedores }] = await Promise.all([
+  const [{ products, categories }, { data: marcas }, { data: proveedores }, { official, parallel }] = await Promise.all([
     getProductsWithCategories(),
     getMarcasActivas(),
     getProveedoresActivos(),
+    getExchangeRates(),
   ])
 
   return (
@@ -30,6 +32,8 @@ export default async function ProductsPage() {
           categories={categories ?? []}
           marcas={marcas ?? []}
           proveedores={proveedores ?? []}
+          officialRate={official.rate}
+          parallelRate={parallel.rate}
         />
       </div>
     </AdminShell>
