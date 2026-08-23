@@ -1,6 +1,6 @@
 'use client'
 
-import { Globe2, Star } from 'lucide-react'
+import { Code2, Globe2, Star } from 'lucide-react'
 
 // ---------- Tipos ----------
 
@@ -87,6 +87,30 @@ export function SiteFooter({
 
         <span className={textClass}>{copyright}</span>
         {slogan && <span className={textClass}>{slogan}</span>}
+
+        {/* Crédito de desarrollo: enlace a la portafolio del programador.
+            Usa los tokens del tema (accent/primary) para adaptarse al modo
+            claro/oscuro y a la variante admin. */}
+        <div className={`flex flex-col items-start gap-1 ${variant === 'admin' ? 'border-l-2 border-primary/20 pl-3' : 'border-l-2 border-slate-200 pl-3 dark:border-slate-700'}`}>
+          <p className={`flex items-center gap-1 text-[10px] uppercase tracking-wider ${variant === 'admin' ? 'text-muted-foreground' : 'text-slate-400 dark:text-slate-500'}`}>
+            <Code2 size={11} aria-hidden="true" />
+            Desarrollado por
+          </p>
+          <a
+            href="https://portafolio-new-jet.vercel.app"
+            target="_blank"
+            rel="noreferrer"
+            className={`group flex items-center gap-1 text-xs font-semibold transition-colors ${
+              variant === 'admin'
+                ? 'text-accent-foreground/80 hover:text-accent-foreground'
+                : 'text-slate-600 hover:text-cyan-600 dark:text-slate-300 dark:hover:text-cyan-400'
+            }`}
+          >
+            <span className="underline decoration-primary/40 underline-offset-2 transition-colors group-hover:decoration-primary">
+              Keiber Paez
+            </span>
+          </a>
+        </div>
       </div>
     </footer>
   )
