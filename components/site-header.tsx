@@ -74,9 +74,9 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
           )}
           <span className="text-lg font-semibold tracking-[-0.05em]">
             {currentBrand.name.split(' ')[0]}
-            {currentBrand.name.includes('X') || currentBrand.name.toLowerCase().includes('x') ? (
+     {/*        {currentBrand.name.includes('X') || currentBrand.name.toLowerCase().includes('x') ? (
               <span className="text-cyan-500">X</span>
-            ) : null}
+            ) : null} */}
           </span>
         </a>
 

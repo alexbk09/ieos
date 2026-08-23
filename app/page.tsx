@@ -38,6 +38,7 @@ export default async function Home() {
     contact: settings.contact_texts,
     footer: settings.footer_texts,
     social: settings.social_links,
+    map: { lat: settings.map_lat, lng: settings.map_lng, zoom: settings.map_zoom },
   }
 
   return <Storefront initialProducts={normalized} settings={storefrontSettings} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -36,12 +36,24 @@ type DropPosition = { top: number; left: number; width: number }
  * Calcula la posición del dropdown usando getBoundingClientRect.
  * Usa position:fixed para que el dropdown no se corte dentro de
  * contenedores con overflow (modales, tablas con scroll).
+ *
+ * IMPORTANTE (fix mobile): antes el dropdown se CERRABA al hacer scroll
+ * o resize de la ventana. En teléfonos el teclado virtual dispara esos
+ * eventos apenas se toca el campo de búsqueda, cerrando el dropdown
+ * al instante y sin permitir escribir ni seleccionar.
+ * Ahora el dropdown solo se REPOSICIONA (nunca se cierra) y se ignoran
+ * los scrolls generados dentro de la propia lista de opciones.
+ * Además se usa visualViewport para que en móvil el dropdown quede
+ * por encima del teclado virtual.
  */
-function useDropdownPosition(open: boolean, disabled?: boolean) {
+function useDropdownPosition(
+  open: boolean,
+  disabled?: boolean,
+  dropdownRef?: RefObject<HTMLDivElement | null>,
+) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [position, setPosition] = useState<DropPosition | null>(null)
 
-  // Reposicionar al abrir y al hacer scroll/resize (cierra para evitar desalineación).
   useEffect(() => {
     if (!open) return
 
@@ -49,28 +61,43 @@ function useDropdownPosition(open: boolean, disabled?: boolean) {
       const el = buttonRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
+      // visualViewport representa el área visible real (teclado virtual en móvil)
+      const vv = window.visualViewport
+      const viewportWidth = vv?.width ?? window.innerWidth
+      const viewportHeight = vv?.height ?? window.innerHeight
       const width = Math.max(rect.width, 240)
-      const left = Math.min(rect.left, window.innerWidth - width - 8)
-      const spaceBelow = window.innerHeight - rect.bottom
+      const left = Math.min(rect.left, viewportWidth - width - 8)
+      const spaceBelow = viewportHeight - rect.bottom
       const estimatedHeight = 280
-      // Si no hay espacio abajo, abrir hacia arriba
+      // Si no hay espacio abajo (p. ej. teclado abierto), abrir hacia arriba
       const top = spaceBelow >= estimatedHeight ? rect.bottom + 6 : Math.max(8, rect.top - 6 - estimatedHeight)
       setPosition({ top, left, width })
     }
 
     update()
-    // Al hacer scroll o resize se cierra para no quedar desalineado
-    window.addEventListener('scroll', onClose, true)
-    window.addEventListener('resize', onClose)
-    return () => {
-      window.removeEventListener('scroll', onClose, true)
-      window.removeEventListener('resize', onClose)
+
+    /** Reposiciona el dropdown al hacer scroll/resize en vez de cerrarlo. */
+    function reposition(e: Event) {
+      const target = e.target as Node | null
+      // Ignorar scrolls que ocurren DENTRO del dropdown (lista de opciones)
+      if (target && dropdownRef?.current?.contains(target)) return
+      update()
     }
 
-    function onClose() {
-      setPosition(null)
+    /** El teclado virtual de móvil resiza visualViewport: reposicionar. */
+    function onVisualViewportChange() {
+      setTimeout(update, 0)
     }
-  }, [open, disabled])
+
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    window.visualViewport?.addEventListener('resize', onVisualViewportChange)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+      window.visualViewport?.removeEventListener('resize', onVisualViewportChange)
+    }
+  }, [open, disabled, dropdownRef])
 
   return { buttonRef, position }
 }
@@ -98,7 +125,7 @@ export function SearchableSelect({
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const { buttonRef, position } = useDropdownPosition(open, disabled)
+  const { buttonRef, position } = useDropdownPosition(open, disabled, dropdownRef)
 
   // Cerrar al hacer clic fuera
   useEffect(() => {
@@ -232,7 +259,7 @@ export function SearchableMultiSelect({
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const { buttonRef, position } = useDropdownPosition(open, disabled)
+  const { buttonRef, position } = useDropdownPosition(open, disabled, dropdownRef)
 
   // Cerrar al hacer clic fuera
   useEffect(() => {

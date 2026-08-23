@@ -43,3 +43,55 @@ test('rechaza categoría sin nombre o slug', () => {
   assert.ok(result.errors.name)
   assert.ok(result.errors.slug)
 })
+
+// ---------- Formulario de contacto ----------
+
+import { validateContactForm, solveCaptchaExpression } from '../lib/form-validation.mjs'
+
+test('valida un mensaje de contacto correcto', () => {
+  const result = validateContactForm({
+    name: 'Ana Pérez',
+    email: 'ana@example.com',
+    message: 'Quiero una cotización para un local comercial',
+    captcha: '10',
+  })
+  assert.equal(result.valid, true)
+})
+
+test('rechaza contacto sin nombre, correo o mensaje', () => {
+  const result = validateContactForm({ name: '', email: '', message: '', captcha: '' })
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.name)
+  assert.ok(result.errors.email)
+  assert.ok(result.errors.message)
+  assert.ok(result.errors.captcha)
+})
+
+test('rechaza correo inválido en contacto', () => {
+  const result = validateContactForm({
+    name: 'Ana',
+    email: 'correo-malo',
+    message: 'Mensaje válido de prueba',
+    captcha: '10',
+  })
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.email)
+})
+
+test('rechaza mensaje demasiado corto o vacío', () => {
+  const corto = validateContactForm({ name: 'Ana', email: 'ana@example.com', message: 'Hola', captcha: '10' })
+  const vacio = validateContactForm({ name: 'Ana', email: 'ana@example.com', message: '   ', captcha: '10' })
+  assert.equal(corto.valid, false)
+  assert.ok(corto.errors.message)
+  assert.equal(vacio.valid, false)
+  assert.ok(vacio.errors.message)
+})
+
+test('resuelve expresiones de captcha suma y resta', () => {
+  assert.equal(solveCaptchaExpression('7+3'), 10)
+  assert.equal(solveCaptchaExpression('12-5'), 7)
+  assert.equal(solveCaptchaExpression(' 3 + 4 '), 7)
+  assert.equal(solveCaptchaExpression('5*5'), null)
+  assert.equal(solveCaptchaExpression('abc'), null)
+  assert.equal(solveCaptchaExpression(null), null)
+})

@@ -18,6 +18,9 @@ type SiteSettingsPayload = {
   whatsapp_number: string
   address: string
   email: string
+  map_lat: number
+  map_lng: number
+  map_zoom: number
   nav_links: NavLink[]
   hero_texts: Record<string, unknown>
   hero_images: Record<string, unknown>
@@ -68,6 +71,12 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
   /** Actualiza una columna escalar del formulario. */
   function setScalar(key: keyof Pick<SiteSettingsPayload, 'company_name' | 'tagline' | 'logo_url' | 'icon_url' | 'whatsapp_number' | 'address' | 'email'>, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  /** Actualiza un valor numérico del formulario (map_lat, map_lng, map_zoom). */
+  function setNumber(key: 'map_lat' | 'map_lng' | 'map_zoom', value: string) {
+    const num = Number(value)
+    setForm((f) => ({ ...f, [key]: Number.isFinite(num) ? num : 0 }))
   }
 
   /** Actualiza una subclave de un objeto JSONB (hero_texts, contact_texts, etc.). */
@@ -195,6 +204,21 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
             <FormInput label="WhatsApp (con código país)" value={form.whatsapp_number} onChange={(e) => setScalar('whatsapp_number', e.target.value)} placeholder="584122649707" hint="Ej: 58412... (código país + número)" />
             <FormInput label="Correo de contacto" value={form.email} onChange={(e) => setScalar('email', e.target.value)} placeholder="hola@ilumax.ve" />
             <FormInput label="Dirección" value={form.address} onChange={(e) => setScalar('address', e.target.value)} placeholder="Caracas, Venezuela" />
+          </div>
+        </div>
+
+        {/* Ubicación de la tienda en el mapa del inicio */}
+        <div className="grid gap-4 rounded-2xl border border-dashed border-border p-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium"><MapPin size={15} className="text-cyan-600" /> Ubicación en el mapa (inicio)</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Estas coordenadas centran el mapa que se muestra en la sección de contacto. Obtén las coordenadas desde Google Maps (clic derecho sobre el punto → copiar coordenadas).
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <FormInput label="Latitud" value={String(form.map_lat ?? '')} onChange={(e) => setNumber('map_lat', e.target.value)} placeholder="10.4806" inputMode="decimal" />
+            <FormInput label="Longitud" value={String(form.map_lng ?? '')} onChange={(e) => setNumber('map_lng', e.target.value)} placeholder="-66.9036" inputMode="decimal" />
+            <FormInput label="Zoom (1-21)" value={String(form.map_zoom ?? '')} onChange={(e) => setNumber('map_zoom', e.target.value)} placeholder="13" inputMode="numeric" />
           </div>
         </div>
       </div>

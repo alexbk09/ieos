@@ -70,6 +70,12 @@ export type SiteSettings = {
   whatsapp_number: string
   address: string
   email: string
+  /** Latitud de la tienda para el mapa del inicio. */
+  map_lat: number
+  /** Longitud de la tienda para el mapa del inicio. */
+  map_lng: number
+  /** Nivel de zoom del mapa (1-21). */
+  map_zoom: number
   nav_links: NavLink[]
   hero_texts: HeroTexts
   hero_images: HeroImages
@@ -90,6 +96,10 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
     whatsapp_number: row?.whatsapp_number ?? fallback.whatsapp_number ?? '584122649707',
     address: row?.address ?? fallback.address ?? 'Caracas, Venezuela',
     email: row?.email ?? fallback.email ?? 'hola@ilumax.ve',
+    // Coordenadas por defecto: Caracas, Venezuela.
+    map_lat: Number(row?.map_lat ?? fallback.map_lat ?? 10.4806),
+    map_lng: Number(row?.map_lng ?? fallback.map_lng ?? -66.9036),
+    map_zoom: Number(row?.map_zoom ?? fallback.map_zoom ?? 13),
     nav_links: row?.nav_links ?? fallback.nav_links ?? [],
     hero_texts: row?.hero_texts ?? fallback.hero_texts ?? {},
     hero_images: row?.hero_images ?? fallback.hero_images ?? {},
@@ -110,6 +120,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
   whatsapp_number: '584122649707',
   address: 'Caracas, Venezuela',
   email: 'hola@ilumax.ve',
+  map_lat: 10.4806,
+  map_lng: -66.9036,
+  map_zoom: 13,
   nav_links: [
     { href: '/', label: 'Inicio' },
     { href: '/#studio', label: 'Studio' },
@@ -207,6 +220,28 @@ export async function updateSiteSettings(payload: Partial<SiteSettings>) {
   if (payload.whatsapp_number !== undefined) scalar.whatsapp_number = String(payload.whatsapp_number).trim()
   if (payload.address !== undefined) scalar.address = String(payload.address).trim()
   if (payload.email !== undefined) scalar.email = String(payload.email).trim()
+  // Coordenadas del mapa (validación numérica).
+  const mapLat = Number(payload.map_lat)
+  if (payload.map_lat !== undefined) {
+    if (!Number.isFinite(mapLat) || mapLat < -90 || mapLat > 90) {
+      return { data: null, error: { message: 'La latitud debe ser un número entre -90 y 90' }, settings: null }
+    }
+    scalar.map_lat = mapLat
+  }
+  const mapLng = Number(payload.map_lng)
+  if (payload.map_lng !== undefined) {
+    if (!Number.isFinite(mapLng) || mapLng < -180 || mapLng > 180) {
+      return { data: null, error: { message: 'La longitud debe ser un número entre -180 y 180' }, settings: null }
+    }
+    scalar.map_lng = mapLng
+  }
+  const mapZoom = Number(payload.map_zoom)
+  if (payload.map_zoom !== undefined) {
+    if (!Number.isFinite(mapZoom) || mapZoom < 1 || mapZoom > 21) {
+      return { data: null, error: { message: 'El zoom debe ser un número entre 1 y 21' }, settings: null }
+    }
+    scalar.map_zoom = Math.round(mapZoom)
+  }
 
   // Columnas JSONB: se copian tal cual (objetos/arreglos).
   const jsonb: Record<string, unknown> = {}

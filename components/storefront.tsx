@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { LOCAL_IMAGES_PREFIX } from '@/lib/constants'
-import { ArrowUpRight, Globe2, Search, Sparkles, Star } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, Globe2, LoaderCircle, MapPin, Navigation, Search, Send, ShieldCheck, Sparkles, Star } from 'lucide-react'
+import { CaptchaWidget } from '@/components/ui/captcha-widget'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
@@ -25,6 +26,8 @@ export type StorefrontSettings = {
   contact: { eyebrow?: string; title?: string; description?: string; formNamePlaceholder?: string; formEmailPlaceholder?: string; formMessagePlaceholder?: string; formButton?: string }
   footer: { copyright?: string; slogan?: string }
   social: { instagram?: string; linkedin?: string; email?: string }
+  /** Coordenadas y zoom para el mapa de la tienda en el inicio. */
+  map: { lat: number; lng: number; zoom: number }
 }
 
 // ---------- Fallback de config (mismos valores actuales) ----------
@@ -71,6 +74,7 @@ const FALLBACK_SETTINGS: StorefrontSettings = {
   },
   footer: { copyright: '© 2025 ilumaX. Caracas, Venezuela.', slogan: 'Iluminamos ideas.' },
   social: { instagram: 'https://instagram.com', linkedin: 'https://linkedin.com', email: 'mailto:hola@ilumax.ve' },
+  map: { lat: 10.4806, lng: -66.9036, zoom: 13 },
 }
 
 // ---------- Catálogo fallback (solo si no hay datos) ----------
@@ -99,6 +103,16 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
   const [category, setCategory] = useState('Todos')
   const [selected, setSelected] = useState<Product | null>(null)
 
+  // Formulario de contacto (envío por SMTP con captcha).
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactMessage, setContactMessage] = useState('')
+  const [captchaVerified, setCaptchaVerified] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+  const [contactSending, setContactSending] = useState(false)
+  const [contactError, setContactError] = useState('')
+  const [contactSent, setContactSent] = useState(false)
+
   // Merge de la configuración recibida con los valores por defecto.
   const cfg: StorefrontSettings = {
     ...FALLBACK_SETTINGS,
@@ -109,6 +123,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
     contact: { ...FALLBACK_SETTINGS.contact, ...settings?.contact },
     footer: { ...FALLBACK_SETTINGS.footer, ...settings?.footer },
     social: { ...FALLBACK_SETTINGS.social, ...settings?.social },
+    map: { ...FALLBACK_SETTINGS.map, ...settings?.map },
   }
 
   const brand = cfg.brand
@@ -120,6 +135,67 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
   const navLinks = cfg.navLinks && cfg.navLinks.length > 0 ? cfg.navLinks : []
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
+
+  /** Maneja el cambio de estado del captcha (verificado + respuesta para el servidor). */
+  function handleCaptchaChange(verified: boolean, answer: string) {
+    setCaptchaVerified(verified)
+    setCaptchaAnswer(answer)
+  }
+
+  /** Envía el mensaje de contacto por SMTP con captcha verificado. */
+  async function handleContactSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (contactSending) return
+    setContactError('')
+    setContactSent(false)
+
+    // Validación local rápida (el servidor revalida con /lib/form-validation).
+    if (!contactName.trim() || contactName.trim().length < 2) {
+      setContactError('Escribe tu nombre (mínimo 2 caracteres)')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(contactEmail.trim())) {
+      setContactError('Ingresa un correo electrónico válido')
+      return
+    }
+    if (!contactMessage.trim() || contactMessage.trim().length < 10) {
+      setContactError('El mensaje debe tener al menos 10 caracteres')
+      return
+    }
+    if (!captchaVerified || !captchaAnswer) {
+      setContactError('Resuelve el captcha para continuar')
+      return
+    }
+
+    setContactSending(true)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: contactName.trim(),
+          email: contactEmail.trim(),
+          message: contactMessage.trim(),
+          captcha: captchaAnswer,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setContactError(data.error ?? 'No se pudo enviar el mensaje. Inténtalo de nuevo.')
+        return
+      }
+      setContactSent(true)
+      setContactName('')
+      setContactEmail('')
+      setContactMessage('')
+      setCaptchaVerified(false)
+      setCaptchaAnswer('')
+    } catch {
+      setContactError('Error de conexión. Inténtalo de nuevo.')
+    } finally {
+      setContactSending(false)
+    }
+  }
 
   return <div className="flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
     <SiteHeader
@@ -185,18 +261,110 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
           <p className="font-mono text-xs uppercase tracking-[.25em] text-cyan-600">{cfg.contact.eyebrow ?? 'Hablemos'}</p>
           <h2 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{cfg.contact.title ?? 'Tu espacio tiene algo que decir.'}</h2>
           <p className="mt-5 max-w-md leading-7 text-slate-500 dark:text-slate-300">{cfg.contact.description}</p>
-          <div className="mt-8 flex gap-3">
+
+          {/* Dirección + enlaces rápidos */}
+          <div className="mt-8 flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3.5 dark:border-slate-700">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-cyan-500/10 text-cyan-600"><MapPin size={17} /></span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{brand.name}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{brand.address}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex gap-3">
             {cfg.social.instagram && <a href={cfg.social.instagram} aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Star size={17} /></a>}
             {cfg.social.linkedin && <a href={cfg.social.linkedin} aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Star size={17} /></a>}
             {cfg.social.email && <a href={cfg.social.email} aria-label="Enviar correo" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Globe2 size={17} /></a>}
           </div>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); }} className="grid gap-3">
-          <input required placeholder={cfg.contact.formNamePlaceholder ?? 'Tu nombre'} className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
-          <input required type="email" placeholder={cfg.contact.formEmailPlaceholder ?? 'Correo electrónico'} className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
-          <textarea required placeholder={cfg.contact.formMessagePlaceholder ?? 'Cuéntanos sobre tu proyecto'} rows={4} className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700" />
-          <button className="rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-blue-950">{cfg.contact.formButton ?? 'Enviar mensaje'}</button>
+
+        {/* Formulario funcional con envío SMTP + captcha */}
+        <form onSubmit={handleContactSubmit} className="grid gap-3">
+          <input
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            required
+            placeholder={cfg.contact.formNamePlaceholder ?? 'Tu nombre'}
+            className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700"
+          />
+          <input
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            required
+            type="email"
+            placeholder={cfg.contact.formEmailPlaceholder ?? 'Correo electrónico'}
+            className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700"
+          />
+          <textarea
+            value={contactMessage}
+            onChange={(e) => setContactMessage(e.target.value)}
+            required
+            placeholder={cfg.contact.formMessagePlaceholder ?? 'Cuéntanos sobre tu proyecto'}
+            rows={4}
+            className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700"
+          />
+
+          {/* Captcha moderno anti-robots */}
+          <CaptchaWidget onChange={handleCaptchaChange} />
+
+          {/* Errores / éxito */}
+          {contactError && (
+            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+              {contactError}
+            </p>
+          )}
+          {contactSent && (
+            <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
+              <CheckCircle2 size={16} /> ¡Mensaje enviado! Te responderemos pronto.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={contactSending}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-blue-950 transition-all hover:bg-cyan-300 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+          >
+            {contactSending ? (
+              <>
+                <LoaderCircle size={16} className="animate-spin" /> Enviando…
+              </>
+            ) : (
+              <>
+                <Send size={15} /> {cfg.contact.formButton ?? 'Enviar mensaje'}
+              </>
+            )}
+          </button>
         </form>
+      </section>
+
+      {/* Mapa de la tienda */}
+      <section className="mx-auto max-w-7xl px-5 pb-20 lg:px-8">
+        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-full bg-cyan-500/10 text-cyan-600"><MapPin size={17} /></span>
+              <div>
+                <p className="text-sm font-semibold">Encuéntranos aquí</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{brand.address}</p>
+              </div>
+            </div>
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${cfg.map.lat},${cfg.map.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-blue-950 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 hover:text-blue-950"
+            >
+              <Navigation size={14} /> Cómo llegar
+            </a>
+          </div>
+          <iframe
+            title={`Mapa de ${brand.name}`}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${cfg.map.lng - 0.01}%2C${cfg.map.lat - 0.008}%2C${cfg.map.lng + 0.01}%2C${cfg.map.lat + 0.008}&layer=mapnik&marker=${cfg.map.lat}%2C${cfg.map.lng}`}
+            className="h-[26rem] w-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
       </section>
     </main>
     <SiteFooter footer={cfg.footer} brand={{ name: brand.name, address: brand.address }} social={cfg.social} />
