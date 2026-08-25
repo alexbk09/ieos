@@ -298,7 +298,10 @@ Posibles causas y soluciones:
     process.exit(1)
   }
 
-  // ── 4) Crear tabla de registro de migraciones ─────────────────
+  // ── 4) Crear tablas de registro de migraciones ────────────────
+  // RLS habilitado: son tablas internas; el rol postgres (este script)
+  // y service_role bypassan RLS, pero la API REST (anon/authenticated)
+  // queda bloqueada por completo.
   await client.query(`
     create table if not exists public.${MIGRATIONS_TABLE} (
       id serial primary key,
@@ -313,6 +316,15 @@ Posibles causas y soluciones:
       detail text,
       run_at timestamptz not null default now()
     );
+
+    alter table public.${MIGRATIONS_TABLE} enable row level security;
+    alter table public.${MIGRATIONS_HISTORY_TABLE} enable row level security;
+
+    revoke all on public.${MIGRATIONS_TABLE} from anon, authenticated;
+    revoke all on public.${MIGRATIONS_HISTORY_TABLE} from anon, authenticated;
+
+    grant all on public.${MIGRATIONS_TABLE} to service_role;
+    grant all on public.${MIGRATIONS_HISTORY_TABLE} to service_role;
   `)
 
   // ── 5) Modo verify ────────────────────────────────────────────
@@ -357,6 +369,29 @@ Posibles causas y soluciones:
     printInfo('\n  Roles:')
     if (roles.length > 0) roles.forEach(r => printOk(r.name))
     else printWarn('No hay roles insertados todavía')
+
+    // Verificación de RLS en todas las tablas public
+    const { rows: rlsRows } = await client.query(`
+      select
+        c.relname as table_name,
+        c.relrowsecurity as rls_enabled
+      from pg_class c
+      left join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relkind = 'r'
+      order by c.relname
+    `)
+    printInfo('\n  Row Level Security:')
+    const tablesWithoutRls = rlsRows.filter(r => !r.rls_enabled)
+    for (const t of rlsRows) {
+      if (t.rls_enabled) printOk(`${t.table_name} → RLS habilitado`)
+      else printWarn(`${t.table_name} → RLS DESHABILITADO`)
+    }
+    if (tablesWithoutRls.length > 0) {
+      printWarn(`\n  ⚠ ${tablesWithoutRls.length} tabla(s) sin RLS: ${tablesWithoutRls.map(t => t.table_name).join(', ')}`)
+    } else {
+      printOk('Todas las tablas tienen RLS habilitado')
+    }
 
     await client.end()
     return
