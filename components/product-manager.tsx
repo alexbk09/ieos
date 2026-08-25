@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { Building2, FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Tag, Trash2, Upload, X } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { Building2, Download, FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Tag, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
@@ -97,6 +98,8 @@ export function ProductManager({
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>(initialProducts)
 
   /**
    * Refresca la tabla de productos desde el servidor.
@@ -123,6 +126,59 @@ export function ProductManager({
   function handleImported(_imported: ImportedProduct[]) {
     setBulkOpen(false)
     refresh()
+  }
+
+  /**
+   * Descarga un Excel con todos los productos que coinciden con el filtro
+   * activo del DataTable (búsqueda actual). Si no hay filtro, exporta todos.
+   */
+  function exportProducts() {
+    const toExport = filteredProducts
+    if (toExport.length === 0) {
+      toast.error('No hay productos para exportar', { description: 'Ajusta la búsqueda o agrega productos primero.' })
+      return
+    }
+
+    setExporting(true)
+    try {
+      // Mapea los productos filtrados a filas legibles del Excel
+      const rows = toExport.map((product) => ({
+        Nombre: product.name,
+        Slug: product.slug,
+        Descripción: product.description ?? '',
+        'Precio USD': Number(product.price_usd),
+        'Costo inicial USD': Number(product.costo_inicial ?? 0),
+        Stock: product.stock,
+        Categorías: (product.categories ?? []).map((c) => c.name).join(', '),
+        Marca: product.marca?.nombre ?? '',
+        Proveedor: product.proveedor?.nombre ?? '',
+        Destacado: product.featured ? 'SI' : 'NO',
+        'URL imagen': product.images?.[0]?.url ?? product.image_url ?? '',
+      }))
+
+      // Crea la hoja de cálculo con ancho de columnas legible
+      const worksheet = XLSX.utils.json_to_sheet(rows)
+      worksheet['!cols'] = [
+        { wch: 32 }, { wch: 28 }, { wch: 50 }, { wch: 12 }, { wch: 16 },
+        { wch: 10 }, { wch: 24 }, { wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 42 },
+      ]
+
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Productos')
+
+      // Nombre del archivo con fecha y cantidad exportada
+      const date = new Date().toISOString().slice(0, 10)
+      const totalLabel = toExport.length === (products?.length ?? 0) ? 'todos' : String(toExport.length)
+      XLSX.writeFile(workbook, `productos-${date}-${totalLabel}.xlsx`)
+
+      toast.success('Exportación completada', {
+        description: `Se exportaron ${toExport.length} producto${toExport.length !== 1 ? 's' : ''} a Excel.`,
+      })
+    } catch {
+      toast.error('No se pudo exportar', { description: 'Ocurrió un error al generar el archivo Excel.' })
+    } finally {
+      setExporting(false)
+    }
   }
 
   /** Abre el modal para crear un producto nuevo. */
@@ -414,6 +470,7 @@ export function ProductManager({
         emptyMessage="No se encontraron productos"
         noDataMessage="Aún no hay productos"
         loading={refreshing}
+        onFilteredChange={setFilteredProducts}
         toolbar={
           <div className="flex flex-wrap gap-2">
             <button
@@ -421,6 +478,18 @@ export function ProductManager({
               className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
             >
               <FileSpreadsheet size={15} /> Carga masiva
+            </button>
+            <button
+              onClick={exportProducts}
+              disabled={exporting || refreshing}
+              className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+            >
+              {exporting ? (
+                <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Download size={15} />
+              )}
+              Exportar Excel
             </button>
             <button
               onClick={startNew}

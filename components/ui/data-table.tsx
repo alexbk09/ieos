@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp, Search, SearchX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +47,8 @@ type DataTableProps<T> = {
   toolbar?: ReactNode
   /** Callback al hacer click en una fila. */
   onRowClick?: (item: T) => void
+  /** Notifica los datos filtrados actuales (después de búsqueda/orden). Útil para exportar solo lo visible. */
+  onFilteredChange?: (items: T[]) => void
 }
 
 /**
@@ -70,11 +72,17 @@ export function DataTable<T>({
   pageSize = 8,
   toolbar,
   onRowClick,
+  onFilteredChange,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(0)
+
+  // Mantiene la última referencia del callback para no re-disparar el efecto
+  // cuando el padre pasa una función distinta en cada render.
+  const onFilteredChangeRef = useRef(onFilteredChange)
+  onFilteredChangeRef.current = onFilteredChange
 
   // Filtrar por búsqueda
   const filtered = useMemo(() => {
@@ -83,6 +91,11 @@ export function DataTable<T>({
     if (!searchKeys) return data
     return data.filter((item) => searchKeys(item).toLowerCase().includes(term))
   }, [data, search, searchKeys])
+
+  /** Notifica al padre los datos que quedan visibles tras aplicar búsqueda y orden. */
+  useEffect(() => {
+    onFilteredChangeRef.current?.(filtered)
+  }, [filtered])
 
   // Ordenar
   const sorted = useMemo(() => {
