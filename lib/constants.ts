@@ -41,3 +41,9 @@ export const CATALOG_PAGE_SIZE = 10
 
 /** Límite de productos destacados que se muestran en la portada. */
 export const FEATURED_PRODUCTS_LIMIT = 6
+
+/** Tasa de IVA aplicada al precio de venta (16%). */
+export const IVA_RATE = 0.16
+
+/** Slug del módulo "Ajuste de Margen y Control de Pérdidas" para permisos. */
+export const MARGIN_ADJUSTMENT_MODULE_SLUG = 'ajustes_precios'
