@@ -6,6 +6,7 @@ import { CheckSquare, DollarSign, History, Percent, RefreshCw, TrendingUp, Walle
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { Modal } from '@/components/ui/modal'
 import { FormInput } from '@/components/ui/form-field'
+import { confirmAction } from '@/components/confirm-dialog'
 import { calcularPerdidaPorUnidad, calcularPorcentajeAumentoSugerido, simularAjusteProducto } from '@/lib/margin-adjustment-calculator'
 import { formatRate, moneyUsd } from '@/lib/currency'
 import type { AdjustmentHistoryEntry, HistoryProduct, ProductForAdjustment } from '@/services/margin-adjustment'
@@ -146,6 +147,15 @@ export function MarginAdjustmentManager({
       toast.error('Tasa inválida', { description: 'Ingresa una nueva tasa oficial mayor a 0.' })
       return
     }
+
+    // Confirmación antes de modificar los precios de los productos seleccionados.
+    const ok = await confirmAction({
+      title: `¿Aplicar ajuste a ${selectedIds.size} producto${selectedIds.size !== 1 ? 's' : ''}?`,
+      description: `Se actualizarán el precio inicial (+${pct}%) y el precio de venta (+16% IVA) de los productos seleccionados. Esta acción afecta la tienda en vivo.`,
+      confirmText: 'Sí, aplicar ajuste',
+      confirmClassName: 'bg-cyan-600 text-white hover:bg-cyan-500 dark:bg-cyan-600 dark:text-white dark:hover:bg-cyan-500',
+    })
+    if (!ok) return
 
     setApplying(true)
     try {

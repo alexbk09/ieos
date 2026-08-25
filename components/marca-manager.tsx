@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton } from '@/components/ui/form-field'
+import { confirmDelete } from '@/components/confirm-dialog'
 
 type Marca = {
   id: string
@@ -124,7 +125,12 @@ export function MarcaManager({ initialMarcas }: { initialMarcas: Marca[] }) {
 
   /** Elimina una marca. */
   async function remove(id: string) {
-    if (!confirm('¿Eliminar esta marca? Los productos asociados quedarán sin marca.')) return
+    const ok = await confirmDelete({
+      title: '¿Eliminar esta marca?',
+      description: 'Los productos asociados quedarán sin marca.',
+      confirmText: 'Sí, eliminar marca',
+    })
+    if (!ok) return
 
     setDeletingId(id)
     const response = await fetch(`/api/admin/marcas?id=${id}`, { method: 'DELETE' })

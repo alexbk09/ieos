@@ -27,29 +27,31 @@ export default async function AdminPage() {
 
   const { spread } = rateSpread(official.rate, parallel.rate)
   const reqs = requests ?? []
-  const revenue = reqs.reduce((sum, r) => sum + Number(r.total_usd), 0)
-  const completedRevenue = reqs.filter((r) => r.status === 'completed').reduce((sum, r) => sum + Number(r.total_usd), 0)
+  // Solo las solicitudes completadas generan ingresos, ventas y unidades vendidas.
+  const completedReqs = reqs.filter((r) => r.status === 'completed')
+  const revenue = completedReqs.reduce((sum, r) => sum + Number(r.total_usd), 0)
+  const completedRevenue = completedReqs.reduce((sum, r) => sum + Number(r.total_usd), 0)
   const pendingCount = reqs.filter((r) => r.status === 'pending').length
   const lowStock = products?.filter((p) => p.stock < LOW_STOCK_ALERT).length ?? 0
-  const unitSales = reqs.flatMap((r) => r.solicitud_items ?? []).reduce((sum, it) => sum + Number(it.quantity), 0)
+  const unitSales = completedReqs.flatMap((r) => r.solicitud_items ?? []).reduce((sum, it) => sum + Number(it.quantity), 0)
 
-  /** Ventas diarias de los últimos 7 días. */
-  const byDay = last7Days().map(({ label, key }) => ({ label, value: reqs.filter((r) => r.created_at?.slice(0, 10) === key).reduce((s, r) => s + Number(r.total_usd), 0) }))
+  /** Ventas diarias de los últimos 7 días (solo completadas). */
+  const byDay = last7Days().map(({ label, key }) => ({ label, value: completedReqs.filter((r) => r.created_at?.slice(0, 10) === key).reduce((s, r) => s + Number(r.total_usd), 0) }))
 
   /** Distribución de solicitudes por estado. */
   const statusData = Object.entries(STATUS_COLORS).map(([status, color]) => ({ label: status.charAt(0).toUpperCase() + status.slice(1), value: reqs.filter((r) => r.status === status).length, color }))
 
-  /** Top 5 productos por unidades solicitadas. */
-  const topProducts = Object.values(reqs.flatMap((r) => r.solicitud_items ?? []).reduce<Record<string, { name: string; qty: number }>>((acc, it) => {
+  /** Top 5 productos por unidades vendidas (solo completadas). */
+  const topProducts = Object.values(completedReqs.flatMap((r) => r.solicitud_items ?? []).reduce<Record<string, { name: string; qty: number }>>((acc, it) => {
     if (!acc[it.product_name]) acc[it.product_name] = { name: it.product_name, qty: 0 }
     acc[it.product_name].qty += Number(it.quantity)
     return acc
   }, {})).sort((a, b) => b.qty - a.qty).slice(0, 5)
 
   const stats = [
-    [Wallet, 'Ingresos', moneyUsd(revenue), 'Todos los pedidos'],
+    [Wallet, 'Ingresos', moneyUsd(revenue), 'Solo pedidos completados'],
     [CheckCircle2, 'Completadas', moneyUsd(completedRevenue), 'Pedidos finalizados'],
-    [ShoppingBag, 'Unidades vendidas', String(unitSales), 'Suma de cantidades'],
+    [ShoppingBag, 'Unidades vendidas', String(unitSales), 'Solo pedidos completados'],
     [ClipboardList, 'Solicitudes', String(reqs.length), 'Pedidos registrados'],
     [Clock, 'Pendientes', String(pendingCount), 'Requieren atención'],
   ] as const

@@ -5,6 +5,7 @@ import { CalendarDays, History, LoaderCircle, Mail, Package, Phone, UserRound, X
 import { toast } from 'sonner'
 import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status'
 import { formatBolivars, moneyUsd } from '@/lib/currency'
+import { confirmAction } from '@/components/confirm-dialog'
 import type { Request, RequestClient } from '@/services/requests'
 
 /** Propiedades del modal de detalle de solicitud. */
@@ -50,6 +51,18 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
   /** Cambia el estado y refresca la lista en el padre. */
   async function changeStatus(status: string) {
     if (status === request.status || updating) return
+
+    // Si la solicitud se va a anular, pedir confirmación primero.
+    if (status === 'cancelled') {
+      const ok = await confirmAction({
+        title: '¿Anular esta solicitud?',
+        description: `La solicitud #${request.id.slice(0, 8).toUpperCase()} quedará marcada como cancelada.`,
+        confirmText: 'Sí, anular',
+        confirmClassName: 'bg-rose-600 text-white hover:bg-rose-500 dark:bg-rose-600 dark:text-white dark:hover:bg-rose-500',
+      })
+      if (!ok) return
+    }
+
     setUpdating(true)
     try {
       await onStatusChange(request.id, status)

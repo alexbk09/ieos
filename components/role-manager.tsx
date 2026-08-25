@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { confirmDelete } from '@/components/confirm-dialog'
 
 type Module = { id: string; name: string; slug: string; description: string | null }
 
@@ -145,7 +146,12 @@ export function RoleManager({ initialRoles, modules }: { initialRoles: Role[]; m
 
   /** Elimina un rol. */
   async function remove(id: string) {
-    if (!confirm('¿Eliminar este rol?')) return
+    const ok = await confirmDelete({
+      title: '¿Eliminar este rol?',
+      description: 'Los usuarios asignados a este rol perderán sus permisos.',
+      confirmText: 'Sí, eliminar rol',
+    })
+    if (!ok) return
 
     setDeletingId(id)
     const response = await fetch(`/api/admin/roles?id=${id}`, { method: 'DELETE' })

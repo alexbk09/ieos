@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Building2, ChevronRight, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Palette, Plus, Receipt, Save, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { confirmDelete } from '@/components/confirm-dialog'
 import { cn } from '@/lib/utils'
 
 // ---------- Tipos (espejo de /services/site-settings) ----------
@@ -108,13 +109,25 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     })
   }
 
-  /** Elimina un ítem de un arreglo JSONB. */
-  function removeJsonArrayItem<K extends keyof SiteSettingsPayload>(key: K, arraySubKey: string, index: number) {
+  /** Elimina un ítem de un arreglo JSONB con confirmación. */
+  async function removeJsonArrayItem<K extends keyof SiteSettingsPayload>(key: K, arraySubKey: string, index: number) {
+    const section = (form[key] ?? {}) as Record<string, unknown>
+    const arr = Array.isArray(section[arraySubKey]) ? (section[arraySubKey] as Record<string, string>[]) : []
+    const item = arr[index]
+    const label = item?.label || item?.text || 'este elemento'
+
+    const ok = await confirmDelete({
+      title: '¿Eliminar este elemento?',
+      description: `"${label}" se quitará de la configuración del sitio.`,
+      confirmText: 'Sí, eliminar',
+    })
+    if (!ok) return
+
     setForm((f) => {
-      const section = (f[key] ?? {}) as Record<string, unknown>
-      const arr = Array.isArray(section[arraySubKey]) ? [...(section[arraySubKey] as unknown[])] : []
-      arr.splice(index, 1)
-      return { ...f, [key]: { ...section, [arraySubKey]: arr } } as SiteSettingsPayload
+      const currentSection = (f[key] ?? {}) as Record<string, unknown>
+      const currentArr = Array.isArray(currentSection[arraySubKey]) ? [...(currentSection[arraySubKey] as unknown[])] : []
+      currentArr.splice(index, 1)
+      return { ...f, [key]: { ...currentSection, [arraySubKey]: currentArr } } as SiteSettingsPayload
     })
   }
 

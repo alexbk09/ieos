@@ -9,6 +9,7 @@ import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 import { SearchableMultiSelect, SearchableSelect } from '@/components/ui/select-search'
 import { BulkUploadModal } from '@/components/bulk-upload-modal'
+import { confirmDelete } from '@/components/confirm-dialog'
 import { lossPerProductUnit } from '@/lib/rate-spread-calculator'
 
 type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number }
@@ -252,7 +253,12 @@ export function ProductManager({
 
   /** Elimina un producto. */
   async function remove(id: string) {
-    if (!confirm('¿Eliminar este producto?')) return
+    const ok = await confirmDelete({
+      title: '¿Eliminar este producto?',
+      description: 'Se retirará del catálogo y no se podrá recuperar.',
+      confirmText: 'Sí, eliminar producto',
+    })
+    if (!ok) return
     setDeletingId(id)
     const response = await fetch(`/api/admin/products?id=${id}`, { method: 'DELETE' })
     setDeletingId(null)

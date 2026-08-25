@@ -6,6 +6,7 @@ import { ArrowRightLeft, ClipboardList, Eye, FileText, Package, Plus, Printer, R
 import { toast } from 'sonner'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { Modal } from '@/components/ui/modal'
+import { confirmAction } from '@/components/confirm-dialog'
 import { QuoteCreator } from '@/components/quote-creator'
 import { QuotePrintView } from '@/components/quote-print-view'
 import { QUOTE_STATUS_LABELS, QUOTE_STATUSES } from '@/lib/quote-calculator'
@@ -121,6 +122,14 @@ export function QuoteManager({ initialQuotes, products, exchangeRate, quoteSetti
 
   /** Cancela una cotización. */
   async function cancelQuote(quote: Quote) {
+    const ok = await confirmAction({
+      title: '¿Cancelar esta cotización?',
+      description: `La cotización ${quote.quote_number} quedará marcada como cancelada.`,
+      confirmText: 'Sí, cancelar',
+      confirmClassName: 'bg-rose-600 text-white hover:bg-rose-500 dark:bg-rose-600 dark:text-white dark:hover:bg-rose-500',
+    })
+    if (!ok) return
+
     try {
       const response = await fetch(`/api/admin/quotes/${quote.id}`, { method: 'DELETE' })
       const result = await response.json()

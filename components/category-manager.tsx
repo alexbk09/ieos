@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { confirmDelete } from '@/components/confirm-dialog'
 
 type Category = {
   id: string
@@ -140,7 +141,12 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
 
   /** Elimina una categoría. */
   async function remove(id: string) {
-    if (!confirm('¿Eliminar esta categoría?')) return
+    const ok = await confirmDelete({
+      title: '¿Eliminar esta categoría?',
+      description: 'Los productos que la usan quedarán sin categoría.',
+      confirmText: 'Sí, eliminar categoría',
+    })
+    if (!ok) return
 
     setDeletingId(id)
     const response = await fetch(`/api/admin/categories?id=${id}`, { method: 'DELETE' })

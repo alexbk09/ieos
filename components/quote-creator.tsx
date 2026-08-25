@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { FileText, Minus, Package, Plus, Search, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { confirmAction } from '@/components/confirm-dialog'
 import type { Product } from '@/services/catalog'
 import type { QuoteSettings } from '@/services/quotes'
 import { calculateQuoteTotals } from '@/lib/quote-calculator'
@@ -95,7 +96,18 @@ export function QuoteCreator({ products, exchangeRate, quoteSettings, onCreated,
   }
 
   /** Elimina un ítem de la lista. */
-  function removeItem(productId: string) {
+  async function removeItem(productId: string) {
+    const item = items.find((i) => i.product.id === productId)
+    if (!item) return
+
+    const ok = await confirmAction({
+      title: '¿Quitar este producto?',
+      description: `${item.product.name} se eliminará de la cotización.`,
+      confirmText: 'Sí, quitar',
+      confirmClassName: 'bg-rose-600 text-white hover:bg-rose-500 dark:bg-rose-600 dark:text-white dark:hover:bg-rose-500',
+    })
+    if (!ok) return
+
     setItems((current) => current.filter((i) => i.product.id !== productId))
   }
 

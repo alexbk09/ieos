@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
+import { confirmDelete } from '@/components/confirm-dialog'
 
 type Proveedor = {
   id: string
@@ -165,7 +166,12 @@ export function ProveedorManager({ initialProveedores }: { initialProveedores: P
 
   /** Elimina un proveedor. */
   async function remove(id: string) {
-    if (!confirm('¿Eliminar este proveedor? Los productos asociados quedarán sin proveedor.')) return
+    const ok = await confirmDelete({
+      title: '¿Eliminar este proveedor?',
+      description: 'Los productos asociados quedarán sin proveedor.',
+      confirmText: 'Sí, eliminar proveedor',
+    })
+    if (!ok) return
 
     setDeletingId(id)
     const response = await fetch(`/api/admin/proveedores?id=${id}`, { method: 'DELETE' })
