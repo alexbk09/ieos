@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual de Usuario — AmaxTech</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      colors: {
+        primary: '#071d49',
+        accent: { DEFAULT: '#22d3ee', dark: '#0e7490' }
+      }
+    }
+  }
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  html { scroll-behavior: smooth; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(34,211,238,.4); border-radius: 8px; }
+  .flow-arrow { display: inline-flex; align-items: center; color: #22d3ee; font-weight: 700; }
+  .step-chip { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: #22d3ee; color: #071d49; font-weight: 800; font-size: .8rem; flex-shrink: 0; }
+  code { background: rgba(34,211,238,.12); padding: .15rem .4rem; border-radius: .4rem; font-family: 'JetBrains Mono', monospace; font-size: .85em; }
+  .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .7rem; border-radius: 9999px; font-size: .72rem; font-weight: 600; letter-spacing: .02em; }
+  .mockup { border-radius: 1.25rem; overflow: hidden; box-shadow: 0 20px 50px -12px rgba(0,0,0,.25); }
+  .mock-topbar { display:flex; align-items:center; gap:.5rem; background:#0b2545; padding:.6rem 1rem; }
+  .mock-dot { width:10px; height:10px; border-radius:50%; }
+  .mock-body { background:#f8fafc; padding:1rem; }
+  .mock-sidebar { width: 200px; flex-shrink: 0; background:#0b2545; color:#cbd5e1; padding:1rem; border-radius: 0 0 0 1.25rem; }
+  .mock-link { display:flex; align-items:center; gap:.5rem; padding:.45rem .7rem; border-radius:.6rem; font-size:.75rem; transition: all .2s; }
+  .mock-link:hover { background:rgba(255,255,255,.08); }
+  .mock-link.active { background:#22d3ee; color:#071d49; font-weight:700; }
+  .kbd { display:inline-block; padding:.15rem .5rem; border:1px solid rgba(7,29,73,.2); border-bottom-width:2px; border-radius:.4rem; font-family:'JetBrains Mono',monospace; font-size:.75rem; background:#fff; }
+  .table-flow { border-collapse: separate; border-spacing: 0; width: 100%; }
+  .table-flow th { background:#0b2545; color:#fff; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; padding:.6rem .9rem; text-align:left; }
+  .table-flow td { padding:.7rem .9rem; font-size:.85rem; border-bottom:1px solid rgba(7,29,73,.08); }
+  .table-flow tr:last-child td { border-bottom:none; }
+  .table-flow th:first-child { border-radius:.8rem 0 0 0; }
+  .table-flow th:last-child { border-radius:0 .8rem 0 0; }
+  #toc { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+  .toc-link { display:block; padding:.4rem .8rem; border-radius:.6rem; font-size:.83rem; color:#475569; text-decoration:none; transition: all .2s; border-left:2px solid transparent; }
+  .toc-link:hover { background:#f1f5f9; color:#071d49; }
+  .toc-link.active { background:#ecfeff; color:#0e7490; border-left-color:#22d3ee; font-weight:600; }
+  .section-card { scroll-margin-top: 1rem; }
+  @media print {
+    #toc { display:none; }
+    .no-print { display:none; }
+    body { background: white !important; }
+  }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased">
+<div class="mx-auto max-w-[1500px] px-4 sm:px-6 py-6">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <header class="no-print flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/70 dark:border-slate-800 px-6 py-4 shadow-sm">
+    <div class="flex items-center gap-4">
+      <span class="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 font-mono font-black text-primary text-xl shadow-lg shadow-cyan-500/30">Ax</span>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-black tracking-tight">Manual de Usuario <span class="text-cyan-500">AmaxTech</span></h1>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Plataforma de catálogo, ventas y gestión administrativa · v1.0</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="toggleDark()" class="grid size-11 place-items-center rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Cambiar tema">
+        <svg id="icon-sun" class="hidden dark:block" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg id="icon-moon" class="block dark:hidden" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a href="#introduccion" class="inline-flex items-center gap-2 rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-primary hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/30">
+        Comenzar
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <div class="mt-6 grid gap-8 lg:grid-cols-[280px_1fr]">
+
+    <!-- ═══════════ TOC / SIDEBAR ═══════════ -->
+    <nav id="toc" class="rounded-3xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800 p-4">
+      <p class="px-3 pb-3 pt-1 font-mono text-[10px] uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Contenido</p>
+      <div class="text-[13px] font-semibold px-3 pb-1 text-slate-400 uppercase tracking-wide">Inicio</div>
+      <a class="toc-link" href="#introduccion">1 · Introducción</a>
+      <a class="toc-link" href="#que-es">2 · ¿Qué es AmaxTech?</a>
+      <a class="toc-link" href="#roles">3 · Roles del sistema</a>
+      <div class="text-[13px] font-semibold px-3 pb-1 pt-4 text-slate-400 uppercase tracking-wide">Usuario · Cliente</div>
+      <a class="toc-link" href="#cliente-registro">4 · Registro y acceso</a>
+      <a class="toc-link" href="#cliente-catalogo">5 · Explorar el catálogo</a>
+      <a class="toc-link" href="#cliente-carrito">6 · Carrito y solicitudes</a>
+      <a class="toc-link" href="#cliente-dashboard">7 · Mi espacio (Dashboard)</a>
+      <a class="toc-link" href="#cliente-perfil">8 · Mi Perfil</a>
+      <div class="text-[13px] font-semibold px-3 pb-1 pt-4 text-slate-400 uppercase tracking-wide">Panel Administrativo</div>
+      <a class="toc-link" href="#admin-acceso">9 · Acceso al panel</a>
+      <a class="toc-link" href="#admin-resumen">10 · Resumen (KPIs)</a>
+      <a class="toc-link" href="#admin-productos">11 · Productos</a>
+      <a class="toc-link" href="#admin-categorias">12 · Categorías</a>
+      <a class="toc-link" href="#admin-marcas-proveedores">13 · Marcas y Proveedores</a>
+      <a class="toc-link" href="#admin-usuarios">14 · Usuarios</a>
+      <a class="toc-link" href="#admin-solicitudes">15 · Solicitudes</a>
+      <a class="toc-link" href="#admin-cotizaciones">16 · Cotizaciones</a>
+      <a class="toc-link" href="#admin-facturacion">17 · Facturación (SENIAT)</a>
+      <a class="toc-link" href="#admin-roles">18 · Roles y permisos</a>
+      <a class="toc-link" href="#admin-ajustes">19 · Ajuste de precios</a>
+      <a class="toc-link" href="#admin-config">20 · Configuración del sitio</a>
+      <div class="text-[13px] font-semibold px-3 pb-1 pt-4 text-slate-400 uppercase tracking-wide">Referencia</div>
+      <a class="toc-link" href="#flujos-completos">21 · Flujos completos</a>
+      <a class="toc-link" href="#estados">22 · Estados del sistema</a>
+      <a class="toc-link" href="#faq">23 · Preguntas frecuentes</a>
+      <a class="toc-link" href="#soporte">24 · Soporte y errores</a>
+    </nav>
+
+    <!-- ═══════════ CONTENIDO ═══════════ -->
+    <main class="space-y-10 min-w-0">
+
+      <!-- ── 1. INTRODUCCIÓN ── -->
+      <section id="introduccion" class="section-card rounded-3xl bg-gradient-to-br from-primary via-[#0b2545] to-[#123a6b] text-white p-8 sm:p-12">
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-cyan-400">Bienvenido</p>
+        <h2 class="mt-3 text-3xl sm:text-5xl font-black tracking-tight leading-tight">Aprende a manejar<br/><span class="text-cyan-400">tu plataforma AmaxTech.</span></h2>
+        <p class="mt-5 max-w-2xl text-sm sm:text-base text-slate-300 leading-relaxed">
+          Este manual te guía paso a paso por todas las funciones de la plataforma: desde explorar el catálogo y hacer
+          una solicitud de compra, hasta administrar productos, cotizaciones, facturas SENIAT, usuarios, roles y
+          permisos. Cada sección incluye flujos completos, diagramas y consejos para que aproveches al máximo el sistema.
+        </p>
+        <div class="mt-8 grid gap-3 sm:grid-cols-3 max-w-3xl">
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+            <p class="text-2xl font-black text-cyan-400">01</p>
+            <p class="mt-1 text-xs text-slate-300 font-medium">Para clientes<br/>Catálogo, carrito y solicitudes</p>
+          </div>
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+            <p class="text-2xl font-black text-cyan-400">02</p>
+            <p class="mt-1 text-xs text-slate-300 font-medium">Para administradores<br/>Gestión completa del negocio</p>
+          </div>
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+            <p class="text-2xl font-black text-cyan-400">03</p>
+            <p class="mt-1 text-xs text-slate-300 font-medium">Flujos completos<br/>Del interés a la factura</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 2. ¿QUÉ ES ILUMAX? ── -->
+      <section id="que-es" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 2</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">¿Qué es <span class="text-cyan-500">AmaxTech</span>?</h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          AmaxTech es una tienda digital y plataforma de gestión para productos de <strong>iluminación y revestimientos</strong>.
+          No es solo un catálogo: es un sistema completo que conecta al cliente con el equipo administrativo en un solo lugar.
+        </p>
+        <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-cyan-500/20 bg-cyan-50 dark:bg-cyan-500/5 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+            <h4 class="mt-4 font-bold">Catálogo digital</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Productos destacados con fotos, colores, especificaciones y precios en USD + Bs.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/20 bg-cyan-50 dark:bg-cyan-500/5 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+            <h4 class="mt-4 font-bold">Carrito y solicitudes</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Arma tu pedido, confírmalo por WhatsApp y genera una solicitud con ID de seguimiento.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/20 bg-cyan-50 dark:bg-cyan-500/5 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg></div>
+            <h4 class="mt-4 font-bold">Cotización → Venta</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Crea cotizaciones con descuentos, envíalas por correo e imprímelas. Conviértelas en solicitudes.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/20 bg-cyan-50 dark:bg-cyan-500/5 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></div>
+            <h4 class="mt-4 font-bold">Facturación SENIAT</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Emite facturas electrónicas con RIF, IVA, correlativos y números de control.</p>
+          </div>
+        </div>
+        <div class="mt-8 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5">
+          <p class="font-mono text-xs uppercase tracking-widest text-cyan-600 dark:text-cyan-400">Además incluye</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Panel con KPIs y gráficos</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Tasa oficial + paralela del día</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Ajuste masivo de precios por tasa</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Roles y permisos por módulo</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Importación de productos por Excel</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Modo oscuro / claro</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Diseño responsive (móvil / escritorio)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 3. ROLES ── -->
+      <section id="roles" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 3</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Roles del sistema</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">La plataforma distingue dos perfiles base. El administrador puede crear <strong>roles personalizados</strong> con permisos específicos por módulo.</p>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-50 to-white dark:from-cyan-500/10 dark:to-slate-900 p-6">
+            <div class="flex items-center gap-3">
+              <span class="grid size-12 place-items-center rounded-2xl bg-cyan-400 text-primary"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+              <div><h4 class="text-lg font-black">Cliente</h4><p class="text-xs text-slate-500 dark:text-slate-400">Perfil base · registro público</p></div>
+            </div>
+            <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span class="text-cyan-500">✔</span> Explorar catálogo y ver detalles de productos</li>
+              <li class="flex gap-2"><span class="text-cyan-500">✔</span> Armar carrito y confirmar solicitudes por WhatsApp</li>
+              <li class="flex gap-2"><span class="text-cyan-500">✔</span> Ver historial de solicitudes y su estado</li>
+              <li class="flex gap-2"><span class="text-cyan-500">✔</span> Editar perfil, avatar y contraseña</li>
+              <li class="flex gap-2"><span class="text-cyan-500">✔</span> Enviar mensajes de contacto</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-50 to-white dark:from-blue-500/10 dark:to-slate-900 p-6">
+            <div class="flex items-center gap-3">
+              <span class="grid size-12 place-items-center rounded-2xl bg-blue-950 text-cyan-400"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+              <div><h4 class="text-lg font-black">Administrador</h4><p class="text-xs text-slate-500 dark:text-slate-400">Acceso total al panel de control</p></div>
+            </div>
+            <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span class="text-blue-500">✔</span> Todo lo del cliente, más:</li>
+              <li class="flex gap-2"><span class="text-blue-500">✔</span> KPIs, ventas, tasas y gráficos del negocio</li>
+              <li class="flex gap-2"><span class="text-blue-500">✔</span> Productos, categorías, marcas y proveedores</li>
+              <li class="flex gap-2"><span class="text-blue-500">✔</span> Solicitudes, cotizaciones y facturas SENIAT</li>
+              <li class="flex gap-2"><span class="text-blue-500">✔</span> Usuarios, roles y permisos</li>
+              <li class="flex gap-2"><span class="text-blue-500">✔</span> Ajuste masivo de precios y configuración del sitio</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-500/20 p-5 flex gap-3">
+          <span class="text-amber-500 shrink-0 mt-0.5"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></span>
+          <div class="text-sm text-amber-800 dark:text-amber-200"><strong>Importante:</strong> los roles base <code>admin</code> y <code>client</code> no se pueden eliminar. Los roles personalizados se gestionan en <em>Panel &rarr; Roles y permisos</em> y permiten limitar qué ve y qué hace cada usuario del panel.</div>
+        </div>
+      </section>
+
+      <!-- ════════════════════ PARTE CLIENTE ════════════════════ -->
+      <div class="rounded-3xl bg-gradient-to-r from-cyan-500/10 via-transparent to-cyan-500/10 border border-cyan-500/20 px-6 py-8 text-center">
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-cyan-600 dark:text-cyan-400">Parte I</p>
+        <h3 class="mt-2 text-2xl font-black tracking-tight">Guía del Cliente</h3>
+      </div>
+
+      <!-- ── 4. REGISTRO Y ACCESO ── -->
+      <section id="cliente-registro" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 4</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Registro y acceso</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Accede desde el botón <span class="badge bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">Cuenta</span> del encabezado o directamente en <code>/login</code>.</p>
+
+        <div class="mt-8 grid gap-6 lg:grid-cols-2">
+          <div class="space-y-4">
+            <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+              <div class="flex items-center gap-3"><span class="step-chip">1</span><div><h4 class="font-bold">Crear una cuenta</h4><p class="text-xs text-slate-500 dark:text-slate-400">Registro con correo y contraseña</p></div></div>
+              <ol class="mt-4 space-y-2 pl-3 text-sm text-slate-600 dark:text-slate-300 list-decimal">
+                <li>Entra a <code>/login</code> y pulsa <strong>“Quiero crear una cuenta”</strong>.</li>
+                <li>Completa: <strong>Nombre completo</strong>, <strong>Teléfono</strong>, <strong>Correo electrónico</strong> y <strong>Contraseña</strong> (mínimo 6 caracteres).</li>
+                <li>Pulsa <strong>“Crear cuenta”</strong>.</li>
+                <li>Revisa tu correo (incluye spam) y confirma el enlace de verificación.</li>
+                <li>Una vez verificado, inicia sesión.</li>
+              </ol>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+              <div class="flex items-center gap-3"><span class="step-chip">2</span><div><h4 class="font-bold">Iniciar sesión</h4><p class="text-xs text-slate-500 dark:text-slate-400">Acceso con correo y contraseña</p></div></div>
+              <ol class="mt-4 space-y-2 pl-3 text-sm text-slate-600 dark:text-slate-300 list-decimal">
+                <li>Introduce tu correo y contraseña.</li>
+                <li>Pulsa <strong>“Iniciar sesión”</strong>.</li>
+                <li>El sistema te redirige automáticamente según tu rol: <strong>Cliente &rarr; Mi espacio</strong> · <strong>Admin &rarr; Panel de control</strong>.</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Mockup de la pantalla de login -->
+          <div class="mockup">
+            <div class="mock-topbar"><span class="mock-dot bg-red-400"></span><span class="mock-dot bg-amber-400"></span><span class="mock-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">amaxtech / login</span></div>
+            <div class="mock-body grid place-items-center">
+              <div class="w-full max-w-sm rounded-2xl bg-slate-950 p-6 text-white shadow-2xl">
+                <div class="flex items-center justify-between mb-8"><span class="font-mono text-xs text-slate-400">← Volver a AmaxTech</span><span class="grid size-7 place-items-center rounded-lg bg-cyan-400 font-mono text-xs font-black text-blue-950">Ax</span></div>
+                <h5 class="text-xl font-bold">Bienvenido de vuelta.</h5>
+                <p class="mt-1 text-xs text-slate-400">Gestiona tus solicitudes y proyectos desde un solo lugar.</p>
+                <div class="mt-6 space-y-3">
+                  <div class="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs text-slate-300">Correo electrónico</div>
+                  <div class="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-xs text-slate-300">••••••••</div>
+                  <button class="w-full rounded-xl bg-cyan-400 py-3 text-xs font-bold text-blue-950">Iniciar sesión</button>
+                  <p class="text-center text-[11px] text-slate-400 underline underline-offset-4">¿Quiero crear una cuenta?</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5 text-sm text-slate-600 dark:text-slate-300">
+          <strong class="text-cyan-600 dark:text-cyan-400">Consejo:</strong> Si no ves el correo de verificación, revisa la carpeta de spam o intenta iniciar sesión; el sistema te informará si tu cuenta aún no está confirmada.
+        </div>
+      </section>
+
+      <!-- ── 5. CATÁLOGO ── -->
+      <section id="cliente-catalogo" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 5</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Explorar el catálogo</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Encuentra productos por búsqueda, categoría, marca o rango de precio.</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">🔍 Búsqueda por texto</h4><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Escribe el nombre del producto. Busca al instante mientras escribes.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">🗂️ Categorías</h4><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Selecciona una o varias categorías con buscador interno.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">🏷️ Marcas</h4><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Filtra por la marca del fabricante.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">💰 Rango de precio</h4><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Define un precio mínimo y máximo en USD.</p></div>
+        </div>
+
+        <div class="mt-8 flex flex-col lg:flex-row gap-6">
+          <div class="flex-1">
+            <h4 class="font-bold text-sm">Información en cada producto</h4>
+            <ul class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">🖼️</span> Fotografía del producto</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">📊</span> <strong>Stock disponible</strong> — badge ámbar si el stock es bajo</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">💵</span> Precio en <strong>USD</strong> y en <strong>bolívares</strong> según la tasa del día</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">📄</span> <strong>“Ver detalles”</strong>: colores disponibles, especificaciones técnicas y galería de imágenes</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">➕</span> Botón <strong>“+”</strong> para agregar al carrito</li>
+            </ul>
+            <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5 text-sm text-slate-600 dark:text-slate-300">
+              <strong class="text-cyan-600 dark:text-cyan-400">Hecho para agilizar:</strong> el catálogo usa carga progresiva (infinite scroll) — los productos aparecen de 10 en 10 mientras haces scroll. Usa los filtros para acotar resultados.
+            </div>
+          </div>
+          <!-- Mockup card de producto -->
+          <div class="w-full lg:w-[340px] shrink-0">
+            <div class="mockup">
+              <div class="mock-topbar"><span class="mock-dot bg-red-400"></span><span class="mock-dot bg-amber-400"></span><span class="mock-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Producto</span></div>
+              <div class="mock-body">
+                <div class="overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm">
+                  <div class="relative aspect-square bg-gradient-to-br from-slate-200 to-slate-300 grid place-items-center">
+                    <svg width="48" height="48" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <span class="absolute left-3 top-3 rounded-full bg-amber-100 text-amber-700 px-2.5 py-1 font-mono text-[9px] uppercase">18 en stock</span>
+                  </div>
+                  <div class="p-4">
+                    <p class="text-[10px] text-cyan-600 font-semibold">Iluminación LED</p>
+                    <p class="mt-0.5 text-sm font-bold">Línea Aura 12W</p>
+                    <p class="mt-1 text-[11px] text-slate-500">Luz lineal para crear atmósferas limpias.</p>
+                    <div class="mt-3 flex items-end justify-between">
+                      <div><p class="font-black text-sm">$36.00</p><p class="text-[10px] text-slate-400">Bs. 1.314,00</p></div>
+                      <button class="grid size-8 place-items-center rounded-full bg-cyan-400 text-blue-950">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 6. CARRITO ── -->
+      <section id="cliente-carrito" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 6</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Carrito y solicitudes de compra</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">El carrito guarda tu selección aunque cambies de página. Al confirmar, el sistema crea tu solicitud y te conecta con el equipo por WhatsApp.</p>
+
+        <div class="mt-8 grid gap-6 lg:grid-cols-2">
+          <div>
+            <h4 class="font-bold text-sm">Flujo de la solicitud</h4>
+            <div class="mt-4 space-y-0">
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center"><span class="step-chip">1</span><span class="w-px flex-1 bg-slate-200 dark:bg-slate-700"></span></div>
+                <div class="pb-6"><p class="text-sm font-semibold">Agregar productos</p><p class="text-xs text-slate-500 dark:text-slate-400">Pulsa el botón <strong>“+”</strong> en cada producto que quieras. Se abre el panel lateral del carrito.</p></div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center"><span class="step-chip">2</span><span class="w-px flex-1 bg-slate-200 dark:bg-slate-700"></span></div>
+                <div class="pb-6"><p class="text-sm font-semibold">Ajustar cantidades</p><p class="text-xs text-slate-500 dark:text-slate-400">Usa los botones <strong>+ / −</strong> para cambiar las cantidades. El total se actualiza en vivo en USD y Bs.</p></div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center"><span class="step-chip">3</span><span class="w-px flex-1 bg-slate-200 dark:bg-slate-700"></span></div>
+                <div class="pb-6"><p class="text-sm font-semibold">Confirmar por WhatsApp</p><p class="text-xs text-slate-500 dark:text-slate-400">Pulsa <strong>“Confirmar por WhatsApp”</strong>. Debes tener la sesión iniciada.</p></div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center"><span class="step-chip">4</span><span class="w-px flex-1 bg-slate-200 dark:bg-slate-700"></span></div>
+                <div class="pb-6"><p class="text-sm font-semibold">Se crea tu Solicitud ID</p><p class="text-xs text-slate-500 dark:text-slate-400">El sistema registra la solicitud con un ID único y abre WhatsApp con el mensaje que incluye tu carrito, total y número de solicitud.</p></div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center"><span class="step-chip">5</span></div>
+                <div><p class="text-sm font-semibold">Seguimiento</p><p class="text-xs text-slate-500 dark:text-slate-400">El equipo actualiza el estado de tu pedido (confirmada, enviada, completada). Lo ves en tu <strong>Mi espacio</strong>.</p></div>
+              </div>
+            </div>
+            <div class="mt-6 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-500/20 p-4 text-xs text-amber-800 dark:text-amber-200">
+              <strong>Nota:</strong> si no iniciaste sesión, el sistema te lo indicará y te invitará a iniciar sesión para poder generar tu Solicitud con ID de seguimiento.
+            </div>
+          </div>
+
+          <!-- Mockup carrito -->
+          <div class="mockup">
+            <div class="mock-topbar"><span class="mock-dot bg-red-400"></span><span class="mock-dot bg-amber-400"></span><span class="mock-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Carrito</span></div>
+            <div class="mock-body grid justify-end">
+              <div class="w-80 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-5 shadow-2xl">
+                <div class="flex items-center justify-between"><div><p class="font-mono text-[9px] uppercase tracking-widest text-cyan-600">Tu selección</p><h6 class="text-base font-black">Solicitud</h6></div><span class="grid size-7 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs">✕</span></div>
+                <div class="mt-4 space-y-3">
+                  <div class="flex gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="size-12 rounded-lg bg-slate-200 dark:bg-slate-700 grid place-items-center text-[10px]">IMG</div>
+                    <div class="flex-1"><p class="text-xs font-semibold">Panel LED Orbis 24W</p><p class="text-[10px] text-slate-400">$28.00 · Bs. 1.022,00</p><div class="mt-1.5 flex items-center gap-2"><span class="grid size-5 place-items-center rounded-full border text-[9px]">−</span><span class="text-[10px] font-bold">2</span><span class="grid size-5 place-items-center rounded-full border text-[9px]">+</span></div></div>
+                  </div>
+                  <div class="flex gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="size-12 rounded-lg bg-slate-200 dark:bg-slate-700 grid place-items-center text-[10px]">IMG</div>
+                    <div class="flex-1"><p class="text-xs font-semibold">Línea Aura 12W</p><p class="text-[10px] text-slate-400">$36.00 · Bs. 1.314,00</p><div class="mt-1.5 flex items-center gap-2"><span class="grid size-5 place-items-center rounded-full border text-[9px]">−</span><span class="text-[10px] font-bold">1</span><span class="grid size-5 place-items-center rounded-full border text-[9px]">+</span></div></div>
+                  </div>
+                </div>
+                <div class="mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
+                  <div class="flex justify-between text-xs"><span class="text-slate-500">Total estimado</span><div class="text-right"><p class="font-black">$92.00</p><p class="text-[10px] text-slate-400">Bs. 3.358,00 · tasa 36,50</p></div></div>
+                  <button class="mt-3 w-full rounded-full bg-cyan-400 py-2.5 text-xs font-bold text-blue-950">Confirmar por WhatsApp →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 7. DASHBOARD CLIENTE ── -->
+      <section id="cliente-dashboard" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 7</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Mi espacio (Dashboard del cliente)</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Al iniciar sesión como cliente, el sistema te lleva a tu panel personal donde ves:</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <div class="flex items-center gap-2 text-cyan-600"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><h4 class="font-bold text-sm">Tasa oficial del día</h4></div>
+            <p class="mt-2 text-2xl font-black">Bs. 36,82 <span class="text-xs font-normal text-slate-500">· dolarapi.com</span></p>
+            <p class="text-xs text-slate-500 mt-1">Referencia para ver tus totales en bolívares.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="flex items-center gap-2 text-cyan-600"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><h4 class="font-bold text-sm">Solicitudes registradas</h4></div>
+            <p class="mt-2 text-2xl font-black">4</p>
+            <p class="text-xs text-slate-500 mt-1">Número total de solicitudes creadas.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl border border-slate-200/70 dark:border-slate-700 overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700"><h4 class="font-bold text-sm">Historial reciente</h4></div>
+          <div class="divide-y divide-slate-100 dark:divide-slate-800">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+              <span class="font-mono text-xs">#1F3A9C2E</span>
+              <span class="badge bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">Pendiente</span>
+              <div class="text-right"><p class="text-xs font-bold">$120.00</p><p class="text-[10px] text-slate-400">Bs. 4.418,40</p></div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+              <span class="font-mono text-xs">#B7D21F00</span>
+              <span class="badge bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">Confirmada</span>
+              <div class="text-right"><p class="text-xs font-bold">$92.00</p><p class="text-[10px] text-slate-400">Bs. 3.387,44</p></div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+              <span class="font-mono text-xs">#4C88E501</span>
+              <span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Completada</span>
+              <div class="text-right"><p class="text-xs font-bold">$65.50</p><p class="text-[10px] text-slate-400">Bs. 2.411,71</p></div>
+            </div>
+          </div>
+        </div>
+        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Desde aquí también accedes a tu <strong>Mi Perfil</strong> y a <strong>Cerrar sesión</strong> usando el menú de usuario (avatar) en la esquina superior derecha.</p>
+      </section>
+
+      <!-- ── 8. PERFIL ── -->
+      <section id="cliente-perfil" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 8</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Mi Perfil</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Desde <code>/perfil</code> editas tus datos personales, foto de perfil y contraseña. Disponible para clientes y administradores.</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-600"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <h4 class="mt-3 font-bold text-sm">Datos personales</h4>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Nombre completo, correo y teléfono. Pulsa <strong>“Guardar cambios”</strong> para aplicar.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-600"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+            <h4 class="mt-3 font-bold text-sm">Foto de perfil</h4>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Haz clic en el botón de la cámara sobre tu avatar. Formatos JPG/PNG/WebP, máx. 2 MB.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-600"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <h4 class="mt-3 font-bold text-sm">Contraseña</h4>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Mínimo 6 caracteres. Debes escribir la nueva contraseña dos veces; deben coincidir.</p>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 p-4 text-xs text-emerald-800 dark:text-emerald-200">
+          ✅ Al guardar, el sistema muestra una notificación de éxito y refresca la página para que veas tus datos actualizados en toda la plataforma (incluido el avatar en el encabezado).
+        </div>
+      </section>
+
+      <!-- ════════════════════ PARTE ADMIN ════════════════════ -->
+      <div class="rounded-3xl bg-gradient-to-r from-blue-500/10 via-transparent to-blue-500/10 border border-blue-500/20 px-6 py-8 text-center">
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-blue-600 dark:text-cyan-400">Parte II</p>
+        <h3 class="mt-2 text-2xl font-black tracking-tight">Panel Administrativo</h3>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">Acceso exclusivo para administradores. Organizado en módulos con navegación lateral.</p>
+      </div>
+
+      <!-- ── 9. ACCESO ── -->
+      <section id="admin-acceso" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 9</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Acceso al panel de control</h3>
+        <ol class="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+          <li class="flex gap-3"><span class="step-chip">1</span><p>Inicia sesión en <code>/login</code> con una cuenta con rol <strong>administrador</strong>.</p></li>
+          <li class="flex gap-3"><span class="step-chip">2</span><p>El sistema te redirige automáticamente a <code>/admin</code> (Panel de control).</p></li>
+          <li class="flex gap-3"><span class="step-chip">3</span><p>Desde el menú lateral accedes a todos los módulos.</p></li>
+          <li class="flex gap-3"><span class="step-chip">4</span><p>Usa <strong>“Volver a la tienda”</strong> para salir al sitio público, <strong>“Mi Perfil”</strong> para tus datos, o <strong>“Cerrar sesión”</strong>.</p></li>
+        </ol>
+
+        <div class="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm mb-3">Navegación del panel</h4>
+            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 text-xs">
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>📊</span> Resumen</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>📦</span> Productos</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>🗂️</span> Categorías</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>🏷️</span> Marcas</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>🏢</span> Proveedores</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>👥</span> Usuarios</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>📄</span> Cotizaciones</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>🧾</span> Facturación</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>📋</span> Solicitudes</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>🛡️</span> Roles y permisos</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>📈</span> Ajuste de precios</div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5"><span>⚙️</span> Configuración</div>
+            </div>
+          </div>
+          <!-- Mockup sidebar -->
+          <div class="mockup">
+            <div class="mock-topbar"><span class="mock-dot bg-red-400"></span><span class="mock-dot bg-amber-400"></span><span class="mock-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Panel de control</span></div>
+            <div class="flex bg-slate-50">
+              <div class="mock-sidebar">
+                <div class="flex items-center gap-2 mb-5"><span class="grid size-7 place-items-center rounded-lg bg-cyan-400 font-mono text-[10px] font-black text-blue-950">Ax</span><span class="font-mono text-[10px] text-slate-400">AmaxTech</span></div>
+                <div class="space-y-0.5">
+                  <div class="mock-link active">📊 Resumen</div>
+                  <div class="mock-link">📦 Productos</div>
+                  <div class="mock-link">🗂️ Categorías</div>
+                  <div class="mock-link">👥 Usuarios</div>
+                  <div class="mock-link">📄 Cotizaciones</div>
+                  <div class="mock-link">🧾 Facturación</div>
+                  <div class="mock-link">📋 Solicitudes</div>
+                  <div class="mock-link">🛡️ Roles</div>
+                  <div class="mock-link">⚙️ Configuración</div>
+                </div>
+                <div class="mt-6 border-t border-white/10 pt-3 space-y-0.5">
+                  <div class="mock-link">↩ Volver a la tienda</div>
+                  <div class="mock-link">👤 Mi Perfil</div>
+                  <div class="mock-link text-red-400">⎋ Cerrar sesión</div>
+                </div>
+              </div>
+              <div class="flex-1 p-4">
+                <div class="rounded-xl bg-white border border-slate-200 p-4 shadow-sm">
+                  <p class="font-mono text-[9px] uppercase tracking-widest text-cyan-600">Control center</p>
+                  <h6 class="text-base font-black mt-1">Visión general</h6>
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div class="rounded-lg bg-slate-50 p-2.5"><p class="text-[9px] text-slate-400">Ingresos</p><p class="text-xs font-black">$3.845</p></div>
+                    <div class="rounded-lg bg-slate-50 p-2.5"><p class="text-[9px] text-slate-400">Solicitudes</p><p class="text-xs font-black">27</p></div>
+                    <div class="rounded-lg bg-cyan-500/10 border border-cyan-500/25 p-2.5"><p class="text-[9px] text-cyan-600">Tasa oficial</p><p class="text-xs font-black">Bs. 36,82</p></div>
+                    <div class="rounded-lg bg-amber-500/10 border border-amber-500/25 p-2.5"><p class="text-[9px] text-amber-600">Tasa paralela</p><p class="text-xs font-black">Bs. 41,30</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 10. RESUMEN ── -->
+      <section id="admin-resumen" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 10</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Resumen · Visión general del negocio</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">El primer módulo del panel te da el pulso del negocio en tiempo real.</p>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/50 dark:bg-cyan-500/5 p-4"><p class="text-xs text-slate-500">Tasa oficial</p><p class="mt-1 text-xl font-black">Bs. 36,82</p><p class="text-[10px] text-slate-400">dolarapi.com</p></div>
+          <div class="rounded-2xl border border-amber-500/25 bg-amber-50/50 dark:bg-amber-500/5 p-4"><p class="text-xs text-slate-500">Tasa paralela</p><p class="mt-1 text-xl font-black">Bs. 41,30</p><p class="text-[10px] text-slate-400">Diferencia: Bs. 4,48</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-4"><p class="text-xs text-slate-500">💰 Ingresos</p><p class="mt-1 text-xl font-black">$3.845,20</p><p class="text-[10px] text-slate-400">Solo completadas</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-4"><p class="text-xs text-slate-500">📦 Unidades vendidas</p><p class="mt-1 text-xl font-black">142</p><p class="text-[10px] text-slate-400">Solo completadas</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-4"><p class="text-xs text-slate-500">⏳ Pendientes</p><p class="mt-1 text-xl font-black">8</p><p class="text-[10px] text-slate-400">Requieren atención</p></div>
+        </div>
+        <div class="mt-6 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Ventas (últimos 7 días)</h4>
+            <p class="text-xs text-slate-500 mt-1">Facturación diaria en USD</p>
+            <div class="mt-4 flex items-end gap-3 h-32">
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-500/20" style="height:15%"></div><span class="font-mono text-[9px] text-slate-400">lun</span></div>
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-400/40" style="height:30%"></div><span class="font-mono text-[9px] text-slate-400">mar</span></div>
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-400/60" style="height:45%"></div><span class="font-mono text-[9px] text-slate-400">mié</span></div>
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-400/70" style="height:60%"></div><span class="font-mono text-[9px] text-slate-400">jue</span></div>
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-500/80" style="height:40%"></div><span class="font-mono text-[9px] text-slate-400">vie</span></div>
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-500" style="height:70%"></div><span class="font-mono text-[9px] text-slate-400">sáb</span></div>
+              <div class="flex-1 flex flex-col items-center justify-end gap-1"><div class="w-full rounded-t-lg bg-cyan-600" style="height:90%"></div><span class="font-mono text-[9px] text-slate-400">dom</span></div>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Estado de solicitudes</h4>
+            <p class="text-xs text-slate-500 mt-1">Distribución por estado</p>
+            <div class="mt-4 space-y-2.5 text-xs">
+              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span>Pendientes</span><span class="ml-auto font-bold">8</span></div>
+              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span><span>Confirmadas</span><span class="ml-auto font-bold">5</span></div>
+              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span><span>Enviadas</span><span class="ml-auto font-bold">3</span></div>
+              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Completadas</span><span class="ml-auto font-bold">11</span></div>
+              <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>Canceladas</span><span class="ml-auto font-bold">2</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+          <div class="rounded-2xl border border-amber-500/25 bg-amber-50/50 dark:bg-amber-500/5 p-5">
+            <div class="flex items-center gap-3"><span class="text-amber-500">⚠️</span><div><h4 class="font-bold text-sm">Inventario</h4><p class="text-xs text-slate-500">Estado de existencias</p></div><span class="ml-auto text-2xl font-black">6</span></div>
+            <p class="mt-1 text-xs text-slate-500">productos con stock bajo</p>
+            <a href="#admin-productos" class="mt-3 inline-flex rounded-full bg-blue-950 text-white text-xs px-4 py-2 font-semibold">Gestionar inventario</a>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Productos más vendidos</h4>
+            <p class="text-xs text-slate-500 mt-1">Top 5 por unidades</p>
+            <div class="mt-3 space-y-2 text-xs">
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2"><span class="font-mono">#1</span><span class="font-medium">Panel LED Orbis 24W</span><span class="ml-auto badge bg-slate-200/60 dark:bg-slate-700 text-slate-600 dark:text-slate-300">42 uds</span></div>
+              <div class="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2"><span class="font-mono">#2</span><span class="font-medium">Línea Aura 12W</span><span class="ml-auto badge bg-slate-200/60 dark:bg-slate-700 text-slate-600 dark:text-slate-300">38 uds</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 11. PRODUCTOS ── -->
+      <section id="admin-productos" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 11</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Gestión de Productos</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Administra el inventario completo: precio de venta, costo base, fotos, categorías, marca, proveedor y productos destacados.</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <h4 class="font-bold text-sm">➕ Crear producto</h4>
+            <p class="mt-1 text-xs text-slate-500">Nombre, slug, descripción, precio USD, costo base, stock, categorías (una o varias), marca, proveedor e imágenes.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <h4 class="font-bold text-sm">📥 Importar por Excel</h4>
+            <p class="mt-1 text-xs text-slate-500">Descarga la plantilla guía, llénala y súbela. Valida fila por fila y crea categorías/marcas/proveedores automáticamente.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <h4 class="font-bold text-sm">🖼️ Imágenes</h4>
+            <p class="mt-1 text-xs text-slate-500">Sube una o varias imágenes por producto (JPG/PNG/WebP, máx. 5 MB). Se optimizan automáticamente.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <h4 class="font-bold text-sm">⭐ Destacados</h4>
+            <p class="mt-1 text-xs text-slate-500">Marca <strong>“featured”</strong> para mostrar el producto en la portada (hasta 6).</p>
+          </div>
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-slate-200/70 dark:border-slate-700 overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+            <h4 class="font-bold text-sm">Pasos rápidos</h4>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">🔎 Buscar producto</span>
+              <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">🔄 Refrescar tabla</span>
+              <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">⬇️ Exportar Excel</span>
+              <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">🗑️ Eliminar</span>
+            </div>
+          </div>
+          <div class="p-5">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4"><strong class="text-xs">1 · Crear un producto</strong><p class="mt-1 text-xs text-slate-500">Pulsa “Nuevo producto” → completa los campos → guarda. Aparece al instante en el catálogo.</p></div>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4"><strong class="text-xs">2 · Editar un producto</strong><p class="mt-1 text-xs text-slate-500">Pulsa el botón ✏️ junto al producto. Actualiza precio, stock o imágenes. Al guardar, la tienda se actualiza en ≤ 5 minutos.</p></div>
+              <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4"><strong class="text-xs">3 · Importar en lote</strong><p class="mt-1 text-xs text-slate-500">Pulsa “Importar Excel” → descarga la plantilla → complétala → sube el archivo → revisa la validación → confirma.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5 text-sm text-slate-600 dark:text-slate-300">
+          <strong class="text-cyan-600 dark:text-cyan-400">Columnas de la plantilla Excel:</strong>
+          <code class="mt-2 block text-xs leading-relaxed">nombre (obligatorio) · slug · descripcion · precio_usd · stock · categoria · featured (SI/NO) · image_url · marca · proveedor · costo_inicial · categoria_dos</code>
+          <p class="mt-2 text-xs">Si una categoría, marca o proveedor no existe, se crea automáticamente. La hoja <em>“Instrucciones”</em> te lo recuerda.</p>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/25 p-5">
+          <h4 class="font-bold text-sm">📥 Archivos de ejemplo</h4>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <a href="/manual/plantilla-productos.xlsx" download class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/25">⬇️ Descargar plantilla Excel de productos</a>
+          </div>
+          <p class="mt-2 text-xs text-slate-500">Plantilla lista para llenar con los mismos campos que usa el sistema. Incluye una hoja de instrucciones.</p>
+        </div>
+      </section>
+
+      <!-- ── 12. CATEGORÍAS ── -->
+      <section id="admin-categorias" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 12</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Categorías</h3>
+        <ul class="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+          <li class="flex gap-3"><span class="step-chip">1</span><p><strong>Crear:</strong> nombre + slug (identificador para la URL). Ej: <em>Revestimiento 3D</em> → <code>revestimiento-3d</code>.</p></li>
+          <li class="flex gap-3"><span class="step-chip">2</span><p><strong>Editar:</strong> cambia nombre, slug, descripción o estado.</p></li>
+          <li class="flex gap-3"><span class="step-chip">3</span><p><strong>Activar / Desactivar:</strong> solo las categorías <em>activas</em> aparecen en los filtros del catálogo público.</p></li>
+          <li class="flex gap-3"><span class="step-chip">4</span><p><strong>Eliminar:</strong> se pide confirmación. Los productos asociados quedan sin categoría (no se borran).</p></li>
+        </ul>
+        <div class="mt-6 rounded-2xl bg-cyan-50/60 dark:bg-cyan-500/5 border border-cyan-500/20 p-4 text-xs text-slate-600 dark:text-slate-300"><strong>Tip:</strong> un producto puede pertenecer a varias categorías. La primera aparece como etiqueta en la tarjeta del catálogo.</div>
+      </section>
+
+      <!-- ── 13. MARCAS Y PROVEEDORES ── -->
+      <section id="admin-marcas-proveedores" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 13</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Marcas y Proveedores</h3>
+        <div class="mt-6 grid gap-6 md:grid-cols-2">
+          <div>
+            <h4 class="font-bold text-sm flex items-center gap-2"><span>🏷️</span> Marcas</h4>
+            <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span>✔</span> Crear con nombre y estado (activa/inactiva).</li>
+              <li class="flex gap-2"><span>✔</span> Solo las marcas activas aparecen en el filtro del catálogo.</li>
+              <li class="flex gap-2"><span>✔</span> Asocia la marca a cada producto desde el gestor de productos.</li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-bold text-sm flex items-center gap-2"><span>🏢</span> Proveedores</h4>
+            <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span>✔</span> Registro con nombre, RIF y estado.</li>
+              <li class="flex gap-2"><span>✔</span> Solo proveedores activos aparecen en el gestor de productos.</li>
+              <li class="flex gap-2"><span>✔</span> Asocia el proveedor a cada producto para trazabilidad del costo.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 14. USUARIOS ── -->
+      <section id="admin-usuarios" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 14</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Usuarios</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Lista todos los usuarios del sistema (clientes y administradores) con su rol asignado y permite crear cuentas nuevas.</p>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Crear un usuario</h4>
+            <ol class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300 list-decimal pl-4">
+              <li>Pulsa <strong>“Nuevo usuario”</strong>.</li>
+              <li>Completa nombre, correo (válido), contraseña (mín. 6 caracteres), teléfono.</li>
+              <li>Selecciona el <strong>rol</strong> (admin, client o un rol personalizado).</li>
+              <li>Guarda. El usuario recibe acceso inmediato.</li>
+            </ol>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Información visible en la tabla</h4>
+            <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span>👤</span> Nombre + avatar</li>
+              <li class="flex gap-2"><span>✉️</span> Correo + teléfono</li>
+              <li class="flex gap-2"><span>🛡️</span> Rol asignado</li>
+              <li class="flex gap-2"><span>🗓️</span> Fecha de registro</li>
+              <li class="flex gap-2"><span>🔍</span> Búsqueda, ordenamiento y paginación</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 15. SOLICITUDES ── -->
+      <section id="admin-solicitudes" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 15</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Solicitudes</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Revisa qué pidió cada cliente, actualiza el estado del pedido y consulta el historial de cambios.</p>
+
+        <div class="mt-6 flex flex-col lg:flex-row gap-6">
+          <div class="flex-1">
+            <h4 class="font-bold text-sm">Funciones</h4>
+            <ul class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex gap-3"><span class="step-chip">1</span><p><strong>Tabla de solicitudes</strong> con búsqueda por cliente/producto, filtro por estado y rango de fechas.</p></li>
+              <li class="flex gap-3"><span class="step-chip">2</span><p><strong>Ver detalle:</strong> datos del cliente, ítems con cantidades y precios, total en USD y Bs, fecha de creación.</p></li>
+              <li class="flex gap-3"><span class="step-chip">3</span><p><strong>Cambiar estado:</strong> selector desplegable con los 5 estados. Al anular, pide confirmación.</p></li>
+              <li class="flex gap-3"><span class="step-chip">4</span><p><strong>Historial:</strong> cada cambio de estado queda registrado con quién, cuándo y la transición anterior → nueva.</p></li>
+            </ul>
+          </div>
+          <div class="w-full lg:w-[360px] shrink-0">
+            <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+              <h4 class="font-bold text-sm">Ciclo de vida de una solicitud</h4>
+              <div class="mt-4 space-y-2">
+                <div class="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-4 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>Pendiente</div>
+                <div class="text-center text-cyan-500 font-bold">↓</div>
+                <div class="flex items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 px-4 py-2.5 text-xs font-semibold text-blue-700 dark:text-blue-300"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>Confirmada</div>
+                <div class="text-center text-cyan-500 font-bold">↓</div>
+                <div class="flex items-center gap-3 rounded-xl bg-violet-50 dark:bg-violet-500/10 px-4 py-2.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>Enviada</div>
+                <div class="text-center text-cyan-500 font-bold">↓</div>
+                <div class="flex items-center gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Completada</div>
+                <div class="my-2 border-t border-dashed border-slate-300 dark:border-slate-600"></div>
+                <div class="flex items-center gap-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 px-4 py-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>Cancelada <span class="ml-auto text-[10px] font-normal">(desde cualquier estado, con motivo)</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-4 text-xs text-slate-600 dark:text-slate-300">
+          📌 Solo las solicitudes <strong>completadas</strong> cuentan como ingresos, ventas y unidades vendidas en el Resumen del panel.
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/25 p-5">
+          <h4 class="font-bold text-sm">📥 Archivos de ejemplo</h4>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <a href="/manual/plantilla-solicitudes.xlsx" download class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/25">⬇️ Plantilla Excel de importación</a>
+            <a href="/manual/ejemplo-solicitud.pdf" target="_blank" class="inline-flex items-center gap-2 rounded-full bg-blue-950 px-5 py-2.5 text-xs font-bold text-white hover:bg-cyan-500 hover:text-blue-950 transition shadow-lg shadow-blue-950/25">📄 Ver ejemplo PDF de solicitud</a>
+          </div>
+          <p class="mt-2 text-xs text-slate-500">Descarga la plantilla para importar solicitudes en lote o visualiza un ejemplo del formato impreso generado por el sistema.</p>
+        </div>
+      </section>
+
+      <!-- ── 16. COTIZACIONES ── -->
+      <section id="admin-cotizaciones" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 16</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Cotizaciones</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Crea cotizaciones formales con descuentos, envíalas por correo, imprímelas y conviértelas en solicitudes.</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">📝 Crear cotización</h4><p class="mt-1 text-xs text-slate-500">Datos del cliente + búsqueda de productos + cantidades + descuento manual (% de 0 a 100) + método de pago.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">💵 Descuento por efectivo</h4><p class="mt-1 text-xs text-slate-500">Si el cliente paga en efectivo en divisas, se aplica automáticamente el % configurado en Ajustes.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">📧 Enviar por correo</h4><p class="mt-1 text-xs text-slate-500">Envía la cotización al correo del cliente. Queda marcada como “Enviada”.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">🖨️ Imprimir / 🛒 Convertir</h4><p class="mt-1 text-xs text-slate-500">Imprime en formato profesional o conviértela a solicitud para seguir el pedido.</p></div>
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-slate-200/70 dark:border-slate-700 overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40">
+            <h4 class="font-bold text-sm">Flujo: de cotización a venta</h4>
+          </div>
+          <div class="p-5 grid gap-2 sm:grid-cols-5 items-center text-center">
+            <div class="rounded-2xl bg-cyan-500/10 border border-cyan-500/25 p-4"><p class="text-xl">📝</p><p class="text-xs font-bold mt-1">Borrador</p></div>
+            <div class="text-cyan-500 font-black text-xl">→</div>
+            <div class="rounded-2xl bg-blue-500/10 border border-blue-500/25 p-4"><p class="text-xl">📧</p><p class="text-xs font-bold mt-1">Enviada</p></div>
+            <div class="text-cyan-500 font-black text-xl">→</div>
+            <div class="rounded-2xl bg-violet-500/10 border border-violet-500/25 p-4"><p class="text-xl">🛒</p><p class="text-xs font-bold mt-1">Convertida</p></div>
+            <div class="sm:col-span-5 mt-2 text-xs text-slate-500">
+              Estados: <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Borrador</span>
+              <span class="badge bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">Enviada</span>
+              <span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Aceptada</span>
+              <span class="badge bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400">Convertida</span>
+              <span class="badge bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">Cancelada</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/5 p-5">
+            <h4 class="font-bold text-sm">💡 Consejo: descuento efectivo divisas</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Configura en <em>Panel → Configuración → Cotizaciones</em> el % de descuento por pago en efectivo en divisas. Al elegir ese método de pago en una cotización, el descuento se calcula solo.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">📄 Vista impresa</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Incluye logo de la empresa, razón social/RIF del emisor (desde Facturación), datos del cliente, tabla de productos, subtotal, descuento, IVA, total en USD y Bs, vigencia y notas.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/25 p-5">
+          <h4 class="font-bold text-sm">📥 Archivos de ejemplo</h4>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <a href="/manual/plantilla-cotizaciones.xlsx" download class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/25">⬇️ Plantilla Excel de cotización</a>
+            <a href="/manual/ejemplo-cotizacion.pdf" target="_blank" class="inline-flex items-center gap-2 rounded-full bg-blue-950 px-5 py-2.5 text-xs font-bold text-white hover:bg-cyan-500 hover:text-blue-950 transition shadow-lg shadow-blue-950/25">📄 Ver ejemplo PDF de cotización</a>
+          </div>
+          <p class="mt-2 text-xs text-slate-500">Descarga la plantilla para crear cotizaciones en lote o visualiza un ejemplo del formato profesional impreso.</p>
+        </div>
+      </section>
+
+      <!-- ── 17. FACTURACIÓN ── -->
+      <section id="admin-facturacion" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 17</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Facturación (SENIAT)</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Emite facturas electrónicas venezolanas conforme al SENIAT: configuras tu perfil de emisor y generas facturas desde las solicitudes.</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-blue-950 text-cyan-400 text-sm font-black">🏢</div>
+            <h4 class="mt-3 font-bold text-sm">Configuración del Emisor</h4>
+            <p class="mt-1 text-xs text-slate-500">Razón social, RIF, domicilio fiscal (ciudad, estado, dirección), teléfono y correo.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-blue-950 text-cyan-400 text-sm font-black">%</div>
+            <h4 class="mt-3 font-bold text-sm">IVA y Régimen</h4>
+            <p class="mt-1 text-xs text-slate-500">Régimen (contribuyente formal / no contribuyente), alícuota de IVA y si los precios incluyen IVA.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-blue-950 text-cyan-400 text-sm font-black">🔢</div>
+            <h4 class="mt-3 font-bold text-sm">Correlativos</h4>
+            <p class="mt-1 text-xs text-slate-500">Prefijo, serie y cantidad de dígitos del número de factura, número de control, resolución y nota al pie.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <div class="grid size-10 place-items-center rounded-xl bg-blue-950 text-cyan-400 text-sm font-black">🧾</div>
+            <h4 class="mt-3 font-bold text-sm">Facturas emitidas</h4>
+            <p class="mt-1 text-xs text-slate-500">Emitir desde una solicitud, ver detalle completo e imprimir, anular con motivo.</p>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <h4 class="font-bold text-sm">Emitir una factura</h4>
+          <div class="mt-3 grid gap-3 md:grid-cols-5 text-center items-stretch">
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-4 flex flex-col items-center justify-center"><span class="step-chip">1</span><p class="mt-2 text-xs font-semibold">Elige una solicitud disponible</p><p class="mt-1 text-[11px] text-slate-500">Solo solicitudes confirmadas o completadas.</p></div>
+            <div class="self-center text-cyan-500 font-black hidden md:block">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-4 flex flex-col items-center justify-center"><span class="step-chip">2</span><p class="mt-2 text-xs font-semibold">Completa los datos fiscales del cliente</p><p class="mt-1 text-[11px] text-slate-500">Nombre, tipo de documento (RIF/CI/Pasaporte), número, dirección, correo, teléfono.</p></div>
+            <div class="self-center text-cyan-500 font-black hidden md:block">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-4 flex flex-col items-center justify-center"><span class="step-chip">3</span><p class="mt-2 text-xs font-semibold">Se genera el número correlativo</p><p class="mt-1 text-[11px] text-slate-500">El siguiente número se consume de forma automática y segura.</p></div>
+            <div class="self-center text-cyan-500 font-black hidden md:block">→</div>
+            <div class="rounded-2xl bg-cyan-500/10 border border-cyan-500/25 p-4 flex flex-col items-center justify-center"><span class="step-chip">4</span><p class="mt-2 text-xs font-semibold">Factura emitida ✅</p><p class="mt-1 text-[11px] text-slate-500">Ves el detalle con IVA, exento, total y moneda. Puedes imprimirla.</p></div>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Anular una factura</h4>
+            <p class="mt-1 text-xs text-slate-500">Desde la fila de la factura pulsa 🗑️. Se te pedirá un <strong>motivo de anulación</strong> obligatorio. La factura queda marcada como <span class="badge bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">Cancelada</span> pero conserva su número (no se reutiliza).</p>
+          </div>
+          <div class="rounded-2xl border border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/5 p-5">
+            <h4 class="font-bold text-sm">✅ Validaciones automáticas</h4>
+            <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">El sistema valida el RIF, el correo del cliente, los datos del emisor y los totales (subtotal + IVA − exento = total) antes de guardar.</p>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/25 p-5">
+          <h4 class="font-bold text-sm">📥 Archivos de ejemplo</h4>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <a href="/manual/ejemplo-factura.pdf" target="_blank" class="inline-flex items-center gap-2 rounded-full bg-blue-950 px-5 py-2.5 text-xs font-bold text-white hover:bg-cyan-500 hover:text-blue-950 transition shadow-lg shadow-blue-950/25">📄 Ver ejemplo PDF de factura SENIAT</a>
+          </div>
+          <p class="mt-2 text-xs text-slate-500">Visualiza el formato de factura electrónica que genera el sistema, conforme a los lineamientos del SENIAT.</p>
+        </div>
+      </section>
+
+      <!-- ── 18. ROLES ── -->
+      <section id="admin-roles" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 18</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Roles y permisos</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Crea roles personalizados y define con precisión qué puede ver y hacer cada usuario dentro del panel.</p>
+
+        <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5">
+          <h4 class="font-bold text-sm">Matriz de permisos por módulo</h4>
+          <div class="mt-4 overflow-x-auto">
+            <table class="table-flow min-w-[560px]">
+              <thead><tr><th>Módulo</th><th class="text-center">👁️ Ver</th><th class="text-center">✏️ Crear / Editar</th><th class="text-center">🗑️ Eliminar</th></tr></thead>
+              <tbody>
+                <tr><td>Productos</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-rose-400">—</td></tr>
+                <tr><td>Solicitudes</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-rose-400">—</td><td class="text-center text-rose-400">—</td></tr>
+                <tr><td>Facturación</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-rose-400">—</td></tr>
+                <tr><td>Cotizaciones</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-emerald-500">✔</td></tr>
+                <tr><td>Ajuste de precios</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-emerald-500">✔</td><td class="text-center text-rose-400">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="mt-3 text-xs text-slate-500">Ejemplo de permisos de un rol personalizado. Cada acción se activa con un interruptor en el formulario del rol.</p>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">➕ Crear rol</h4><p class="mt-1 text-xs text-slate-500">Nombre, descripción y matriz de permisos completa.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">✏️ Editar rol</h4><p class="mt-1 text-xs text-slate-500">Modifica nombre o permisos. Los cambios aplican a todos los usuarios con ese rol.</p></div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5"><h4 class="font-bold text-sm">🗑️ Eliminar rol</h4><p class="mt-1 text-xs text-slate-500">Con confirmación. <span class="text-rose-500">Los roles admin y client no se pueden eliminar.</span></p></div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-4 text-xs text-slate-600 dark:text-slate-300">
+          🔐 Cuando un usuario sin permiso intenta ver un módulo restringido (ej: Ajuste de precios), el sistema muestra el mensaje <em>“No tienes permiso para ver este módulo.”</em>
+        </div>
+      </section>
+
+      <!-- ── 19. AJUSTE DE PRECIOS ── -->
+      <section id="admin-ajustes" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 19</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Ajuste de Margen y Control de Pérdidas</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Herramienta financiera para calcular cuánto pierdes cuando sube la tasa oficial y aplicar un aumento masivo de precios con un clic — con previsualización e historial completo.</p>
+
+        <div class="mt-6 flex flex-col lg:flex-row gap-6">
+          <div class="flex-1 space-y-4">
+            <div class="rounded-2xl border border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/5 p-5">
+              <h4 class="font-bold text-sm flex items-center gap-2"><span>📉</span> Pérdida estimada por fluctuación de tasa</h4>
+              <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Ingresa la <strong>nueva tasa oficial</strong>. El sistema compara contra la última tasa usada y calcula la pérdida total en Bs, en USD y el % de pérdida sobre el valor de venta.</p>
+            </div>
+            <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+              <h4 class="font-bold text-sm flex items-center gap-2"><span>📈</span> Incremento sugerido + simulación</h4>
+              <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">El sistema sugiere un % de aumento para recuperar la pérdida. Ajusta el % y previsualiza en la tabla el <strong>nuevo costo base</strong> y el <strong>nuevo precio de venta</strong> de cada producto.</p>
+            </div>
+            <div class="rounded-2xl border border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/5 p-5">
+              <h4 class="font-bold text-sm flex items-center gap-2"><span>✅</span> Aplicar ajuste masivo</h4>
+              <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">Selecciona todos o solo los productos que quieras (casillas), pulsa <strong>“Aplicar ajuste”</strong> y confirma. Los cambios se guardan en una sola transacción y quedan registrados en el historial de auditoría.</p>
+            </div>
+          </div>
+          <div class="w-full lg:w-[300px] shrink-0">
+            <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+              <h4 class="font-bold text-sm">Historial de ajustes</h4>
+              <div class="mt-3 space-y-3">
+                <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs">
+                  <p class="font-mono font-bold text-cyan-600">Tasa: Bs. 38,20</p>
+                  <p class="text-slate-500">+4,5% · 12 productos actualizados</p>
+                  <p class="text-slate-400 text-[10px]">12 jun 2026, 10:30 AM</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs">
+                  <p class="font-mono font-bold text-cyan-600">Tasa: Bs. 36,50</p>
+                  <p class="text-slate-500">+3,0% · 25 productos actualizados</p>
+                  <p class="text-slate-400 text-[10px]">2 jun 2026, 4:15 PM</p>
+                </div>
+              </div>
+              <p class="mt-3 text-[10px] text-slate-400">Cada registro muestra la tasa calculada, el % aplicado, los productos con sus valores anteriores y quién ejecutó el ajuste.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-blue-950 text-white p-5">
+          <div class="flex flex-wrap items-center gap-4 justify-between">
+            <div>
+              <p class="font-mono text-xs uppercase tracking-widest text-cyan-400">Fórmula aplicada</p>
+              <p class="mt-1 font-mono text-sm"><span class="text-slate-400">Nuevo costo</span> = costo × (1 + % / 100) &nbsp;·&nbsp; <span class="text-slate-400">Nuevo precio</span> = precio × (1 + % / 100)</p>
+            </div>
+            <span class="badge bg-cyan-400 text-blue-950 font-bold">Registrado en auditoría</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 20. CONFIGURACIÓN ── -->
+      <section id="admin-config" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 20</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Configuración del sitio</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Desde <code>/admin/configuracion</code> personalizas toda la tienda visual y funcionalmente.</p>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">🏢 Marca y sitio</h4>
+            <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span>✔</span> Nombre de la empresa y eslogan</li>
+              <li class="flex gap-2"><span>✔</span> Logo e ícono</li>
+              <li class="flex gap-2"><span>✔</span> Dirección, teléfono WhatsApp, correo, redes sociales</li>
+              <li class="flex gap-2"><span>✔</span> Enlaces del menú de navegación</li>
+              <li class="flex gap-2"><span>✔</span> Textos e imágenes de la portada (hero, studio, contacto)</li>
+              <li class="flex gap-2"><span>✔</span> Ubicación del mapa</li>
+              <li class="flex gap-2"><span>✔</span> Texto del pie de página</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">📄 Cotizaciones</h4>
+            <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+              <li class="flex gap-2"><span>✔</span> Descuento por pago en efectivo en divisas (%)</li>
+              <li class="flex gap-2"><span>✔</span> Días de validez de la cotización</li>
+              <li class="flex gap-2"><span>✔</span> Nota por defecto en las cotizaciones</li>
+            </ul>
+            <div class="mt-4 rounded-xl bg-cyan-50 dark:bg-cyan-500/5 border border-cyan-500/20 p-3 text-xs text-slate-600 dark:text-slate-300">
+              💡 La configuración del emisor de facturas también se gestiona en su propio módulo: <em>Panel → Facturación</em>.
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-4 text-xs text-slate-600 dark:text-slate-300">
+          ⚡ Los cambios se aplican con <strong>revalidación automática (≤ 5 min)</strong> en la tienda pública gracias al ISR de Next.js.
+        </div>
+      </section>
+
+      <!-- ════════════════════ REFERENCIA ════════════════════ -->
+      <div class="rounded-3xl bg-gradient-to-r from-violet-500/10 via-transparent to-violet-500/10 border border-violet-500/20 px-6 py-8 text-center">
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-violet-600 dark:text-cyan-400">Referencia</p>
+        <h3 class="mt-2 text-2xl font-black tracking-tight">Guías rápidas y solución de problemas</h3>
+      </div>
+
+      <!-- ── 21. FLUJOS COMPLETOS ── -->
+      <section id="flujos-completos" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 21</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Flujos completos</h3>
+
+        <div class="mt-8">
+          <h4 class="font-bold text-sm flex items-center gap-2 text-lg">🛒 Flujo 1 · Compra del cliente</h4>
+          <div class="mt-4 grid gap-2 md:grid-cols-8 items-stretch text-center">
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">🏠</span><p class="mt-1 text-[11px] font-semibold">Portada / Catálogo</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">🔍</span><p class="mt-1 text-[11px] font-semibold">Filtra y encuentra</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">➕</span><p class="mt-1 text-[11px] font-semibold">Agrega al carrito</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-cyan-500/10 border border-cyan-500/25 p-3"><span class="text-xl">💬</span><p class="mt-1 text-[11px] font-semibold">Confirma por WhatsApp</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-3"><span class="text-xl">✅</span><p class="mt-1 text-[11px] font-semibold">Solicitud creada</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-blue-500/10 border border-blue-500/25 p-3"><span class="text-xl">📋</span><p class="mt-1 text-[11px] font-semibold">Seguimiento en Mi espacio</p></div>
+          </div>
+          <div class="mt-3 text-xs text-slate-500">📌 Requiere sesión iniciada. El carrito persiste en el navegador entre páginas.</div>
+        </div>
+
+        <div class="mt-10">
+          <h4 class="font-bold text-sm flex items-center gap-2 text-lg">📝 Flujo 2 · Cotización → Venta</h4>
+          <div class="mt-4 grid gap-2 md:grid-cols-7 items-stretch text-center">
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">👤</span><p class="mt-1 text-[11px] font-semibold">Datos del cliente</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">📦</span><p class="mt-1 text-[11px] font-semibold">Agrega productos + cantidades</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">🏷️</span><p class="mt-1 text-[11px] font-semibold">Descuento + método de pago</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-cyan-500/10 border border-cyan-500/25 p-3"><span class="text-xl">📧</span><p class="mt-1 text-[11px] font-semibold">Envía por correo</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-violet-500/10 border border-violet-500/25 p-3"><span class="text-xl">🛒</span><p class="mt-1 text-[11px] font-semibold">Convierte a solicitud</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-blue-500/10 border border-blue-500/25 p-3"><span class="text-xl">📋</span><p class="mt-1 text-[11px] font-semibold">Gestiona en Solicitudes</p></div>
+          </div>
+        </div>
+
+        <div class="mt-10">
+          <h4 class="font-bold text-sm flex items-center gap-2 text-lg">🧾 Flujo 3 · Solicitud → Factura SENIAT</h4>
+          <div class="mt-4 grid gap-2 md:grid-cols-6 items-stretch text-center">
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">📋</span><p class="mt-1 text-[11px] font-semibold">Solicitud confirmada o completada</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">🖊️</span><p class="mt-1 text-[11px] font-semibold">Completa datos fiscales del cliente</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-cyan-500/10 border border-cyan-500/25 p-3"><span class="text-xl">🔢</span><p class="mt-1 text-[11px] font-semibold">Correlativo automático</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-3"><span class="text-xl">🧾</span><p class="mt-1 text-[11px] font-semibold">Factura emitida</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-blue-500/10 border border-blue-500/25 p-3"><span class="text-xl">🖨️</span><p class="mt-1 text-[11px] font-semibold">Imprime / anula si aplica</p></div>
+          </div>
+          <div class="mt-3 text-xs text-slate-500">📌 La factura anulada conserva el número (no se reutiliza) y queda con motivo de anulación.</div>
+        </div>
+
+        <div class="mt-10">
+          <h4 class="font-bold text-sm flex items-center gap-2 text-lg">📈 Flujo 4 · Ajuste masivo de precios</h4>
+          <div class="mt-4 grid gap-2 md:grid-cols-6 items-stretch text-center">
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">💱</span><p class="mt-1 text-[11px] font-semibold">Nueva tasa oficial</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-amber-500/10 border border-amber-500/25 p-3"><span class="text-xl">📉</span><p class="mt-1 text-[11px] font-semibold">Calcula pérdida</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">🎚️</span><p class="mt-1 text-[11px] font-semibold">Ajusta % de aumento</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3"><span class="text-xl">📋</span><p class="mt-1 text-[11px] font-semibold">Previsualiza productos</p></div>
+            <div class="self-center text-cyan-500 font-black text-sm">→</div>
+            <div class="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-3"><span class="text-xl">✅</span><p class="mt-1 text-[11px] font-semibold">Aplica y queda en historial</p></div>
+          </div>
+          <div class="mt-3 text-xs text-slate-500">📌 Requiere permiso de lectura y escritura en el módulo “Ajuste de precios”.</div>
+        </div>
+      </section>
+
+      <!-- ── 22. ESTADOS ── -->
+      <section id="estados" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 22</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Estados del sistema</h3>
+        <div class="mt-6 overflow-x-auto">
+          <table class="table-flow min-w-[640px]">
+            <thead><tr><th>Entidad</th><th>Estado</th><th>Color</th><th>Significado</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="5" class="font-bold align-top">Solicitudes</td><td>Pendiente</td><td><span class="badge bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">● Pendiente</span></td><td>Recién creada, falta confirmar</td></tr>
+              <tr><td>Confirmada</td><td><span class="badge bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">● Confirmada</span></td><td>Aprobada y en proceso</td></tr>
+              <tr><td>Enviada</td><td><span class="badge bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400">● Enviada</span></td><td>Despachada al cliente</td></tr>
+              <tr><td>Completada</td><td><span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">● Completada</span></td><td>Finalizada · cuenta como ingreso</td></tr>
+              <tr><td>Cancelada</td><td><span class="badge bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">● Cancelada</span></td><td>Anulada con confirmación</td></tr>
+              <tr><td rowspan="5" class="font-bold align-top">Cotizaciones</td><td>Borrador</td><td><span class="badge bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-400">● Borrador</span></td><td>Creada, aún no enviada</td></tr>
+              <tr><td>Enviada</td><td><span class="badge bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">● Enviada</span></td><td>Enviada por correo al cliente</td></tr>
+              <tr><td>Aceptada</td><td><span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">● Aceptada</span></td><td>El cliente aceptó la oferta</td></tr>
+              <tr><td>Convertida</td><td><span class="badge bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400">● Convertida</span></td><td>Se generó una solicitud desde la cotización</td></tr>
+              <tr><td>Cancelada</td><td><span class="badge bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">● Cancelada</span></td><td>Anulada con confirmación</td></tr>
+              <tr><td rowspan="2" class="font-bold align-top">Facturas</td><td>Emitida</td><td><span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">● Emitida</span></td><td>Vigente y válida fiscalmente</td></tr>
+              <tr><td>Anulada</td><td><span class="badge bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">● Anulada</span></td><td>Invalida con motivo; número no se reutiliza</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── 23. FAQ ── -->
+      <section id="faq" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 23</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Preguntas frecuentes</h3>
+        <div class="mt-6 space-y-3">
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Necesito crear una cuenta para comprar?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">Sí. Para generar una solicitud con ID de seguimiento necesitas una cuenta verificada. Sin cuenta puedes explorar el catálogo y armar el carrito, pero al confirmar el sistema te pedirá iniciar sesión.</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Qué pasa si se me olvida la contraseña?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">El sistema usa recuperación por correo de Supabase. Solicita el enlace desde el login y sigue el correo recibido. También puedes cambiarla desde <em>Mi Perfil → Cambiar contraseña</em>.</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Cómo actualizo un producto y cuándo se refleja en la tienda?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">Edita el producto en <em>Panel → Productos</em> y guarda. La tienda pública se revalida automáticamente cada 5 minutos (ISR), así que los cambios aparecen en ese lapso sin necesidad de redeployar.</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Qué no se puede eliminar en el sistema?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">Los roles base <code>admin</code> y <code>client</code> son protegidos y no se pueden eliminar. Si necesitas restringir accesos, crea roles personalizados.</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Cómo emito una factura sin solicitud previa?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">El módulo de Facturación permite emitir facturas solo desde solicitudes disponibles (confirmadas o completadas). Es la vía recomendada para garantizar trazabilidad completa del pedido.</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Puedo limitar qué ve cada administrador?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">Sí. En <em>Roles y permisos</em> creas roles con acceso solo a lectura, o con escritura y eliminación, módulo por módulo (ej: alguien puede ver productos pero no editar, o ver facturación pero no roles).</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Qué significa “stock bajo”?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">Un producto con menos de 20 unidades (umbral configurable) se muestra con badge ámbar e impacta el contador de inventario del Resumen del panel.</p>
+          </details>
+          <details class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5 group">
+            <summary class="cursor-pointer font-semibold text-sm list-none flex items-center justify-between">¿Dónde veo las tasas de cambio?<span class="text-cyan-500 group-open:rotate-45 transition-transform">＋</span></summary>
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">En el Resumen del panel admin (tasa oficial + paralela y su diferencia) y en el dashboard del cliente (solo tasa oficial), ambas desde dolarapi.com.</p>
+          </details>
+        </div>
+      </section>
+
+      <!-- ── 24. SOPORTE ── -->
+      <section id="soporte" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 24</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Soporte y solución de errores comunes</h3>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-rose-500/25 bg-rose-50/60 dark:bg-rose-500/5 p-5">
+            <h4 class="font-bold text-sm text-rose-600">No puedo iniciar sesión</h4>
+            <ul class="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li>Verifica que el correo esté confirmado (revisa spam).</li>
+              <li>Comprueba que el correo/contraseña sean correctos.</li>
+              <li>Si el problema persiste, contacta al administrador del sistema.</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-rose-500/25 bg-rose-50/60 dark:bg-rose-500/5 p-5">
+            <h4 class="font-bold text-sm text-rose-600">La tienda no muestra productos</h4>
+            <ul class="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li>Verifica que existan productos activos y con stock.</li>
+              <li>Revisa que la conexión a la base de datos sea correcta.</li>
+              <li>Si el error aparece en la consola, contacta al equipo técnico.</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-rose-500/25 bg-rose-50/60 dark:bg-rose-500/5 p-5">
+            <h4 class="font-bold text-sm text-rose-600">No puedo crear una solicitud</h4>
+            <ul class="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li>Debes tener la sesión iniciada.</li>
+              <li>Revisa que las cantidades no superen el stock.</li>
+              <li>Si el problema persiste, usa WhatsApp para consultar al equipo.</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-rose-500/25 bg-rose-50/60 dark:bg-rose-500/5 p-5">
+            <h4 class="font-bold text-sm text-rose-600">La imagen del producto no carga</h4>
+            <ul class="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li>Verifica el formato (JPG/PNG/WebP) y tamaño (máx. 5 MB).</li>
+              <li>Reintenta la carga; las imágenes se optimizan automáticamente.</li>
+              <li>Si usas URL externa, asegúrate de que sea pública.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl bg-gradient-to-r from-cyan-500/15 to-blue-500/15 border border-cyan-500/25 p-6 text-sm text-slate-700 dark:text-slate-200">
+          <h4 class="font-bold">¿Necesitas más ayuda?</h4>
+          <p class="mt-1">Contacta al equipo de soporte por WhatsApp <strong>+58 412-2649707</strong> o por correo <strong>hola@amaxtech.ve</strong>. Incluye el ID de tu solicitud o factura para un seguimiento más rápido.</p>
+        </div>
+      </section>
+
+      <!-- ── FOOTER ── -->
+      <footer class="rounded-3xl bg-primary text-white p-8 text-center">
+        <span class="grid size-12 mx-auto place-items-center rounded-2xl bg-accent font-mono font-black text-primary text-xl">Ax</span>
+        <p class="mt-4 font-bold text-lg">Amax<span class="text-accent">Tech</span> · Manual de Usuario</p>
+        <p class="mt-1 text-xs text-slate-300">Arquitectura de luz · Plataforma de catálogo, ventas y gestión</p>
+        <p class="mt-4 font-mono text-[10px] uppercase tracking-[.25em] text-slate-400">Documento generado para uso interno · 2026</p>
+        <button onclick="window.print()" class="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-6 py-3 text-sm font-bold text-primary hover:bg-cyan-300 transition">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Imprimir / Guardar PDF
+        </button>
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+function toggleDark() {
+  document.documentElement.classList.toggle('dark')
+}
+// Resaltar el enlace activo del índice según el scroll
+const sections = document.querySelectorAll('section[id]')
+const links = document.querySelectorAll('.toc-link')
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + entry.target.id))
+    }
+  })
+}, { rootMargin: '-20% 0px -70% 0px' })
+sections.forEach(s => observer.observe(s))
+</script>
+</body>
+</html>
