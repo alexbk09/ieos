@@ -15,11 +15,22 @@ export type CardProduct = {
   stock: number
   image_url: string
   colors?: string[]
+  peso?: string | null
+  tamaño?: string | null
   specifications?: Record<string, string>
   category_id?: string | null
   featured?: boolean
   categories?: { id: string; name: string; slug: string; description: string | null }[]
-  images?: { id: string; url: string; alt_text: string | null; sort_order: number }[]
+  images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[]
+}
+
+/** Devuelve las imágenes por color: { nombreColor: url } y la lista de colores con imagen. */
+export function colorImagesFor(product: CardProduct) {
+  const map = new Map<string, string>()
+  for (const img of product.images ?? []) {
+    if (img.color_name && img.url) map.set(img.color_name, img.url)
+  }
+  return map
 }
 
 /** Devuelve la categoría visible de un producto. */
@@ -57,6 +68,46 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           <button onClick={() => onAdd(product)} aria-label={`Agregar ${product.name}`} className="grid size-9 shrink-0 place-items-center rounded-full bg-cyan-400 text-blue-950 transition hover:bg-blue-950 hover:text-white"><Plus size={17} /></button>
         </div>
         {product.description && <p className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-300">{product.description}</p>}
+
+        {/* Colores disponibles con miniaturas (solo si existen) */}
+        {product.colors && product.colors.length > 0 && (
+          <div className="mt-3 flex items-center flex-wrap gap-2">
+            {product.colors.map((color, i) => {
+              const image = colorImagesFor(product).get(color)
+              return (
+                <span
+                  key={`${color}-${i}`}
+                  title={color}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 px-2.5 text-[11px] text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                >
+                  {image ? (
+                    <img src={image} alt={color} className="size-4 rounded-full object-cover" />
+                  ) : (
+                    <span className="size-4 rounded-full bg-cyan-500/20" />
+                  )}
+                  {color}
+                </span>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Peso y tamaño (solo si existen) */}
+        {(product.peso || product.tamaño) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {product.peso && (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                ⚖ {product.peso}
+              </span>
+            )}
+            {product.tamaño && (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                📐 {product.tamaño}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-5 flex items-end justify-between">
           <div>
             <p className="font-semibold">{moneyUsd(product.price_usd)}</p>

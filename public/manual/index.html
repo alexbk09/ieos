@@ -303,9 +303,11 @@ tailwind.config = {
             <h4 class="font-bold text-sm">Información en cada producto</h4>
             <ul class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
               <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">🖼️</span> Fotografía del producto</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">🎨</span> <strong>Colores disponibles</strong> — miniaturas circulares con su imagen (solo si el producto tiene colores)</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">⚖️</span> <strong>Peso</strong> y <strong>📐 Tamaño</strong> — datos de la ficha técnica (solo si el producto los tiene)</li>
               <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">📊</span> <strong>Stock disponible</strong> — badge ámbar si el stock es bajo</li>
               <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">💵</span> Precio en <strong>USD</strong> y en <strong>bolívares</strong> según la tasa del día</li>
-              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">📄</span> <strong>“Ver detalles”</strong>: colores disponibles, especificaciones técnicas y galería de imágenes</li>
+              <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">📄</span> <strong>“Ver detalles”</strong>: galería de imágenes, colores clicables que cambian la foto, peso, tamaño y especificaciones técnicas</li>
               <li class="flex items-center gap-3"><span class="grid size-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800">➕</span> Botón <strong>“+”</strong> para agregar al carrito</li>
             </ul>
             <div class="mt-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5 text-sm text-slate-600 dark:text-slate-300">
@@ -605,12 +607,20 @@ tailwind.config = {
       <section id="admin-productos" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
         <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 11</p>
         <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Gestión de Productos</h3>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Administra el inventario completo: precio de venta, costo base, fotos, categorías, marca, proveedor y productos destacados.</p>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Administra el inventario completo: precio de venta, costo base, fotos, categorías, marca, proveedor, productos destacados, y la <strong>ficha física</strong> del producto (peso, tamaño y colores).</p>
 
         <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
             <h4 class="font-bold text-sm">➕ Crear producto</h4>
             <p class="mt-1 text-xs text-slate-500">Nombre, slug, descripción, precio USD, costo base, stock, categorías (una o varias), marca, proveedor e imágenes.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <h4 class="font-bold text-sm">⚖️ Peso y Tamaño</h4>
+            <p class="mt-1 text-xs text-slate-500">Campos opcionales de la ficha técnica (ej: “0.8 kg” o “50 x 50 cm”). Si se dejan vacíos, no se muestran en el catálogo.</p>
+          </div>
+          <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
+            <h4 class="font-bold text-sm">🎨 Colores</h4>
+            <p class="mt-1 text-xs text-slate-500">Agrega varios colores; cada uno puede tener su propia imagen que el cliente verá al seleccionarlo.</p>
           </div>
           <div class="rounded-2xl border border-cyan-500/25 bg-cyan-50/60 dark:bg-cyan-500/5 p-5">
             <h4 class="font-bold text-sm">📥 Importar por Excel</h4>

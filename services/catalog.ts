@@ -15,6 +15,8 @@ export type ProductImage = {
   url: string
   alt_text: string | null
   sort_order: number
+  /** Nombre del color al que pertenece la imagen (null = imagen general). */
+  color_name?: string | null
 }
 
 export type Product = {
@@ -30,6 +32,10 @@ export type Product = {
   marca_id: string | null
   proveedor_id: string | null
   featured: boolean
+  /** Peso del producto (texto libre, opcional). Ej: "0.8 kg" */
+  peso?: string | null
+  /** Tamaño del producto (texto libre, opcional). Ej: "50 x 50 cm" */
+  tamaño?: string | null
   categories?: Category[]
   images?: ProductImage[]
   colors?: string[]
@@ -57,6 +63,13 @@ export type CategoryInput = {
   activa?: boolean
 }
 
+/** Imagen de producto con color asociado (opcional). */
+export type ProductImageInput = {
+  url: string
+  /** Nombre exacto del color al que pertenece (null = imagen general). */
+  color_name?: string | null
+}
+
 export type ProductInput = {
   name: string
   slug: string
@@ -70,7 +83,13 @@ export type ProductInput = {
   featured?: boolean
   category_ids?: string[]
   images?: string[]
+  /** Imágenes asociadas a un color específico (color_name + url). */
+  colorImages?: ProductImageInput[]
   colors?: string[]
+  /** Peso del producto (texto libre, opcional). */
+  peso?: string | null
+  /** Tamaño del producto (texto libre, opcional). */
+  tamaño?: string | null
   specifications?: Record<string, string>
   // Solo para carga masiva: nombres de marca/proveedor/categoria.
   // Si el item trae nombre y no trae id, se resuelve o crea automaticamente.
@@ -92,7 +111,7 @@ export type CatalogFilters = {
 }
 
 const PRODUCT_SELECT =
-  '*, product_categories(categories(id,name,slug,description)), product_images(id,url,alt_text,sort_order), marcas(id,nombre,activa), proveedores(id,nombre,rif,activo)'
+  '*, product_categories(categories(id,name,slug,description)), product_images(id,url,alt_text,sort_order,color_name), marcas(id,nombre,activa), proveedores(id,nombre,rif,activo)'
 
 /** Convierte una fila de Supabase en Product tipado. */
 function mapProduct(row: any): Product {
@@ -109,6 +128,8 @@ function mapProduct(row: any): Product {
     marca_id: row.marca_id ?? null,
     proveedor_id: row.proveedor_id ?? null,
     featured: row.featured,
+    peso: row.peso ?? null,
+    tamaño: row.tamaño ?? null,
     colors: row.colors ?? [],
     specifications: row.specifications ?? {},
     categories:
@@ -122,6 +143,7 @@ function mapProduct(row: any): Product {
           url: pi.url,
           alt_text: pi.alt_text,
           sort_order: pi.sort_order,
+          color_name: pi.color_name ?? null,
         }))
         .sort((a: any, b: any) => a.sort_order - b.sort_order) ?? [],
     marca: row.marcas ?? row.marca ?? null,
@@ -207,6 +229,19 @@ function slugify(text: string): string {
 }
 
 /**
+ * Construye la lista de imágenes a guardar en product_images.
+ * Primero las imágenes generales (sin color) y luego las imágenes
+ * asociadas a cada color (color_name + url), manteniendo el orden.
+ */
+function buildProductImages(payload: ProductInput) {
+  const generalImages = (payload.images ?? []).filter(Boolean).map((url) => ({ url }))
+  const colorImages = (payload.colorImages ?? [])
+    .filter((img) => img.url && img.color_name)
+    .map((img) => ({ url: img.url, color_name: img.color_name }))
+  return [...generalImages, ...colorImages]
+}
+
+/**
  * Crea un producto con sus categorías (N:N), imágenes múltiples,
  * marca y proveedor. Requiere sesión de admin — usa cliente servidor.
  */
@@ -218,8 +253,8 @@ export async function createProduct(payload: ProductInput) {
     return { error: { message: 'Selecciona al menos una categoría para el producto.' } }
   }
 
-  const images = payload.images?.filter(Boolean) ?? []
-  const firstImage = images[0] ?? payload.image_url ?? null
+  const productImages = buildProductImages(payload)
+  const firstImage = productImages[0]?.url ?? payload.image_url ?? null
 
   const { data, error } = await supabase
     .from('products')
@@ -236,6 +271,8 @@ export async function createProduct(payload: ProductInput) {
       proveedor_id: payload.proveedor_id ?? null,
       featured: payload.featured ?? false,
       colors: payload.colors ?? [],
+      peso: payload.peso ?? null,
+      tamaño: payload.tamaño ?? null,
       specifications: payload.specifications ?? {},
     })
     .select(PRODUCT_SELECT)
@@ -247,10 +284,10 @@ export async function createProduct(payload: ProductInput) {
     .insert(categoryIds.map((category_id) => ({ product_id: data.id, category_id })))
   if (relError) return { error: relError }
 
-  if (images.length > 0) {
+  if (productImages.length > 0) {
     const { error: imgError } = await supabase
       .from('product_images')
-      .insert(images.map((url, index) => ({ product_id: data.id, url, sort_order: index })))
+      .insert(productImages.map((img, index) => ({ product_id: data.id, ...img, sort_order: index })))
     if (imgError) return { error: imgError }
   }
 
@@ -270,8 +307,8 @@ export async function updateProduct(id: string, payload: ProductInput) {
     return { error: { message: 'Selecciona al menos una categoría para el producto.' } }
   }
 
-  const images = payload.images?.filter(Boolean) ?? []
-  const firstImage = images[0] ?? payload.image_url ?? null
+  const productImages = buildProductImages(payload)
+  const firstImage = productImages[0]?.url ?? payload.image_url ?? null
 
   const { data, error } = await supabase
     .from('products')
@@ -288,6 +325,8 @@ export async function updateProduct(id: string, payload: ProductInput) {
       proveedor_id: payload.proveedor_id ?? null,
       featured: payload.featured ?? false,
       colors: payload.colors ?? [],
+      peso: payload.peso ?? null,
+      tamaño: payload.tamaño ?? null,
       specifications: payload.specifications ?? {},
     })
     .eq('id', id)
@@ -302,10 +341,10 @@ export async function updateProduct(id: string, payload: ProductInput) {
   if (relError) return { error: relError }
 
   await supabase.from('product_images').delete().eq('product_id', id)
-  if (images.length > 0) {
+  if (productImages.length > 0) {
     const { error: imgError } = await supabase
       .from('product_images')
-      .insert(images.map((url, index) => ({ product_id: id, url, sort_order: index })))
+      .insert(productImages.map((img, index) => ({ product_id: id, ...img, sort_order: index })))
     if (imgError) return { error: imgError }
   }
 

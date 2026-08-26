@@ -1,13 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import { ProductCarousel } from '@/components/product-carousel'
-import { categoryFor, type CardProduct } from '@/components/product-card'
+import { categoryFor, colorImagesFor, type CardProduct } from '@/components/product-card'
 import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
 
 /**
  * Modal de detalle de producto.
- * Visual ampliado: galería de imágenes, especificaciones, colores, stock
+ * Visual ampliado: galería de imágenes, colores clicables (cada color
+ * puede tener su propia imagen), peso, tamaño, especificaciones, stock
  * y precio en USD + Bs (con la tasa oficial del día).
  */
 export function ProductDetailModal({ product, rate, onClose, onAdd }: {
@@ -16,7 +18,28 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
   onClose: () => void
   onAdd: (product: CardProduct) => void
 }) {
-  const gallery = (product.images?.length ? product.images : [{ url: product.image_url }]).filter((img) => img.url)
+  // Imágenes generales (sin color) y mapa de imagen por color
+  const generalImages = (product.images ?? []).filter((img) => !img.color_name)
+  const imageByColor = colorImagesFor(product)
+
+  // Galería por defecto: imágenes generales o imagen principal
+  const defaultGallery = (generalImages.length ? generalImages : [{ url: product.image_url }]).filter((img) => img.url)
+
+  // Estado del color seleccionado (null = galería general)
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
+
+  // Galería activa: si hay color seleccionado con imagen, se muestra esa imagen
+  const gallery = selectedColor && imageByColor.has(selectedColor)
+    ? [{ url: imageByColor.get(selectedColor)! }]
+    : defaultGallery
+
+  const colors = product.colors ?? []
+
+  /** Datos de la ficha técnica (peso y tamaño) solo si existen. */
+  const details = [
+    product.peso ? { label: 'Peso', value: product.peso } : null,
+    product.tamaño ? { label: 'Tamaño', value: product.tamaño } : null,
+  ].filter(Boolean) as { label: string; value: string }[]
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-blue-950/60 p-5 backdrop-blur-sm" onClick={onClose}>
@@ -32,28 +55,72 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
           <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em] md:text-4xl">{product.name}</h2>
           <p className="mt-4 text-sm leading-7 text-slate-500 dark:text-slate-300 md:text-base">{product.description}</p>
 
-          {product.colors?.length ? (
+          {/* Colores clicables: cada color cambia la imagen si tiene la suya */}
+          {colors.length > 0 && (
             <div className="mt-6">
-              <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Colores</p>
+              <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
+                Colores {selectedColor && <span className="text-cyan-600">· {selectedColor}</span>}
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <span key={color} className="rounded-full border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">{color}</span>
+                {colors.map((color) => {
+                  const image = imageByColor.get(color)
+                  const active = selectedColor === color
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(active ? null : color)}
+                      title={color}
+                      className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
+                        active
+                          ? 'border-cyan-500 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+                          : 'border-slate-200 text-slate-600 hover:border-cyan-400 dark:border-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {image ? (
+                        <img src={image} alt={color} className="size-5 rounded-full object-cover" />
+                      ) : (
+                        <span className="size-5 rounded-full bg-cyan-500/20" />
+                      )}
+                      {color}
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedColor && !imageByColor.has(selectedColor) && (
+                <p className="mt-1.5 text-xs text-slate-400">La imagen general se mantiene para este color.</p>
+              )}
+            </div>
+          )}
+
+          {/* Ficha técnica con peso y tamaño (solo si existen) */}
+          {details.length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {details.map((d) => (
+                  <div key={d.label} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
+                    <p className="font-mono text-[10px] uppercase text-slate-400">{d.label}</p>
+                    <p className="mt-1 text-sm font-medium">{d.value}</p>
+                  </div>
                 ))}
               </div>
             </div>
-          ) : null}
+          )}
 
-          <div className="mt-6">
-            <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</p>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              {Object.entries(product.specifications ?? {}).map(([key, value]) => (
-                <div key={key} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
-                  <p className="font-mono text-[10px] uppercase text-slate-400">{key}</p>
-                  <p className="mt-1 text-sm font-medium">{value}</p>
-                </div>
-              ))}
+          {/* Especificaciones adicionales */}
+          {Object.keys(product.specifications ?? {}).length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {Object.entries(product.specifications ?? {}).map(([key, value]) => (
+                  <div key={key} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
+                    <p className="font-mono text-[10px] uppercase text-slate-400">{key}</p>
+                    <p className="mt-1 text-sm font-medium">{value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-auto pt-8">
             <div className="flex flex-wrap items-end justify-between gap-4">

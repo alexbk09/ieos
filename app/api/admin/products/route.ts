@@ -33,6 +33,14 @@ export async function POST(request: Request) {
     featured: Boolean(body.featured),
     category_ids: Array.isArray(body.category_ids) ? body.category_ids.filter(Boolean) : [],
     images: Array.isArray(body.images) ? body.images.filter(Boolean) : [],
+    colorImages: Array.isArray(body.colorImages)
+      ? body.colorImages
+          .filter((img: any) => img?.url && img?.color_name)
+          .map((img: any) => ({ url: String(img.url), color_name: String(img.color_name) }))
+      : [],
+    colors: Array.isArray(body.colors) ? body.colors.map(String).filter(Boolean) : [],
+    peso: body.peso || null,
+    tamaño: body.tamaño || null,
   }
 
   if (!payload.name || !payload.slug || !Number.isFinite(payload.price_usd)) {
@@ -66,6 +74,14 @@ export async function PATCH(request: Request) {
     featured: Boolean(body.featured),
     category_ids: Array.isArray(body.category_ids) ? body.category_ids.filter(Boolean) : [],
     images: Array.isArray(body.images) ? body.images.filter(Boolean) : [],
+    colorImages: Array.isArray(body.colorImages)
+      ? body.colorImages
+          .filter((img: any) => img?.url && img?.color_name)
+          .map((img: any) => ({ url: String(img.url), color_name: String(img.color_name) }))
+      : [],
+    colors: Array.isArray(body.colors) ? body.colors.map(String).filter(Boolean) : [],
+    peso: body.peso || null,
+    tamaño: body.tamaño || null,
   })
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
   return NextResponse.json({ product: result.data })

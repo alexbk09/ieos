@@ -12,7 +12,7 @@ import { BulkUploadModal } from '@/components/bulk-upload-modal'
 import { confirmDelete } from '@/components/confirm-dialog'
 import { lossPerProductUnit } from '@/lib/rate-spread-calculator'
 
-type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number }
+type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }
 type Category = { id: string; name: string; slug: string }
 type Marca = { id: string; nombre: string }
 type Proveedor = { id: string; nombre: string }
@@ -46,13 +46,22 @@ type Product = {
   marca_id: string | null
   proveedor_id: string | null
   featured: boolean
+  peso?: string | null
+  tamaño?: string | null
+  colors?: string[]
   categories?: Category[]
   images?: ProductImage[]
   marca?: ProductMarca | null
   proveedor?: ProductProveedor | null
 }
 
-/** Estado interno del formulario. Usa arreglos planos para categorías e imágenes. */
+/** Color con su imagen asociada (opcional) para el editor moderno. */
+type ColorVariant = {
+  name: string
+  image?: string
+}
+
+/** Estado interno del formulario. Usa arreglos planos para categorías, imágenes y colores. */
 type EditorState = {
   id?: string
   name?: string
@@ -61,19 +70,33 @@ type EditorState = {
   price_usd?: number
   stock?: number
   costo_inicial?: number
+  peso?: string
+  tamaño?: string
   marca_id?: string
   proveedor_id?: string
   featured?: boolean
   images?: string[]
   category_ids?: string[]
+  colors?: ColorVariant[]
 }
 
-/** Convierte las imágenes de un producto a una lista plana de URLs. */
+/** Convierte las imágenes de un producto a una lista plana de URLs (solo imágenes generales, sin color). */
 function productUrls(product?: Product) {
   if (!product) return []
-  const urls = product.images?.map((img) => img.url) ?? []
+  const urls = product.images?.filter((img) => !img.color_name).map((img) => img.url) ?? []
   if (urls.length === 0 && product.image_url) urls.push(product.image_url)
   return [...new Set(urls)]
+}
+
+/** Extrae los colores del producto como variantes (con su imagen si existe). */
+function productColors(product?: Product): ColorVariant[] {
+  if (!product) return []
+  const colors = product.colors ?? []
+  const imageByColor = new Map<string, string>()
+  for (const img of product.images ?? []) {
+    if (img.color_name && img.url) imageByColor.set(img.color_name, img.url)
+  }
+  return colors.map((name) => ({ name, image: imageByColor.get(name) }))
 }
 
 export function ProductManager({
@@ -191,11 +214,14 @@ export function ProductManager({
       price_usd: 0,
       stock: 0,
       costo_inicial: 0,
+      peso: '',
+      tamaño: '',
       marca_id: '',
       proveedor_id: '',
       featured: false,
       category_ids: categories[0] ? [categories[0].id] : [],
       images: [],
+      colors: [],
     })
     setModalOpen(true)
   }
@@ -210,11 +236,14 @@ export function ProductManager({
       price_usd: product.price_usd,
       stock: product.stock,
       costo_inicial: product.costo_inicial ?? 0,
+      peso: product.peso ?? '',
+      tamaño: product.tamaño ?? '',
       marca_id: product.marca_id ?? '',
       proveedor_id: product.proveedor_id ?? '',
       featured: product.featured,
       images: productUrls(product),
       category_ids: (product.categories ?? []).map((c) => c.id),
+      colors: productColors(product),
     })
     setModalOpen(true)
   }
@@ -235,10 +264,17 @@ export function ProductManager({
       return
     }
     setSaving(true)
+
+    // Construye el payload: colores como nombres + imágenes asociadas por color
+    const colors = (editing.colors ?? []).map((c) => c.name.trim()).filter(Boolean)
+    const colorImages = (editing.colors ?? [])
+      .filter((c) => c.name.trim() && c.image)
+      .map((c) => ({ color_name: c.name.trim(), url: c.image! }))
+
     const response = await fetch('/api/admin/products', {
       method: editing.id ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editing),
+      body: JSON.stringify({ ...editing, colors, colorImages }),
     })
     setSaving(false)
     if (!response.ok) {
@@ -289,6 +325,50 @@ export function ProductManager({
   /** Quita una imagen de la lista de imágenes del producto. */
   function removeImage(url: string) {
     setEditing((current) => (current ? { ...current, images: (current.images ?? []).filter((img) => img !== url) } : current))
+  }
+
+  /** Agrega un color vacío al editor. */
+  function addColor() {
+    setEditing((current) => (current ? { ...current, colors: [...(current.colors ?? []), { name: '', image: undefined }] } : current))
+  }
+
+  /** Actualiza el nombre de un color en el editor. */
+  function updateColorName(index: number, name: string) {
+    setEditing((current) => {
+      if (!current) return current
+      const colors = [...(current.colors ?? [])]
+      colors[index] = { ...colors[index], name }
+      return { ...current, colors }
+    })
+  }
+
+  /** Quita un color del editor. */
+  function removeColor(index: number) {
+    setEditing((current) => {
+      if (!current) return current
+      return { ...current, colors: (current.colors ?? []).filter((_, i) => i !== index) }
+    })
+  }
+
+  /** Sube una imagen para un color específico y la asigna a la variante. */
+  async function uploadColorImage(index: number, file: File) {
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch('/api/admin/upload', { method: 'POST', body: form })
+    const result = await response.json()
+    setUploading(false)
+    if (!response.ok) {
+      toast.error('No se pudo cargar la imagen', { description: result.error ?? 'Verifica el bucket y vuelve a intentarlo.' })
+      return
+    }
+    setEditing((current) => {
+      if (!current) return current
+      const colors = [...(current.colors ?? [])]
+      colors[index] = { ...colors[index], image: result.url }
+      return { ...current, colors }
+    })
+    toast.success('Imagen del color cargada', { description: 'La imagen se mostrará al seleccionar este color.' })
   }
 
   /**
@@ -591,6 +671,92 @@ export function ProductManager({
                 value={editing.stock ?? 0}
                 onChange={(e) => updateField('stock', Number(e.target.value))}
               />
+            </div>
+
+            {/* Peso y Tamaño (opcionales) */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormInput
+                label="Peso"
+                value={editing.peso ?? ''}
+                onChange={(e) => updateField('peso', e.target.value)}
+                placeholder="Ej: 0.8 kg"
+                hint="Opcional. Se muestra en el catálogo solo si se completa."
+              />
+              <FormInput
+                label="Tamaño"
+                value={editing.tamaño ?? ''}
+                onChange={(e) => updateField('tamaño', e.target.value)}
+                placeholder="Ej: 50 x 50 cm"
+                hint="Opcional. Se muestra en el catálogo solo si se completa."
+              />
+            </div>
+
+            {/* Colores (variantes con imagen opcional) */}
+            <div className="rounded-2xl border border-dashed border-border p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Colores</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Opcional. Cada color puede tener su propia imagen y se mostrará en el catálogo.
+                  </p>
+                </div>
+                <button
+                  onClick={addColor}
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-muted"
+                >
+                  <Plus size={13} /> Agregar color
+                </button>
+              </div>
+
+              {(editing.colors ?? []).length === 0 ? (
+                <p className="rounded-xl bg-muted/50 px-4 py-6 text-center text-xs text-muted-foreground">
+                  No hay colores agregados. Si el producto tiene variantes de color, agrégalas aquí.
+                </p>
+              ) : (
+                <div className="grid gap-3">
+                  {(editing.colors ?? []).map((color, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
+                      {/* Thumbnail del color */}
+                      {color.image ? (
+                        <img src={color.image} alt={color.name || `Color ${i + 1}`} className="size-12 shrink-0 rounded-lg object-cover" />
+                      ) : (
+                        <div className="grid size-12 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                          <ImagePlus size={15} />
+                        </div>
+                      )}
+
+                      {/* Nombre del color */}
+                      <input
+                        value={color.name}
+                        onChange={(e) => updateColorName(i, e.target.value)}
+                        placeholder={`Color ${i + 1} (ej: Blanco, Negro…)`}
+                        className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                      />
+
+                      {/* Imagen del color */}
+                      <label className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-muted">
+                        <Upload size={13} />
+                        {color.image ? 'Cambiar' : 'Imagen'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={(e) => e.target.files?.[0] && uploadColorImage(i, e.target.files[0])}
+                        />
+                      </label>
+
+                      {/* Quitar color */}
+                      <button
+                        onClick={() => removeColor(i)}
+                        aria-label={`Quitar color ${color.name || i + 1}`}
+                        className="grid size-9 shrink-0 place-items-center rounded-lg text-destructive transition-colors hover:bg-destructive/10"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Categorías con buscador */}

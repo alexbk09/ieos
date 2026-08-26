@@ -23,9 +23,11 @@ type CatalogProduct = {
   stock: number
   image_url: string
   colors?: string[]
+  peso?: string | null
+  tamaño?: string | null
   specifications?: Record<string, string>
   categories?: { id: string; name: string; slug: string; description: string | null }[]
-  images?: { id: string; url: string; alt_text: string | null; sort_order: number }[]
+  images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[]
 }
 
 /** Convierte el estado de los filtros a parámetros URL comunes. */
