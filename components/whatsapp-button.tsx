@@ -1,38 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { WHATSAPP_NUMBER } from '@/lib/constants'
 
 /**
  * Botón flotante de WhatsApp visible en todas las páginas.
- * Obtiene el número desde site_settings (API pública cacheada) y
- * redirige a wa.me con un mensaje de bienvenida.
- * No hace llamadas directas a Supabase: la API /api/site-settings es la capa de datos.
+ * Enlaza directamente al número de WhatsApp de la empresa
+ * (definido en lib/constants.ts) con un mensaje de bienvenida.
  */
 export function WhatsAppButton() {
-  const [number, setNumber] = useState('')
-  const [loaded, setLoaded] = useState(false)
-
-  // Obtiene el número de WhatsApp desde la configuración pública del sitio.
-  useEffect(() => {
-    let active = true
-    fetch('/api/site-settings')
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('No se pudo cargar la configuración'))))
-      .then((data) => {
-        if (!active) return
-        const raw = data?.settings?.whatsapp_number
-        if (typeof raw === 'string') setNumber(raw.replace(/\D/g, ''))
-      })
-      .catch((err) => console.error('WhatsAppButton: no se pudo cargar el número', err))
-      .finally(() => { if (active) setLoaded(true) })
-    return () => { active = false }
-  }, [])
-
-  // No renderiza hasta saber si hay número configurado (evita enlace vacío).
-  if (!loaded) return null
-
-  const href = number
-    ? `https://wa.me/${number}?text=${encodeURIComponent('Hola, me gustaría más información.')}`
-    : 'https://wa.me/'
+  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hola, me gustaría más información.')}`
 
   return (
     <a
