@@ -971,6 +971,76 @@ tailwind.config = {
             <span class="badge bg-cyan-400 text-blue-950 font-bold">Registrado en auditoría</span>
           </div>
         </div>
+
+        <!-- EXPLICACION DEL CALCULO DE PERDIDA -->
+        <div class="mt-8 rounded-3xl border-2 border-red-500/30 bg-gradient-to-br from-red-50/80 to-white dark:from-red-500/10 dark:to-slate-900 p-6 sm:p-8">
+          <div class="flex items-center gap-3">
+            <span class="grid size-12 place-items-center rounded-2xl bg-red-500 text-white text-xl">📉</span>
+            <div>
+              <h4 class="text-xl font-black">¿Cómo se calcula la pérdida?</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Monto y porcentaje · explicación para el cliente</p>
+            </div>
+          </div>
+
+          <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            Cuando compras un producto pagas su precio en <strong>USD</strong>, pero al venderlo en la tienda ese mismo precio se
+            convierte a <strong>bolívares (Bs)</strong> usando la <strong>tasa oficial del día</strong>. Si la tasa oficial sube, el dinero que
+            recibiste por la venta (en Bs) vale <strong>menos dólares</strong> de los que costó reponer el producto: esa diferencia es
+            la <strong>pérdida</strong>.
+          </p>
+
+          <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            El sistema compara la <strong>última tasa usada</strong> en el historial (o la tasa actual si aún no hay ajustes) contra la
+            <strong>nueva tasa oficial</strong> que ingresas. Solo hay pérdida si la nueva tasa es <strong>mayor</strong> a la base; si es menor o
+            igual, la pérdida es <strong>$0</strong>.
+          </p>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div class="rounded-2xl bg-white dark:bg-slate-900 border border-red-500/20 p-5">
+              <p class="font-mono text-[10px] uppercase tracking-widest text-red-500">Pérdida en Bs</p>
+              <p class="mt-2 font-mono text-xs text-slate-700 dark:text-slate-200">Precio USD × (nueva tasa − tasa base)</p>
+              <p class="mt-2 text-xs text-slate-500">Son los <strong>bolívares que dejaste de recibir</strong> por cada producto. Ej: vendiste a $36 con tasa 36,50 y sube a 40 → <strong>perdiste Bs. 126,00</strong> por unidad.</p>
+            </div>
+            <div class="rounded-2xl bg-white dark:bg-slate-900 border border-red-500/20 p-5">
+              <p class="font-mono text-[10px] uppercase tracking-widest text-red-500">Pérdida en USD</p>
+              <p class="mt-2 font-mono text-xs text-slate-700 dark:text-slate-200">Precio USD × (1 − tasa base ÷ nueva tasa)</p>
+              <p class="mt-2 text-xs text-slate-500">Es lo que vale la pérdida <strong>convertida de vuelta a dólares</strong> a la nueva tasa. Con el mismo ejemplo: al convertir los Bs. recibidos a la nueva tasa, cada producto vale <strong>$3,15 menos</strong>.</p>
+            </div>
+            <div class="rounded-2xl bg-white dark:bg-slate-900 border border-red-500/20 p-5">
+              <p class="font-mono text-[10px] uppercase tracking-widest text-red-500">% de pérdida</p>
+              <p class="mt-2 font-mono text-xs text-slate-700 dark:text-slate-200">(1 − tasa base ÷ nueva tasa) × 100</p>
+              <p class="mt-2 text-xs text-slate-500">Es el <strong>porcentaje del valor de venta</strong> que se pierde. Es igual para todos los productos porque solo depende de las tasas, no del precio. Ej: de 36,50 a 40 → <strong>8,75% de pérdida</strong>.</p>
+            </div>
+          </div>
+
+          <div class="mt-6 rounded-2xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-5">
+            <p class="font-mono text-xs uppercase tracking-widest text-cyan-600 dark:text-cyan-400">Ejemplo paso a paso</p>
+            <div class="mt-3 grid gap-3 md:grid-cols-2 text-sm">
+              <div>
+                <p class="font-semibold">Datos</p>
+                <ul class="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  <li>Precio de venta: <strong>$36,00</strong></li>
+                  <li>Tasa base (última usada): <strong>Bs. 36,50</strong></li>
+                  <li>Nueva tasa oficial: <strong>Bs. 40,00</strong></li>
+                </ul>
+              </div>
+              <div>
+                <p class="font-semibold">Resultado por producto</p>
+                <ul class="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  <li>Pérdida en Bs: <strong>36 × (40 − 36,50) = Bs. 126,00</strong></li>
+                  <li>Pérdida en USD: <strong>36 × (1 − 36,50÷40) = $3,15</strong></li>
+                  <li>% de pérdida: <strong>(1 − 36,50÷40) × 100 = 8,75%</strong></li>
+                  <li>% de aumento sugerido: <strong>(40÷36,50 − 1) × 100 = 9,59%</strong></li>
+                </ul>
+              </div>
+            </div>
+            <p class="mt-4 rounded-xl bg-cyan-500/10 border border-cyan-500/25 p-3 text-xs text-slate-600 dark:text-slate-300">
+              💡 <strong>Total de la pérdida:</strong> el sistema suma la pérdida Bs y USD de <strong>todos</strong> los productos del inventario para
+              mostrarte el impacto global. El <strong>% sugerido</strong> (9,59%) es el aumento de precio que recupera esa pérdida —
+              puedes ajustarlo manualmente y previsualizar el nuevo costo y precio de venta en la tabla.
+            </p>
+          </div>
+        </div>
       </section>
 
       <!-- ── 20. CONFIGURACIÓN ── -->
