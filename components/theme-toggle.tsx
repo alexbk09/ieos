@@ -17,7 +17,7 @@ export function ThemeToggle() {
       aria-label="Cambiar tema"
       title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       onClick={toggle}
-      className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-cyan-500 hover:text-cyan-600 dark:border-slate-700 dark:text-slate-300"
+      className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand hover:text-brand"
     >
       {dark ? <Sun size={17} /> : <Moon size={17} />}
     </button>

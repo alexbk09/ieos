@@ -1,10 +1,12 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
+import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme'
 
 /**
  * Servicio de configuración del sitio.
  * Capa única de acceso a Supabase para la tabla site_settings.
  * La lectura pública usa el cliente público (SSG+ISR); la administración usa cliente servidor.
+ * Incluye el tema visual de marca (site_settings.theme) para personalización multiempresa.
  */
 
 // ---------- Tipos ----------
@@ -70,6 +72,8 @@ export type SiteSettings = {
   whatsapp_number: string
   address: string
   email: string
+  /** Tema visual de marca (colores, fondos, radio) personalizable por empresa. */
+  theme: ThemeConfig
   /** Latitud de la tienda para el mapa del inicio. */
   map_lat: number
   /** Longitud de la tienda para el mapa del inicio. */
@@ -100,6 +104,8 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
     map_lat: Number(row?.map_lat ?? fallback.map_lat ?? 10.4806),
     map_lng: Number(row?.map_lng ?? fallback.map_lng ?? -66.9036),
     map_zoom: Number(row?.map_zoom ?? fallback.map_zoom ?? 13),
+    // Tema visual: merge de la BD con los valores por defecto (nunca faltan campos).
+    theme: { ...DEFAULT_THEME, ...(row?.theme ?? fallback.theme ?? {}) },
     nav_links: row?.nav_links ?? fallback.nav_links ?? [],
     hero_texts: row?.hero_texts ?? fallback.hero_texts ?? {},
     hero_images: row?.hero_images ?? fallback.hero_images ?? {},
@@ -178,6 +184,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
     linkedin: 'https://linkedin.com',
     email: 'mailto:hola@ilumax.ve',
   },
+  theme: DEFAULT_THEME,
 }
 
 /**
@@ -245,7 +252,7 @@ export async function updateSiteSettings(payload: Partial<SiteSettings>) {
 
   // Columnas JSONB: se copian tal cual (objetos/arreglos).
   const jsonb: Record<string, unknown> = {}
-  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links'] as const) {
+  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme'] as const) {
     if (payload[key] !== undefined) jsonb[key] = payload[key]
   }
 

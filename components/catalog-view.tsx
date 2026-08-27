@@ -52,7 +52,7 @@ function buildParams(filters: {
 
 /** Etiqueta de la sección de filtros. */
 function FilterLabel({ children }: { children: ReactNode }) {
-  return <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{children}</span>
+  return <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</span>
 }
 
 /**
@@ -189,12 +189,12 @@ export function CatalogView({
       <label className="grid gap-2">
         <FilterLabel>Buscar producto</FilterLabel>
         <div className="relative">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Nombre o descripción…"
-            className="w-full rounded-xl border border-slate-200 bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none transition-colors focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700"
+            className="w-full rounded-xl border border-border bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
       </label>
@@ -203,12 +203,12 @@ export function CatalogView({
       <label className="grid gap-2">
         <FilterLabel>Slug</FilterLabel>
         <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400">/</span>
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-muted-foreground">/</span>
           <input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="mi-producto"
-            className="w-full rounded-xl border border-slate-200 bg-transparent py-2.5 pl-7 pr-3 text-sm outline-none transition-colors focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700"
+            className="w-full rounded-xl border border-border bg-transparent py-2.5 pl-7 pr-3 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
       </label>
@@ -223,7 +223,7 @@ export function CatalogView({
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
             placeholder="Mín."
-            className="w-full rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none transition-colors focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700"
+            className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           <input
             type="number"
@@ -231,7 +231,7 @@ export function CatalogView({
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
             placeholder="Máx."
-            className="w-full rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none transition-colors focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700"
+            className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
       </div>
@@ -268,14 +268,14 @@ export function CatalogView({
       <div className="grid grid-cols-2 gap-2 pt-1">
         <button
           onClick={resetAndLoad}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 hover:text-blue-950"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
         >
           <Search size={15} /> Aplicar
         </button>
         <button
           onClick={clearFilters}
           disabled={activeFilterCount === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
         >
           <RotateCcw size={14} /> Limpiar
         </button>
@@ -285,35 +285,35 @@ export function CatalogView({
 
   // El menú de navegación es el mismo en toda la tienda: lo define SiteHeader (DEFAULT_NAV_LINKS).
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <SiteHeader cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} brand={brand} />
 
       <main className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
         {/* Panel de filtros: sidebar en desktop, collapsible en móvil */}
         <aside className="h-fit lg:sticky lg:top-24">
           {/* Encabezado del panel */}
-          <div className="rounded-t-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:rounded-3xl lg:p-6">
+          <div className="rounded-t-3xl border border-border bg-card p-5 lg:rounded-3xl lg:p-6">
             <button
               onClick={() => setFiltersOpen((o) => !o)}
               className="flex w-full items-center justify-between lg:cursor-default lg:pointer-events-none"
             >
               <div className="flex items-center gap-2">
-                <SlidersHorizontal size={16} className="text-cyan-600" />
+                <SlidersHorizontal size={16} className="text-brand-strong" />
                 <h2 className="font-semibold">Filtros</h2>
                 {activeFilterCount > 0 && (
-                  <span className="grid size-5 place-items-center rounded-full bg-cyan-500 text-[10px] font-bold text-white">
+                  <span className="grid size-5 place-items-center rounded-full bg-brand text-[10px] font-bold text-brand-foreground">
                     {activeFilterCount}
                   </span>
                 )}
               </div>
-              <span className="text-xs text-slate-500 lg:hidden">{filtersOpen ? 'Ocultar' : 'Mostrar'}</span>
+              <span className="text-xs text-muted-foreground lg:hidden">{filtersOpen ? 'Ocultar' : 'Mostrar'}</span>
             </button>
-            <p className="mt-1 text-xs text-slate-500">{totalCount} producto{totalCount !== 1 ? 's' : ''}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{totalCount} producto{totalCount !== 1 ? 's' : ''}</p>
           </div>
 
           {/* Cuerpo del panel */}
           <div
-            className={`border-x border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:border lg:rounded-3xl lg:p-6 ${
+            className={`border-x border-b border-border bg-card p-5 lg:border lg:rounded-3xl lg:p-6 ${
               filtersOpen ? 'block' : 'hidden lg:block'
             } rounded-b-3xl`}
           >
@@ -325,7 +325,7 @@ export function CatalogView({
         <section>
           {loading && products.length === 0 ? (
             <div className="grid place-items-center py-24">
-              <LoaderCircle className="animate-spin text-cyan-600" size={28} />
+              <LoaderCircle className="animate-spin text-brand-strong" size={28} />
             </div>
           ) : (
             <>
@@ -337,21 +337,21 @@ export function CatalogView({
 
               {hasMore && (
                 <div id="catalog-sentinel" className="grid place-items-center py-10">
-                  <LoaderCircle className="animate-spin text-cyan-600" size={24} />
+                  <LoaderCircle className="animate-spin text-brand-strong" size={24} />
                 </div>
               )}
               {!hasMore && products.length > 0 && (
-                <p className="py-8 text-center text-sm text-slate-400">
+                <p className="py-8 text-center text-sm text-muted-foreground">
                   Has visto todos los productos de ilumaX.
                 </p>
               )}
               {!hasMore && products.length === 0 && (
                 <div className="grid place-items-center py-24 text-center">
                   <div>
-                    <p className="text-sm text-slate-400">No encontramos productos con esos filtros.</p>
+                    <p className="text-sm text-muted-foreground">No encontramos productos con esos filtros.</p>
                     <button
                       onClick={clearFilters}
-                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-blue-950 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 hover:text-blue-950"
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
                     >
                       <RotateCcw size={14} /> Limpiar filtros
                     </button>

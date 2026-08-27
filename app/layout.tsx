@@ -4,6 +4,7 @@ import './globals.css'
 import { ToastProvider } from '@/components/toast-provider'
 import { WhatsAppButton } from '@/components/whatsapp-button'
 import { getSiteSettings } from '@/services/site-settings'
+import { themeStyleTagContent } from '@/lib/theme'
 
 /** ISR: el layout raíz se revalida cada 5 min (metadata dinámica). */
 export const revalidate = 300
@@ -24,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export const viewport: Viewport = { colorScheme: 'light dark', themeColor: '#071d49' }
+export const viewport: Viewport = { colorScheme: 'light dark', themeColor: '#020617' }
 
 /** Script inline que aplica el tema guardado ANTES de la hidratación (evita parpadeo). */
 const darkModeInit = `
@@ -38,11 +39,18 @@ const darkModeInit = `
   })();
 `
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Lee la configuración pública del sitio (cacheada con ISR).
+  // El tema se serializa como <style> en el head: cero parpadeo al cargar
+  // y personalización multiempresa sin recompilar.
+  const { settings } = await getSiteSettings()
+  const themeCss = themeStyleTagContent(settings.theme)
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: darkModeInit }} />
+        <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       </head>
       <body className="antialiased">
         {children}

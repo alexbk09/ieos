@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ChevronRight, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Palette, Plus, Receipt, Save, Trash2, Upload, X } from 'lucide-react'
+import { Building2, ChevronRight, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Paintbrush, Palette, Plus, Receipt, Save, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 import { confirmDelete } from '@/components/confirm-dialog'
 import { cn } from '@/lib/utils'
+import { ThemeSettingsManager } from '@/components/theme-settings-manager'
+import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme'
 
 // ---------- Tipos (espejo de /services/site-settings) ----------
 type NavLink = { href: string; label: string; highlight?: boolean }
@@ -29,6 +31,7 @@ type SiteSettingsPayload = {
   contact_texts: Record<string, unknown>
   footer_texts: Record<string, unknown>
   social_links: Record<string, unknown>
+  theme: ThemeConfig
 }
 
 // ---------- Íconos por sección ----------
@@ -40,6 +43,7 @@ const SECTIONS = [
   { key: 'contacto', label: 'Contacto', icon: MessageCircle },
   { key: 'footer', label: 'Footer', icon: LayoutDashboard },
   { key: 'social', label: 'Redes', icon: Globe2 },
+  { key: 'apariencia', label: 'Apariencia', icon: Paintbrush },
 ] as const
 
 type SectionKey = (typeof SECTIONS)[number]['key']
@@ -62,7 +66,11 @@ async function uploadImage(file: File): Promise<string> {
  */
 export function SiteSettingsManager({ initialSettings }: { initialSettings: SiteSettingsPayload }) {
   const router = useRouter()
-  const [form, setForm] = useState<SiteSettingsPayload>(initialSettings)
+  // Asegura que el tema siempre tenga todos los campos (fallback al tema por defecto).
+  const [form, setForm] = useState<SiteSettingsPayload>({
+    ...initialSettings,
+    theme: { ...DEFAULT_THEME, ...(initialSettings.theme ?? {}) },
+  })
   const [active, setActive] = useState<SectionKey>('marca')
   const [saving, setSaving] = useState(false)
   const [uploadingField, setUploadingField] = useState<string | null>(null)
@@ -440,6 +448,16 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     )
   }
 
+  /** Sección: Apariencia (colores, radio y presets del tema de marca). */
+  function renderApariencia() {
+    return (
+      <ThemeSettingsManager
+        value={form.theme}
+        onChange={(theme) => setForm((f) => ({ ...f, theme }))}
+      />
+    )
+  }
+
   /** Renderiza la sección activa. */
   function renderSection() {
     switch (active) {
@@ -450,6 +468,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
       case 'contacto': return renderContacto()
       case 'footer': return renderFooter()
       case 'social': return renderSocial()
+      case 'apariencia': return renderApariencia()
     }
   }
 

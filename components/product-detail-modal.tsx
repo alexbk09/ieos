@@ -42,24 +42,24 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
   ].filter(Boolean) as { label: string; value: string }[]
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-blue-950/60 p-5 backdrop-blur-sm" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="relative grid max-h-[92vh] w-full max-w-5xl overflow-auto rounded-3xl bg-white dark:bg-slate-900 md:grid-cols-2">
-        <button onClick={onClose} aria-label="Cerrar" className="absolute right-4 top-4 z-20 grid size-10 place-items-center rounded-full bg-white/90 text-blue-950 shadow"><X size={19} /></button>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-navy/60 p-5 backdrop-blur-sm" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="relative grid max-h-[92vh] w-full max-w-5xl overflow-auto rounded-3xl bg-card md:grid-cols-2">
+        <button onClick={onClose} aria-label="Cerrar" className="absolute right-4 top-4 z-20 grid size-10 place-items-center rounded-full bg-card/90 text-foreground shadow"><X size={19} /></button>
 
         <div className="min-h-72">
           <ProductCarousel images={gallery} alt={product.name} className="h-full min-h-72 w-full md:rounded-l-3xl" />
         </div>
 
         <div className="flex flex-col p-7 md:p-10">
-          <p className="font-mono text-xs uppercase tracking-widest text-cyan-600">{categoryFor(product)}</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-brand-strong">{categoryFor(product)}</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em] md:text-4xl">{product.name}</h2>
-          <p className="mt-4 text-sm leading-7 text-slate-500 dark:text-slate-300 md:text-base">{product.description}</p>
+          <p className="mt-4 text-sm leading-7 text-muted-foreground md:text-base">{product.description}</p>
 
           {/* Colores clicables: cada color cambia la imagen si tiene la suya */}
           {colors.length > 0 && (
             <div className="mt-6">
-              <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
-                Colores {selectedColor && <span className="text-cyan-600">· {selectedColor}</span>}
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Colores {selectedColor && <span className="text-brand-strong">· {selectedColor}</span>}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {colors.map((color) => {
@@ -72,14 +72,14 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                       title={color}
                       className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
                         active
-                          ? 'border-cyan-500 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
-                          : 'border-slate-200 text-slate-600 hover:border-cyan-400 dark:border-slate-700 dark:text-slate-300'
+                          ? 'border-brand bg-brand/10 text-brand-strong'
+                          : 'border-border text-muted-foreground hover:border-brand'
                       }`}
                     >
                       {image ? (
                         <img src={image} alt={color} className="size-5 rounded-full object-cover" />
                       ) : (
-                        <span className="size-5 rounded-full bg-cyan-500/20" />
+                        <span className="size-5 rounded-full bg-brand/20" />
                       )}
                       {color}
                     </button>
@@ -87,7 +87,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                 })}
               </div>
               {selectedColor && !imageByColor.has(selectedColor) && (
-                <p className="mt-1.5 text-xs text-slate-400">La imagen general se mantiene para este color.</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">La imagen general se mantiene para este color.</p>
               )}
             </div>
           )}
@@ -130,7 +130,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
               </div>
               <span className={`rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${product.stock < 20 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{product.stock} disponibles</span>
             </div>
-            <button onClick={() => { onAdd(product); onClose() }} className="mt-6 w-full rounded-full bg-blue-950 px-5 py-3.5 text-sm font-medium text-white transition hover:bg-cyan-500 hover:text-blue-950">Agregar a solicitud</button>
+            <button onClick={() => { onAdd(product); onClose() }} className="mt-6 w-full rounded-full bg-navy px-5 py-3.5 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground">Agregar a solicitud</button>
           </div>
         </div>
       </div>

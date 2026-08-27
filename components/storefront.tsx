@@ -197,7 +197,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
     }
   }
 
-  return <div className="flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+  return <div className="flex min-h-screen flex-col bg-background text-foreground">
     <SiteHeader
       cartCount={count}
       onOpenCart={() => setCartOpen(true)}
@@ -207,32 +207,32 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
     <main className="flex-1">
       <section id="inicio" className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
         <div>
-          <p className="mb-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[.28em] text-cyan-600"><Sparkles size={14} /> {hero.eyebrow ?? brand.tagline}</p>
-          <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.07em] sm:text-7xl">{hero.title ?? 'Luz que define '}<span className="text-cyan-500">{hero.titleHighlight ?? 'espacios.'}</span></h1>
-          <p className="mt-7 max-w-xl text-base leading-7 text-slate-500 dark:text-slate-300">{hero.description}</p>
+          <p className="mb-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[.28em] text-brand-strong"><Sparkles size={14} /> {hero.eyebrow ?? brand.tagline}</p>
+          <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.07em] sm:text-7xl">{hero.title ?? 'Luz que define '}<span className="text-brand">{hero.titleHighlight ?? 'espacios.'}</span></h1>
+          <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground">{hero.description}</p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <a href={hero.primaryHref ?? '#catalogo'} className="inline-flex items-center gap-2 rounded-full bg-blue-950 px-6 py-3 text-sm font-medium text-white transition hover:bg-cyan-500 hover:text-blue-950">{hero.primaryButton ?? 'Explorar catálogo'} <ArrowUpRight size={16} /></a>
-            <a href={hero.secondaryHref ?? '/catalogo'} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-6 py-3 text-sm font-medium dark:border-slate-700">{hero.secondaryButton ?? 'Ver todo'} <ArrowUpRight size={16} /></a>
+            <a href={hero.primaryHref ?? '#catalogo'} className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground">{hero.primaryButton ?? 'Explorar catálogo'} <ArrowUpRight size={16} /></a>
+            <a href={hero.secondaryHref ?? '/catalogo'} className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium">{hero.secondaryButton ?? 'Ver todo'} <ArrowUpRight size={16} /></a>
           </div>
-          <div className="mt-14 flex gap-10 border-t border-slate-200 pt-5 dark:border-slate-800">
+          <div className="mt-14 flex gap-10 border-t border-border pt-5">
             {heroStats?.map((stat) => (
-              <div key={stat.label}><p className="text-2xl font-semibold">{stat.value}</p><p className="text-xs text-slate-500">{stat.label}</p></div>
+              <div key={stat.label}><p className="text-2xl font-semibold">{stat.value}</p><p className="text-xs text-muted-foreground">{stat.label}</p></div>
             ))}
           </div>
         </div>
-        <div className="relative overflow-hidden rounded-[2rem] bg-blue-950 p-5 text-white">
-          {hero.badge && <div className="absolute right-8 top-8 rounded-full border border-cyan-300/30 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-cyan-300">{hero.badge}</div>}
+        <div className="relative overflow-hidden rounded-[2rem] bg-navy p-5 text-navy-foreground">
+          {hero.badge && <div className="absolute right-8 top-8 rounded-full border border-brand-light/30 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-brand-light">{hero.badge}</div>}
           <Image src={heroImage} alt={heroAlt} width={600} height={600} priority className="aspect-square w-full rounded-[1.5rem] object-cover opacity-90" />
-          <div className="absolute bottom-10 left-10"><p className="font-mono text-xs uppercase tracking-widest text-cyan-300">{hero.imagePosition ?? '01 / 03'}</p><p className="mt-2 text-xl font-medium">{hero.imageCaption ?? brand.tagline}</p></div>
+          <div className="absolute bottom-10 left-10"><p className="font-mono text-xs uppercase tracking-widest text-brand-light">{hero.imagePosition ?? '01 / 03'}</p><p className="mt-2 text-xl font-medium">{hero.imageCaption ?? brand.tagline}</p></div>
         </div>
       </section>
 
       <section id="catalogo" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="flex flex-col justify-between gap-5 border-b border-slate-200 pb-7 md:flex-row md:items-end dark:border-slate-800">
-          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-cyan-600">Selección {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Encuentra tu próxima atmósfera</h2></div>
+        <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 md:flex-row md:items-end">
+          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Selección {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Encuentra tu próxima atmósfera</h2></div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 dark:border-slate-700 dark:bg-slate-900"><Search size={16} className="text-slate-400" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" className="w-44 bg-transparent text-sm outline-none placeholder:text-slate-400" /></label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-900">{categories.map((c) => <option key={c}>{c}</option>)}</select>
+            <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"><Search size={16} className="text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
           </div>
         </div>
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -241,16 +241,16 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
           ))}
         </div>
         <div className="mt-10 text-center">
-          <a href="/catalogo" className="inline-flex items-center gap-2 rounded-full bg-blue-950 px-6 py-3 text-sm font-medium text-white hover:bg-cyan-500 hover:text-blue-950">Ver catálogo completo <ArrowUpRight size={16} /></a>
+          <a href="/catalogo" className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground hover:bg-brand hover:text-brand-foreground">Ver catálogo completo <ArrowUpRight size={16} /></a>
         </div>
       </section>
 
-      <section id="studio" className="bg-blue-950 px-5 py-20 text-white lg:px-8">
+      <section id="studio" className="bg-navy px-5 py-20 text-navy-foreground lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
-          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-cyan-300">{cfg.studio.eyebrow ?? 'El studio'}</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em]">{cfg.studio.title ?? 'Diseñamos lo que otros solo iluminan.'}</h2></div>
+          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-light">{cfg.studio.eyebrow ?? 'El studio'}</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em]">{cfg.studio.title ?? 'Diseñamos lo que otros solo iluminan.'}</h2></div>
           <div className="grid gap-8 sm:grid-cols-3">
             {studioItems?.map((item) => (
-              <div key={item.number}><p className="text-3xl font-semibold text-cyan-300">{item.number}</p><p className="mt-3 text-sm leading-6 text-slate-300">{item.text}</p></div>
+              <div key={item.number}><p className="text-3xl font-semibold text-brand-light">{item.number}</p><p className="mt-3 text-sm leading-6 text-navy-muted">{item.text}</p></div>
             ))}
           </div>
         </div>
@@ -258,23 +258,23 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
 
       <section id="contacto" className="mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-2 lg:px-8">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[.25em] text-cyan-600">{cfg.contact.eyebrow ?? 'Hablemos'}</p>
+          <p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">{cfg.contact.eyebrow ?? 'Hablemos'}</p>
           <h2 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{cfg.contact.title ?? 'Tu espacio tiene algo que decir.'}</h2>
-          <p className="mt-5 max-w-md leading-7 text-slate-500 dark:text-slate-300">{cfg.contact.description}</p>
+          <p className="mt-5 max-w-md leading-7 text-muted-foreground">{cfg.contact.description}</p>
 
           {/* Dirección + enlaces rápidos */}
-          <div className="mt-8 flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3.5 dark:border-slate-700">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-cyan-500/10 text-cyan-600"><MapPin size={17} /></span>
+          <div className="mt-8 flex items-center gap-3 rounded-2xl border border-border px-4 py-3.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand-strong"><MapPin size={17} /></span>
             <div className="min-w-0">
               <p className="text-sm font-medium">{brand.name}</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{brand.address}</p>
+              <p className="truncate text-xs text-muted-foreground">{brand.address}</p>
             </div>
           </div>
 
           <div className="mt-3 flex gap-3">
-            {cfg.social.instagram && <a href={cfg.social.instagram} aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Star size={17} /></a>}
-            {cfg.social.linkedin && <a href={cfg.social.linkedin} aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Star size={17} /></a>}
-            {cfg.social.email && <a href={cfg.social.email} aria-label="Enviar correo" className="grid size-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700"><Globe2 size={17} /></a>}
+            {cfg.social.instagram && <a href={cfg.social.instagram} aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-border"><Star size={17} /></a>}
+            {cfg.social.linkedin && <a href={cfg.social.linkedin} aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-border"><Star size={17} /></a>}
+            {cfg.social.email && <a href={cfg.social.email} aria-label="Enviar correo" className="grid size-10 place-items-center rounded-full border border-border"><Globe2 size={17} /></a>}
           </div>
         </div>
 
@@ -285,7 +285,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
             onChange={(e) => setContactName(e.target.value)}
             required
             placeholder={cfg.contact.formNamePlaceholder ?? 'Tu nombre'}
-            className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700"
+            className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand"
           />
           <input
             value={contactEmail}
@@ -293,7 +293,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
             required
             type="email"
             placeholder={cfg.contact.formEmailPlaceholder ?? 'Correo electrónico'}
-            className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700"
+            className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand"
           />
           <textarea
             value={contactMessage}
@@ -301,7 +301,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
             required
             placeholder={cfg.contact.formMessagePlaceholder ?? 'Cuéntanos sobre tu proyecto'}
             rows={4}
-            className="rounded-2xl border border-slate-200 bg-transparent px-5 py-4 text-sm outline-none focus:border-cyan-500 dark:border-slate-700"
+            className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand"
           />
 
           {/* Captcha moderno anti-robots */}
@@ -322,7 +322,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
           <button
             type="submit"
             disabled={contactSending}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 py-4 text-sm font-semibold text-blue-950 transition-all hover:bg-cyan-300 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-foreground transition-all hover:bg-brand-strong active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
           >
             {contactSending ? (
               <>
@@ -339,20 +339,20 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
 
       {/* Mapa de la tienda */}
       <section className="mx-auto max-w-7xl px-5 pb-20 lg:px-8">
-        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="overflow-hidden rounded-[2rem] border border-border bg-card">
           <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-full bg-cyan-500/10 text-cyan-600"><MapPin size={17} /></span>
+              <span className="grid size-10 place-items-center rounded-full bg-brand/10 text-brand-strong"><MapPin size={17} /></span>
               <div>
                 <p className="text-sm font-semibold">Encuéntranos aquí</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{brand.address}</p>
+                <p className="text-xs text-muted-foreground">{brand.address}</p>
               </div>
             </div>
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${cfg.map.lat},${cfg.map.lng}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-blue-950 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 hover:text-blue-950"
+              className="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
             >
               <Navigation size={14} /> Cómo llegar
             </a>

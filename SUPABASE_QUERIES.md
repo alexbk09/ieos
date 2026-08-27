@@ -600,7 +600,52 @@ from storage.buckets
 where id = 'productos-bucket';
 ```
 
-## 20) Notas importantes
+## 20) Tema visual de marca (site_settings.theme)
+
+Cada empresa configura sus colores desde **Configuración → Apariencia**. Los valores se guardan en `site_settings.theme` (JSONB) y la app los convierte a variables CSS inyectadas en `<head>` (cero parpadeo, ISR).
+
+```sql
+alter table public.site_settings
+  add column if not exists theme jsonb not null default '{}'::jsonb;
+
+-- Valores por defecto (reproducen el look actual de ilumaX)
+update public.site_settings
+set theme = $json${
+  "brand": "#06b6d4",
+  "brandStrong": "#0891b2",
+  "brandLight": "#67e8f9",
+  "brandForeground": "#020617",
+  "navy": "#020617",
+  "navyForeground": "#f8fafc",
+  "navyMuted": "#cbd5e1",
+  "background": "#f8fafc",
+  "foreground": "#020617",
+  "backgroundDark": "#020617",
+  "foregroundDark": "#f8fafc",
+  "radius": "1rem"
+}$json$::jsonb
+where id = 1
+  and (theme is null or theme = '{}'::jsonb);
+```
+
+Campos del tema:
+
+| Campo | Descripción |
+|---|---|
+| `brand` | Color de marca principal (botones, enlaces, badges) |
+| `brandStrong` | Variante oscura para texto sobre fondos claros |
+| `brandLight` | Variante clara para fondos oscuros |
+| `brandForeground` | Texto que va encima del color de marca |
+| `navy` | Azul marino (secciones, botones primarios, overlays) |
+| `navyForeground` | Texto sobre secciones de azul marino |
+| `navyMuted` | Subtítulos sobre secciones oscuras |
+| `background` / `foreground` | Fondo y texto en modo claro |
+| `backgroundDark` / `foregroundDark` | Fondo y texto en modo oscuro |
+| `radius` | Radio de esquinas (ej: `1rem`, `12px`) |
+
+La app mapea estos valores a variables CSS (`--brand`, `--navy`, etc.) expuestas como clases Tailwind: `text-brand`, `bg-navy`, `border-brand/50`, `text-brand-strong`, `text-brand-light`, `bg-navy`, `text-navy-foreground`, `text-navy-muted`, `bg-card`, etc.
+
+## 21) Notas importantes
 
 - La app lee los roles desde `public.profiles.role` (valores: `admin` o `client`). La tabla `roles` + `role_permissions` permite gestionar permisos finos por módulo.
 - Todo usuario nuevo registrado en la app recibe automáticamente rol `client` (ver trigger `handle_new_user`).

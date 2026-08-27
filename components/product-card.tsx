@@ -50,24 +50,24 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
   const image = product.images?.[0]?.url ?? product.image_url
 
   return (
-    <article className="group overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <button onClick={() => onViewDetails(product)} aria-label={`Ver detalles de ${product.name}`} className="relative block w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+    <article className="group overflow-hidden rounded-3xl border border-border bg-card">
+      <button onClick={() => onViewDetails(product)} aria-label={`Ver detalles de ${product.name}`} className="relative block w-full overflow-hidden bg-muted">
         {image ? (
           <Image src={image} alt={product.name} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
-          <div className="grid aspect-[1.1] w-full place-items-center bg-slate-100 text-slate-400 dark:bg-slate-800">Sin imagen</div>
+          <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">Sin imagen</div>
         )}
-        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${product.stock < LOW_STOCK_ALERT ? 'bg-amber-100 text-amber-700' : 'bg-white/90 text-blue-950'}`}>{product.stock} en stock</span>
+        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${product.stock < LOW_STOCK_ALERT ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{product.stock} en stock</span>
       </button>
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-cyan-600">{categoryFor(product)}</p>
+            <p className="text-xs text-brand-strong">{categoryFor(product)}</p>
             <h3 className="mt-1 font-medium">{product.name}</h3>
           </div>
-          <button onClick={() => onAdd(product)} aria-label={`Agregar ${product.name}`} className="grid size-9 shrink-0 place-items-center rounded-full bg-cyan-400 text-blue-950 transition hover:bg-blue-950 hover:text-white"><Plus size={17} /></button>
+          <button onClick={() => onAdd(product)} aria-label={`Agregar ${product.name}`} className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground transition hover:bg-navy hover:text-navy-foreground"><Plus size={17} /></button>
         </div>
-        {product.description && <p className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-300">{product.description}</p>}
+        {product.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>}
 
         {/* Colores disponibles con miniaturas (solo si existen) */}
         {product.colors && product.colors.length > 0 && (
@@ -78,12 +78,12 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
                 <span
                   key={`${color}-${i}`}
                   title={color}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 px-2.5 text-[11px] text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-2.5 text-[11px] text-muted-foreground"
                 >
                   {image ? (
                     <img src={image} alt={color} className="size-4 rounded-full object-cover" />
                   ) : (
-                    <span className="size-4 rounded-full bg-cyan-500/20" />
+                    <span className="size-4 rounded-full bg-brand/20" />
                   )}
                   {color}
                 </span>
@@ -96,12 +96,12 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
         {(product.peso || product.tamaño) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {product.peso && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
                 ⚖ {product.peso}
               </span>
             )}
             {product.tamaño && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
                 📐 {product.tamaño}
               </span>
             )}
@@ -111,9 +111,9 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
         <div className="mt-5 flex items-end justify-between">
           <div>
             <p className="font-semibold">{moneyUsd(product.price_usd)}</p>
-            <p className="text-xs text-slate-400">{formatBolivars(product.price_usd, rate)}</p>
+            <p className="text-xs text-muted-foreground">{formatBolivars(product.price_usd, rate)}</p>
           </div>
-          <button onClick={() => onViewDetails(product)} className="text-xs text-slate-500 underline underline-offset-4">Ver detalles</button>
+          <button onClick={() => onViewDetails(product)} className="text-xs text-muted-foreground underline underline-offset-4">Ver detalles</button>
         </div>
       </div>
     </article>

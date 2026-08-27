@@ -188,5 +188,5 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 }
 
 export function AdminPageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: React.ReactNode }) {
-  return <header className="flex flex-col gap-5 border-b border-border px-5 py-7 sm:flex-row sm:items-end sm:justify-between sm:px-8"><div><p className="font-mono text-xs uppercase tracking-[.25em] text-cyan-600">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.06em] sm:text-4xl">{title}</h1>{description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}</div>{action}</header>
+  return <header className="flex flex-col gap-5 border-b border-border px-5 py-7 sm:flex-row sm:items-end sm:justify-between sm:px-8"><div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold tracking-[-.06em] sm:text-4xl">{title}</h1>{description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}</div>{action}</header>
 }
