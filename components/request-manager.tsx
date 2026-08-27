@@ -5,7 +5,7 @@ import { ClipboardList, Eye, Package } from 'lucide-react'
 import { DataTable, type TableColumn } from '@/components/ui/data-table'
 import { RequestDetailModal } from '@/components/request-detail-modal'
 import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status'
-import { formatBolivars, moneyUsd } from '@/lib/currency'
+import { moneyUsd } from '@/lib/currency'
 import type { Request, RequestClient } from '@/services/requests'
 
 /** Normaliza el perfil del cliente (Supabase puede devolver objeto o array). */
@@ -101,13 +101,16 @@ export function RequestManager({ initialRequests, exchangeRate }: { initialReque
       key: 'client',
       header: 'Cliente',
       sortable: true,
-      sortValue: (r) => clientOf(r)?.full_name ?? clientOf(r)?.email ?? '',
+      sortValue: (r) => r.customer_name ?? clientOf(r)?.full_name ?? clientOf(r)?.email ?? '',
       render: (r) => {
         const client = clientOf(r)
+        // Prioriza el snapshot de la cotización convertida (venta directa).
+        const name = r.customer_name ?? client?.full_name ?? 'Sin nombre'
+        const email = r.customer_email ?? client?.email ?? null
         return (
           <div className="min-w-0">
-            <p className="truncate font-medium">{client?.full_name || 'Sin nombre'}</p>
-            <p className="truncate text-xs text-muted-foreground">{client?.email || '—'}</p>
+            <p className="truncate font-medium">{name}</p>
+            <p className="truncate text-xs text-muted-foreground">{email || '—'}</p>
           </div>
         )
       },
@@ -125,12 +128,19 @@ export function RequestManager({ initialRequests, exchangeRate }: { initialReque
       header: 'Total',
       sortable: true,
       sortValue: (r) => Number(r.total_usd),
-      render: (r) => (
-        <div>
-          <p className="font-medium">{moneyUsd(Number(r.total_usd))}</p>
-          <p className="text-xs text-muted-foreground">{formatBolivars(Number(r.total_usd), exchangeRate)}</p>
-        </div>
-      ),
+      render: (r) => {
+        // Usa el total en Bs. guardado (cotización convertida) o calcula con la tasa actual.
+        const rate = Number(r.exchange_rate) || exchangeRate
+        const totalVes = Number(r.total_ves) || Number(r.total_usd) * rate
+        return (
+          <div>
+            <p className="font-medium">{moneyUsd(Number(r.total_usd))}</p>
+            <p className="text-xs text-muted-foreground">
+              Bs. {totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+        )
+      },
     },
     {
       key: 'status',
@@ -209,7 +219,7 @@ export function RequestManager({ initialRequests, exchangeRate }: { initialReque
         searchKeys={(r) => {
           const client = clientOf(r)
           const products = (r.solicitud_items ?? []).map((i) => i.product_name).join(' ')
-          return `${r.id} ${client?.full_name ?? ''} ${client?.email ?? ''} ${client?.phone ?? ''} ${products} ${r.status}`
+          return `${r.id} ${r.customer_name ?? ''} ${r.customer_email ?? ''} ${r.customer_phone ?? ''} ${client?.full_name ?? ''} ${client?.email ?? ''} ${client?.phone ?? ''} ${products} ${r.status}`
         }}
         searchPlaceholder="Buscar por cliente, producto, email o estado…"
         emptyMessage="No se encontraron solicitudes"

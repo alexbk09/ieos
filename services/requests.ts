@@ -12,6 +12,7 @@ import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status.mj
 // ---------- Tipos ----------
 export type RequestItem = {
   id: string
+  product_id: string | null
   product_name: string
   quantity: number
   unit_price_usd: number
@@ -36,7 +37,7 @@ export type RequestClient = {
 
 export type Request = {
   id: string
-  user_id: string
+  user_id: string | null
   status: string
   subtotal_usd?: number
   discount_percent?: number
@@ -44,6 +45,16 @@ export type Request = {
   payment_method?: 'cash_divisa' | 'transfer_divisa' | 'other'
   total_usd: number
   exchange_rate: number
+  total_ves?: number
+  customer_name?: string | null
+  customer_email?: string | null
+  customer_phone?: string | null
+  customer_address?: string | null
+  validity_days?: number
+  valid_until?: string | null
+  notes?: string | null
+  cash_divisa_discount_percent?: number
+  shows_cash_divisa_note?: boolean
   created_at: string
   updated_at: string
   solicitud_items: RequestItem[]

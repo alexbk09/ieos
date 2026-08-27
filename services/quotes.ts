@@ -367,9 +367,12 @@ export async function cancelQuote(id: string) {
  *
  * Proceso:
  *   1. Verifica que la cotización existe, no esté convertida y sea válida.
- *   2. Crea la solicitud con los descuentos de la cotización (subtotal,
- *      discount_percent, discount_amount_usd, total_usd, exchange_rate,
- *      payment_method) y el estado 'pending'.
+ *   2. Crea la solicitud con TODOS los datos de la cotización:
+ *      subtotal_usd, discount_percent, discount_amount_usd, total_usd,
+ *      total_ves, exchange_rate, payment_method, datos del cliente
+ *      (customer_name/email/phone/address), vigencia (validity_days,
+ *      valid_until), notas (notes) y snapshot del descuento por efectivo
+ *      en divisas (cash_divisa_discount_percent, shows_cash_divisa_note).
  *   3. Copia los ítems de la cotización a solicitud_items (snapshot).
  *   4. Marca la cotización como 'converted' y guarda el ID de la solicitud.
  *
@@ -397,19 +400,36 @@ export async function convertQuoteToRequest(quoteId: string) {
     return { data: null, error: { message: 'La cotización no tiene productos' } }
   }
 
-  // 2) Crear solicitud con descuentos.
+  // 2) Crear solicitud con todos los datos de la cotización.
+  const solicitudPayload: Record<string, unknown> = {
+    // user_id puede ser null (venta directa sin cliente registrado).
+    user_id: quote.user_id ?? null,
+    // Totales y descuentos.
+    subtotal_usd: Number(quote.subtotal_usd) || 0,
+    discount_percent: Number(quote.discount_percent) || 0,
+    discount_amount_usd: Number(quote.discount_amount_usd) || 0,
+    total_usd: Number(quote.total_usd) || 0,
+    total_ves: Number(quote.total_ves) || 0,
+    exchange_rate: Number(quote.exchange_rate) || 0,
+    payment_method: quote.payment_method ?? 'other',
+    // Datos del cliente (snapshot para venta directa o reportes).
+    customer_name: String(quote.customer_name ?? '').trim(),
+    customer_email: quote.customer_email ?? null,
+    customer_phone: quote.customer_phone ?? null,
+    customer_address: quote.customer_address ?? null,
+    // Vigencia y notas.
+    validity_days: Number(quote.validity_days) || 15,
+    valid_until: quote.valid_until ?? null,
+    notes: quote.notes ?? null,
+    // Snapshot del descuento por efectivo en divisas.
+    cash_divisa_discount_percent: Number(quote.cash_divisa_discount_percent) || 20,
+    shows_cash_divisa_note: Boolean(quote.shows_cash_divisa_note ?? true),
+    status: 'pending',
+  }
+
   const { data: solicitud, error: solError } = await supabase
     .from('solicitudes')
-    .insert({
-      user_id: quote.user_id,
-      subtotal_usd: Number(quote.subtotal_usd),
-      discount_percent: Number(quote.discount_percent),
-      discount_amount_usd: Number(quote.discount_amount_usd),
-      total_usd: Number(quote.total_usd),
-      exchange_rate: Number(quote.exchange_rate),
-      payment_method: quote.payment_method ?? 'other',
-      status: 'pending',
-    })
+    .insert(solicitudPayload)
     .select('id')
     .single()
   if (solError || !solicitud) {
@@ -421,7 +441,7 @@ export async function convertQuoteToRequest(quoteId: string) {
     .from('solicitud_items')
     .insert(items.map((item: any) => ({
       solicitud_id: solicitud.id,
-      product_id: item.product_id,
+      product_id: item.product_id ?? null,
       product_name: item.product_name,
       quantity: item.quantity,
       unit_price_usd: item.unit_price_usd,

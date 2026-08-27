@@ -45,7 +45,9 @@ test('calculateQuoteTotals: con pago en efectivo divisas (20% adicional)', () =>
   assert.equal(totals.cash_divisa_discount_percent, 20)
   assert.equal(totals.discount_amount_usd, 50)
   assert.equal(totals.total_usd, 200)
-  assert.equal(totals.total_ves, 7300)
+  // El pago en Bs. NO recibe el descuento por efectivo en divisas:
+  // 250 × 36.5 = 9125
+  assert.equal(totals.total_ves, 9125)
 })
 
 test('calculateQuoteTotals: descuento manual + efectivo divisas combinados', () => {
@@ -61,7 +63,9 @@ test('calculateQuoteTotals: descuento manual + efectivo divisas combinados', () 
   assert.equal(totals.cash_divisa_discount_percent, 20)
   assert.equal(totals.discount_amount_usd, 25 + 45)
   assert.equal(totals.total_usd, 180)
-  assert.equal(totals.total_ves, 6570)
+  // El pago en Bs. solo recibe el descuento manual:
+  // 225 × 36.5 = 8212.5
+  assert.equal(totals.total_ves, 8212.5)
 })
 
 test('calculateQuoteTotals: descuento manual + transferencia divisas (sin efectivo)', () => {

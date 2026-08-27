@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { CalendarDays, History, LoaderCircle, Mail, Package, Phone, UserRound, X } from 'lucide-react'
+import { PAYMENT_METHOD_LABELS } from '@/lib/quote-calculator'
 import { toast } from 'sonner'
 import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status'
-import { formatBolivars, moneyUsd } from '@/lib/currency'
+import { moneyUsd } from '@/lib/currency'
 import { confirmAction } from '@/components/confirm-dialog'
 import type { Request, RequestClient } from '@/services/requests'
 
@@ -37,16 +38,49 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString('es-VE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+/** Redondea a 2 decimales (céntimos). */
+function round2(n: number): number {
+  return Math.round((Number(n) || 0) * 100) / 100
+}
+
+/** Formatea un monto en bolívares con separadores locales. */
+function formatBs(n: number): string {
+  return `Bs. ${Number(n).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 /**
  * Modal de detalle de solicitud para el admin.
- * Muestra: datos del cliente, lista de ítems, totales, fecha de creación,
- * selector de estado con actualización en vivo, y el historial de cambios
- * de estado con quién lo cambió, cuándo y la transición.
+ * Muestra: datos del cliente (con snapshot de la cotización convertida si existe),
+ * lista de ítems, desglose de totales y descuentos (manual + efectivo divisas),
+ * notas heredadas de la cotización, selector de estado con actualización en vivo,
+ * y el historial de cambios de estado con quién lo cambió, cuándo y la transición.
  */
 export function RequestDetailModal({ request, exchangeRate, onClose, onStatusChange }: Props) {
   const client = clientOf(request)
   const [updating, setUpdating] = useState(false)
   const history = request.solicitud_status_history ?? []
+
+  // Cliente: prioriza el snapshot de la cotización convertida si existe.
+  const displayName = request.customer_name ?? client?.full_name ?? 'Sin nombre'
+  const displayEmail = request.customer_email ?? client?.email ?? 'Sin email'
+  const displayPhone = request.customer_phone ?? client?.phone ?? 'Sin teléfono'
+
+  // Total en Bs.: usa el guardado (total_ves) o calcula con la tasa actual.
+  const rate = Number(request.exchange_rate) || exchangeRate
+  const totalVes = Number(request.total_ves) || Number(request.total_usd) * rate
+
+  // Desglose de descuentos (igual que en la cotización convertida).
+  const subtotal = Number(request.subtotal_usd) || 0
+  const manualPct = Math.min(Math.max(Number(request.discount_percent) || 0, 0), 100)
+  const manualAmount = round2((subtotal * manualPct) / 100)
+  const afterManual = round2(subtotal - manualAmount)
+  const cashPct =
+    request.payment_method === 'cash_divisa'
+      ? Math.min(Math.max(Number(request.cash_divisa_discount_percent) || 0, 0), 100)
+      : 0
+  const cashAmount = round2((afterManual * cashPct) / 100)
+  // Si paga en bolívares NO aplica el descuento por efectivo en divisas.
+  const totalPayBolivaresBs = round2(afterManual * rate)
 
   /** Cambia el estado y refresca la lista en el padre. */
   async function changeStatus(status: string) {
@@ -100,15 +134,15 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
             <div className="grid gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:grid-cols-3">
               <div className="flex items-center gap-2">
                 <UserRound size={15} className="shrink-0 text-muted-foreground" />
-                <p className="text-sm font-medium">{client?.full_name || 'Sin nombre'}</p>
+                <p className="text-sm font-medium">{displayName}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={15} className="shrink-0 text-muted-foreground" />
-                <p className="truncate text-sm">{client?.email || 'Sin email'}</p>
+                <p className="truncate text-sm">{displayEmail}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Phone size={15} className="shrink-0 text-muted-foreground" />
-                <p className="text-sm">{client?.phone || 'Sin teléfono'}</p>
+                <p className="text-sm">{displayPhone}</p>
               </div>
             </div>
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -130,7 +164,7 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{moneyUsd(Number(item.unit_price_usd))}</p>
-                    <p className="text-xs text-muted-foreground">{formatBolivars(Number(item.unit_price_usd), exchangeRate)}</p>
+                    <p className="text-xs text-muted-foreground">{formatBs(round2(Number(item.unit_price_usd) * rate))}</p>
                   </div>
                 </div>
               ))}
@@ -141,21 +175,39 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
           {/* Totales y estado */}
           <section className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1.5">
-              {Number(request.subtotal_usd) > 0 && (
+              {subtotal > 0 && (
                 <div className="flex items-center justify-between gap-8 text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">{moneyUsd(Number(request.subtotal_usd))}</span>
+                  <span className="font-medium">{moneyUsd(subtotal)}</span>
                 </div>
               )}
-              {Number(request.discount_amount_usd) > 0 && (
+              {manualAmount > 0 && (
                 <div className="flex items-center justify-between gap-8 text-sm">
-                  <span className="text-muted-foreground">Descuento {Number(request.discount_percent) > 0 ? `${Number(request.discount_percent)}%` : ''}</span>
-                  <span className="font-medium text-destructive">-{moneyUsd(Number(request.discount_amount_usd))}</span>
+                  <span className="text-muted-foreground">Descuento manual ({manualPct}%)</span>
+                  <span className="font-medium text-destructive">-{moneyUsd(manualAmount)}</span>
                 </div>
+              )}
+              {cashAmount > 0 && (
+                <div className="flex items-center justify-between gap-8 text-sm">
+                  <span className="text-muted-foreground">Descuento efectivo divisas ({cashPct}%)</span>
+                  <span className="font-medium text-destructive">-{moneyUsd(cashAmount)}</span>
+                </div>
+              )}
+              {request.payment_method && request.payment_method !== 'other' && (
+                <p className="text-xs text-muted-foreground">
+                  Pago: <span className="font-medium">{PAYMENT_METHOD_LABELS[request.payment_method] ?? request.payment_method}</span>
+                </p>
               )}
               <p className="text-xs uppercase tracking-widest text-muted-foreground">Total</p>
               <p className="text-xl font-semibold">{moneyUsd(Number(request.total_usd))}</p>
-              <p className="text-sm text-muted-foreground">{formatBolivars(Number(request.total_usd), exchangeRate)}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatBs(totalVes)} · Tasa {rate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              {cashPct > 0 && (
+                <p className="mt-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs text-emerald-700 dark:text-emerald-400">
+                  💰 Pago en bolívares: {formatBs(totalPayBolivaresBs)} (sin el {cashPct}% de efectivo en divisas)
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[request.status] ?? 'bg-muted text-muted-foreground'}`}>
@@ -174,6 +226,14 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
               {updating && <LoaderCircle size={16} className="animate-spin text-muted-foreground" />}
             </div>
           </section>
+
+          {/* Notas de la solicitud (heredadas de la cotización) */}
+          {request.notes && (
+            <section>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Notas</h3>
+              <p className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">{request.notes}</p>
+            </section>
+          )}
 
           {/* Historial de cambios de estado */}
           <section>
