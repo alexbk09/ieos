@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/scroll-lock'
 
 type ModalProps = {
   /** Controla si el modal está abierto o cerrado. */
@@ -51,14 +52,12 @@ export function Modal({
   preventBackdropClose = false,
   className,
 }: ModalProps) {
-  // Bloquear scroll del body mientras el modal esté abierto
+  // Bloquear/desbloquear scroll del body con contador global
+  // (soporta modales anidados sin dejar el scroll pegado)
   useEffect(() => {
     if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
+    lockBodyScroll()
+    return () => unlockBodyScroll()
   }, [open])
 
   // Cerrar con tecla Escape

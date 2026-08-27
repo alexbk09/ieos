@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
+import { resetBodyScroll } from '@/lib/scroll-lock'
 
 /** Item individual del menú de navegación del panel. */
 type NavItem = { href: string; label: string; icon: LucideIcon }
@@ -139,6 +140,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [siteFooter, setSiteFooter] = useState<{ footer: { copyright?: string; slogan?: string }; brand: { name: string; address: string }; social: { instagram?: string; linkedin?: string; email?: string } } | null>(null)
+
+  // Limpieza residual: si el body quedó con overflow:hidden de un modal
+  // cerrado incorrectamente en una sesión anterior, lo restaura al navegar.
+  useEffect(() => {
+    resetBodyScroll()
+  }, [pathname])
 
   // Obtiene la configuración del footer desde la API pública de site_settings.
   // Usa la API (no Supabase directo) y es cacheada en CDN por 60s.

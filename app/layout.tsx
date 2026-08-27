@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ToastProvider } from '@/components/toast-provider'
 import { WhatsAppButton } from '@/components/whatsapp-button'
+import { ScrollReset } from '@/components/scroll-reset'
 import { getSiteSettings } from '@/services/site-settings'
 import { themeStyleTagContent } from '@/lib/theme'
 
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       </head>
       <body className="antialiased">
         {children}
+        <ScrollReset />
         <ToastProvider />
         {process.env.NODE_ENV === 'production' && <Analytics />}
         <WhatsAppButton />
