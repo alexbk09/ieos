@@ -4,24 +4,91 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { BarChart3, Building2, ClipboardList, FileText, FolderTree, LogOut, Menu, Package, Percent, Receipt, Settings2, ShieldCheck, Tag, UserRound, Users, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/user-menu'
 
-const links = [
-  { href: '/admin', label: 'Resumen', icon: BarChart3 },
-  { href: '/admin/productos', label: 'Productos', icon: Package },
-  { href: '/admin/categorias', label: 'Categorías', icon: FolderTree },
-  { href: '/admin/marcas', label: 'Marcas', icon: Tag },
-  { href: '/admin/proveedores', label: 'Proveedores', icon: Building2 },
-  { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
-  { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText },
-  { href: '/admin/facturacion', label: 'Facturación', icon: Receipt },
-  { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList },
-  { href: '/admin/roles', label: 'Roles y permisos', icon: ShieldCheck },
-  { href: '/admin/ajustes-precios', label: 'Ajuste de precios', icon: Percent },
-  { href: '/admin/configuracion', label: 'Configuración', icon: Settings2 },
+/** Item individual del menú de navegación del panel. */
+type NavItem = { href: string; label: string; icon: LucideIcon }
+
+/** Grupo de navegación: título de sección + items relacionados. */
+type NavGroup = { title: string; items: NavItem[] }
+
+/**
+ * Navegación del panel agrupada por módulos:
+ * - General: resumen del panel.
+ * - Catálogo: gestión de productos, categorías, marcas y proveedores.
+ * - Ventas: cotizaciones, facturación y solicitudes.
+ * - Usuarios: gestión de usuarios y roles/permisos.
+ * - Sistema: ajuste de precios y configuración general.
+ */
+const navGroups: NavGroup[] = [
+  {
+    title: 'General',
+    items: [
+      { href: '/admin', label: 'Resumen', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'Catálogo',
+    items: [
+      { href: '/admin/productos', label: 'Productos', icon: Package },
+      { href: '/admin/categorias', label: 'Categorías', icon: FolderTree },
+      { href: '/admin/marcas', label: 'Marcas', icon: Tag },
+      { href: '/admin/proveedores', label: 'Proveedores', icon: Building2 },
+    ],
+  },
+  {
+    title: 'Ventas',
+    items: [
+      { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText },
+      { href: '/admin/facturacion', label: 'Facturación', icon: Receipt },
+      { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList },
+    ],
+  },
+  {
+    title: 'Usuarios',
+    items: [
+      { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
+      { href: '/admin/roles', label: 'Roles y permisos', icon: ShieldCheck },
+    ],
+  },
+  {
+    title: 'Sistema',
+    items: [
+      { href: '/admin/ajustes-precios', label: 'Ajuste de precios', icon: Percent },
+      { href: '/admin/configuracion', label: 'Configuración', icon: Settings2 },
+    ],
+  },
 ]
+
+/** Renderiza la lista de grupos de navegación con sus títulos de sección. */
+function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  return (
+    <nav className="scrollbar-theme mt-10 flex-1 space-y-6 overflow-y-auto">
+      {navGroups.map(({ title, items }) => (
+        <div key={title}>
+          <p className="flex items-center gap-2 px-4 pb-2 font-mono text-[10px] uppercase tracking-[.2em] text-muted-foreground">
+            <span className="h-px w-3 bg-border" />{title}
+          </p>
+          <div className="space-y-1">
+            {items.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={onNavigate}
+                className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm transition ${pathname === href ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                <Icon size={18} className="shrink-0" />{label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
+  )
+}
 
 /**
  * Panel de navegación lateral del admin (logo + enlaces + acciones).
@@ -42,18 +109,7 @@ function AdminNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
         <ThemeToggle />
       </div>
 
-      <nav className="mt-10 space-y-2">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${pathname === href ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <Icon size={18} />{label}
-          </Link>
-        ))}
-      </nav>
+      <NavLinks pathname={pathname} onNavigate={onNavigate} />
 
       <div className="mt-auto space-y-2 pt-8">
         <Link href="/" onClick={onNavigate} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-muted-foreground hover:bg-muted">
@@ -119,17 +175,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="mt-10 flex-1 space-y-2">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ${pathname === href ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <Icon size={18} />{label}
-          </Link>
-        ))}
-      </nav>
+      <NavLinks pathname={pathname} />
 
       <div className="space-y-2 pt-8">
         <Link href="/" className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-muted-foreground hover:bg-muted">

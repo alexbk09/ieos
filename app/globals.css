@@ -43,6 +43,32 @@
 html { scroll-behavior: smooth; }
 ::selection { background: oklch(0.84 0.14 195); color: oklch(0.14 0.04 255); }
 
+/* ============================================================
+   Scrollbar con colores del tema (claro/oscuro).
+   Se usa en áreas internas con scroll, como la navegación del
+   panel admin. El thumb usa el mismo color del hover de los
+   botones del menú (--muted) y el track el color border,
+   adaptándose automáticamente al tema, incluso en modo oscuro.
+   ============================================================ */
+.scrollbar-theme {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--border);
+}
+.scrollbar-theme::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-theme::-webkit-scrollbar-track {
+  background: var(--border);
+  border-radius: 999px;
+}
+.scrollbar-theme::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 999px;
+}
+.scrollbar-theme::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--muted) 60%, var(--muted-foreground));
+}
+
 /* Contenedor del portal de impresión.
    Oculto en pantalla; solo se activa dentro de @media print
    para que la cotización completa se imprima sin cortes. */
