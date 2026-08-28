@@ -74,6 +74,7 @@ export function CatalogView({
   footer,
   social,
   brandAddress,
+  whatsapp,
 }: {
   initialProducts: CatalogProduct[]
   total: number
@@ -84,6 +85,8 @@ export function CatalogView({
   footer?: { copyright?: string; slogan?: string }
   social?: { instagram?: string; linkedin?: string; email?: string }
   brandAddress?: string
+  /** Número de WhatsApp configurado en site_settings (para confirmar pedidos). */
+  whatsapp?: string
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
@@ -102,7 +105,7 @@ export function CatalogView({
 
   // Estado compartido con la portada: carrito funcional.
   const exchangeRate = useExchangeRate()
-  const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
+  const { cart, add, change, count, cartOpen, setCartOpen, requestOrder } = useCart(exchangeRate, whatsapp)
 
   const activeFilterCount =
     (search ? 1 : 0) + (slug ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length
@@ -341,7 +344,7 @@ export function CatalogView({
               )}
               {!hasMore && products.length > 0 && (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  Has visto todos los productos de ilumaX.
+                  Has visto todos los productos de IEOS.
                 </p>
               )}
               {!hasMore && products.length === 0 && (
@@ -373,10 +376,7 @@ export function CatalogView({
         onClose={() => setCartOpen(false)}
         cart={cart}
         onChange={change}
-        total={cartTotal}
         onSubmit={requestOrder}
-        submitting={submitting}
-        requested={requested}
         exchangeRate={exchangeRate}
       />
     </div>

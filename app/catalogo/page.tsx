@@ -25,7 +25,8 @@ export default async function CatalogPage() {
       categories={categories}
       marcas={(marcas ?? []).map((m) => ({ id: m.id, nombre: m.nombre }))}
       navLinks={settings.nav_links}
-      brand={{ name: settings.company_name, tagline: settings.tagline, logoUrl: settings.logo_url, iconUrl: settings.icon_url }}
+      brand={{ name: settings.company_name, tagline: settings.tagline, logoUrl: settings.logo_url, iconUrl: settings.icon_url, whatsapp: settings.whatsapp_number }}
+      whatsapp={settings.whatsapp_number}
       footer={settings.footer_texts}
       social={settings.social_links}
       brandAddress={settings.address}

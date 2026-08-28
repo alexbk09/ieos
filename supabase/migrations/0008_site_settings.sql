@@ -12,13 +12,13 @@
 -- ============================================================
 create table if not exists public.site_settings (
   id integer primary key default 1 check (id = 1),
-  company_name text not null default 'ilumaX',
-  tagline text not null default 'Arquitectura de luz',
+  company_name text not null default 'IEOS',
+  tagline text not null default 'Wall Panels & Pisos SPC',
   logo_url text,
   icon_url text,
   whatsapp_number text not null default '584122649707',
   address text not null default 'Caracas, Venezuela',
-  email text not null default 'hola@ilumax.ve',
+  email text not null default 'ventas@ieos.ve',
   nav_links jsonb not null default '[]'::jsonb,
   hero_texts jsonb not null default '{}'::jsonb,
   hero_images jsonb not null default '{}'::jsonb,
@@ -42,67 +42,67 @@ insert into public.site_settings (
 )
 values (
   1,
-  'ilumaX',
-  'Arquitectura de luz',
+  'IEOS',
+  'Wall Panels & Pisos SPC',
   '584122649707',
   'Caracas, Venezuela',
-  'hola@ilumax.ve',
+  'ventas@ieos.ve',
   $json$[
     {"href": "/", "label": "Inicio"},
-    {"href": "/#studio", "label": "Studio"},
+    {"href": "/#studio", "label": "Nuestro espacio"},
     {"href": "/#contacto", "label": "Contacto"},
     {"href": "/catalogo", "label": "Catálogo completo", "highlight": true}
   ]$json$::jsonb,
   $json${
-    "eyebrow": "Arquitectura de luz",
-    "title": "Luz que define espacios.",
-    "titleHighlight": "espacios.",
-    "description": "Soluciones LED y revestimientos que convierten ambientes cotidianos en experiencias memorables. Diseñamos la atmósfera, tú habitas el resultado.",
+    "eyebrow": "Wall Panels & Pisos SPC",
+    "title": "Espacios que transforman.",
+    "titleHighlight": "transforman.",
+    "description": "Revestimientos de pared y pisos SPC que convierten cualquier ambiente en un espacio moderno, duradero y de instalación rápida.",
     "primaryButton": "Explorar catálogo",
     "primaryHref": "#catalogo",
     "secondaryButton": "Ver todo",
     "secondaryHref": "/catalogo",
     "badge": "Colección 2025",
-    "imageAlt": "Línea Aura 12W",
-    "imageCaption": "La luz como material",
+    "imageAlt": "Wall panel decorativo 3D",
+    "imageCaption": "Diseño que transforma",
     "imagePosition": "01 / 03",
     "stats": [
-      {"value": "+12", "label": "años de experiencia"},
-      {"value": "24/7", "label": "asesoría técnica"},
-      {"value": "100%", "label": "diseño venezolano"}
+      {"value": "+15", "label": "líneas disponibles"},
+      {"value": "100%", "label": "instalación fácil"},
+      {"value": "+500", "label": "m² instalados"}
     ]
   }$json$::jsonb,
   $json${
-    "main": "/products/webp/linea-aura.webp"
+    "main": "/products/webp/wall-tile.webp"
   }$json$::jsonb,
   $json${
-    "eyebrow": "El studio",
-    "title": "Diseñamos lo que otros solo iluminan.",
+    "eyebrow": "Nuestro espacio",
+    "title": "Materiales con identidad para cada proyecto.",
     "items": [
-      {"number": "01", "text": "Curaduría de piezas con intención y larga vida útil."},
-      {"number": "02", "text": "Asesoría para traducir ideas en instalaciones reales."},
-      {"number": "03", "text": "Materiales que hacen que cada proyecto tenga identidad."}
+      {"number": "01", "text": "Wall panels 3D que añaden textura, profundidad y estilo a cualquier pared."},
+      {"number": "02", "text": "Pisos SPC resistentes al agua, rayaduras y al uso diario intenso."},
+      {"number": "03", "text": "Asesoría para elegir el acabado perfecto para tu hogar o negocio."}
     ]
   }$json$::jsonb,
   $json${
     "eyebrow": "Hablemos",
-    "title": "Tu espacio tiene algo que decir.",
-    "description": "Cuéntanos sobre tu próximo proyecto. Nuestro equipo puede ayudarte a elegir la solución correcta.",
+    "title": "Tu próximo proyecto empieza aquí.",
+    "description": "Cuéntanos qué espacio quieres transformar. Te ayudamos a elegir el wall panel o piso SPC ideal.",
     "formNamePlaceholder": "Tu nombre",
     "formEmailPlaceholder": "Correo electrónico",
     "formMessagePlaceholder": "Cuéntanos sobre tu proyecto",
     "formButton": "Enviar mensaje"
   }$json$::jsonb,
   $json${
-    "copyright": "© 2025 ilumaX. Caracas, Venezuela.",
-    "slogan": "Iluminamos ideas."
+    "copyright": "© 2025 IEOS. Caracas, Venezuela.",
+    "slogan": "Transformamos espacios."
   }$json$::jsonb,
   $json${
     "instagram": "https://instagram.com",
     "linkedin": "https://linkedin.com",
-    "email": "mailto:hola@ilumax.ve"
+    "email": "mailto:ventas@ieos.ve"
   }$json$::jsonb
-)
+  )
 on conflict (id) do nothing;
 
 -- ============================================================

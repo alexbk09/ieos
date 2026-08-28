@@ -15,6 +15,8 @@ export type CardProduct = {
   stock: number
   image_url: string
   colors?: string[]
+  /** Color seleccionado por el cliente al agregar desde el modal de detalle. */
+  selected_color?: string
   peso?: string | null
   tamaño?: string | null
   specifications?: Record<string, string>
@@ -109,11 +111,13 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
         )}
 
         <div className="mt-5 flex items-end justify-between">
-          <div>
-            <p className="font-semibold">{moneyUsd(product.price_usd)}</p>
-            <p className="text-xs text-muted-foreground">{formatBolivars(product.price_usd, rate)}</p>
-          </div>
-          <button onClick={() => onViewDetails(product)} className="text-xs text-muted-foreground underline underline-offset-4">Ver detalles</button>
+          {product.price_usd > 0 && (
+            <div>
+              <p className="font-semibold">{moneyUsd(product.price_usd)}</p>
+              <p className="text-xs text-muted-foreground">{formatBolivars(product.price_usd, rate)}</p>
+            </div>
+          )}
+          <button onClick={() => onViewDetails(product)} className="ml-auto text-xs text-muted-foreground underline underline-offset-4">Ver detalles</button>
         </div>
       </div>
     </article>

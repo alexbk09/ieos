@@ -5,10 +5,12 @@ import { WHATSAPP_NUMBER } from '@/lib/constants'
 /**
  * Botón flotante de WhatsApp visible en todas las páginas.
  * Enlaza directamente al número de WhatsApp de la empresa
- * (definido en lib/constants.ts) con un mensaje de bienvenida.
+ * (definido en site_settings y caído a lib/constants.ts)
+ * con un mensaje de bienvenida.
  */
-export function WhatsAppButton() {
-  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hola, me gustaría más información.')}`
+export function WhatsAppButton({ number }: { number?: string }) {
+  const whatsapp = number?.trim() || WHATSAPP_NUMBER
+  const href = `https://wa.me/${whatsapp}?text=${encodeURIComponent('Hola, me gustaría más información.')}`
 
   return (
     <a

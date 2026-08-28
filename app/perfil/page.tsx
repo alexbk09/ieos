@@ -26,7 +26,7 @@ export default async function ProfilePage() {
         <header className="flex items-center justify-between gap-3 py-5">
           <div className="flex items-center gap-3">
             <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500">
-              <ArrowLeft size={16} /> Volver a ilumaX
+              <ArrowLeft size={16} /> Volver a IEOS
             </Link>
             {isAdmin && (
               <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-slate-500">

@@ -165,7 +165,7 @@ export function ThemeSettingsManager({ value, onChange }: { value: ThemeConfig; 
         <div className="mt-4 space-y-4 rounded-3xl border border-border bg-background p-5">
           {/* Header simulado */}
           <div className="flex items-center justify-between gap-3">
-            <span className="grid size-9 place-items-center rounded-xl text-sm font-black" style={{ background: 'var(--brand)', color: 'var(--brand-foreground)' }}>iX</span>
+            <span className="grid size-9 place-items-center rounded-xl text-sm font-black" style={{ background: 'var(--brand)', color: 'var(--brand-foreground)' }}>IE</span>
             <div className="flex items-center gap-2">
               <span className="hidden rounded-full px-3 py-1 text-xs font-semibold sm:block" style={{ background: 'var(--brand)', color: 'var(--brand-foreground)' }}>Explorar catálogo</span>
               <span className="grid size-9 place-items-center rounded-full border" style={{ borderColor: 'var(--border)' }}>
@@ -176,9 +176,9 @@ export function ThemeSettingsManager({ value, onChange }: { value: ThemeConfig; 
 
           {/* Hero simulado */}
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-strong)' }}>Arquitectura de luz</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-strong)' }}>Wall Panels & Pisos SPC</p>
             <p className="mt-1 text-2xl font-semibold tracking-tight">
-              Luz que define <span style={{ color: 'var(--brand)' }}>espacios.</span>
+              Espacios que <span style={{ color: 'var(--brand)' }}>transforman.</span>
             </p>
           </div>
 
@@ -194,10 +194,10 @@ export function ThemeSettingsManager({ value, onChange }: { value: ThemeConfig; 
 
           {/* Estudio simulado */}
           <div className="rounded-3xl p-5" style={{ background: 'var(--navy)', color: 'var(--navy-foreground)' }}>
-            <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-light)' }}>El studio</p>
-            <p className="mt-1 text-sm">Diseñamos lo que otros solo iluminan.</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-light)' }}>Nuestro espacio</p>
+            <p className="mt-1 text-sm">Materiales con identidad para cada proyecto.</p>
             <p className="mt-2 text-2xl font-semibold" style={{ color: 'var(--brand-light)' }}>01</p>
-            <p className="text-xs" style={{ color: 'var(--navy-muted)' }}>Curaduría de piezas con intención y larga vida útil.</p>
+            <p className="text-xs" style={{ color: 'var(--navy-muted)' }}>Wall panels 3D que añaden textura, profundidad y estilo.</p>
           </div>
         </div>
       </section>

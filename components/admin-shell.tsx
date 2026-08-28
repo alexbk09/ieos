@@ -40,25 +40,31 @@ const navGroups: NavGroup[] = [
       { href: '/admin/proveedores', label: 'Proveedores', icon: Building2 },
     ],
   },
-  {
-    title: 'Ventas',
-    items: [
-      { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText },
-      { href: '/admin/facturacion', label: 'Facturación', icon: Receipt },
-      { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList },
-    ],
-  },
-  {
-    title: 'Usuarios',
-    items: [
-      { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
-      { href: '/admin/roles', label: 'Roles y permisos', icon: ShieldCheck },
-    ],
-  },
+  // ============================================================
+  // SECCIONES OCULTAS DEL MENÚ (no borradas, solo comentadas)
+  // Para volver a mostrarlas, elimina los comentarios de bloque.
+  // ============================================================
+  // {
+  //   title: 'Ventas',
+  //   items: [
+  //     { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText },
+  //     { href: '/admin/facturacion', label: 'Facturación', icon: Receipt },
+  //     { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList },
+  //   ],
+  // },
+  // {
+  //   title: 'Usuarios',
+  //   items: [
+  //     { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
+  //     { href: '/admin/roles', label: 'Roles y permisos', icon: ShieldCheck },
+  //   ],
+  // },
   {
     title: 'Sistema',
     items: [
-      { href: '/admin/ajustes-precios', label: 'Ajuste de precios', icon: Percent },
+      // OCULTO: Ajuste de precios (no borrado, solo comentado).
+      // Para volver a mostrarlo, elimina el comentario de la línea.
+      // { href: '/admin/ajustes-precios', label: 'Ajuste de precios', icon: Percent },
       { href: '/admin/configuracion', label: 'Configuración', icon: Settings2 },
     ],
   },
@@ -96,14 +102,14 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
  * El UserMenu se renderiza por separado: en el header del sidebar de
  * escritorio y en la barra superior móvil.
  */
-function AdminNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function AdminNav({ pathname, onNavigate, companyName }: { pathname: string; onNavigate?: () => void; companyName: string }) {
   return (
     <>
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">iX</span>
-          <div>
-            <p className="font-semibold tracking-tight">iluma<span className="text-accent-foreground">X</span></p>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">iX</span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold tracking-tight">{companyName}</p>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
           </div>
         </div>
@@ -169,10 +175,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     {/* Sidebar fijo en escritorio (lg+) */}
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card p-6 lg:flex">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">iX</span>
-          <div>
-            <p className="font-semibold tracking-tight">iluma<span className="text-accent-foreground">X</span></p>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">iX</span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold tracking-tight">{siteFooter?.brand.name ?? 'IEOS'}</p>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
           </div>
         </div>
@@ -209,7 +215,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <button aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)} className="absolute right-4 top-4 grid size-9 place-items-center rounded-full text-muted-foreground hover:bg-muted">
         <X size={18} />
       </button>
-      <AdminNav pathname={pathname} onNavigate={() => setSidebarOpen(false)} />
+      <AdminNav pathname={pathname} onNavigate={() => setSidebarOpen(false)} companyName={siteFooter?.brand.name ?? 'IEOS'} />
     </aside>
 
     {/* Barra superior móvil con botón hamburguesa y menú de usuario */}

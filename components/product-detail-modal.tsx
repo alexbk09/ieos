@@ -124,13 +124,15 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
 
           <div className="mt-auto pt-8">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-3xl font-semibold">{moneyUsd(product.price_usd)}</p>
-                <p className="mt-1 text-base text-slate-500">{formatBolivars(product.price_usd, rate)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
-              </div>
+              {product.price_usd > 0 && (
+                <div>
+                  <p className="text-3xl font-semibold">{moneyUsd(product.price_usd)}</p>
+                  <p className="mt-1 text-base text-slate-500">{formatBolivars(product.price_usd, rate)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
+                </div>
+              )}
               <span className={`rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${product.stock < 20 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{product.stock} disponibles</span>
             </div>
-            <button onClick={() => { onAdd(product); onClose() }} className="mt-6 w-full rounded-full bg-navy px-5 py-3.5 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground">Agregar a solicitud</button>
+            <button onClick={() => { onAdd({ ...product, selected_color: selectedColor ?? undefined }); onClose() }} className="mt-6 w-full rounded-full bg-navy px-5 py-3.5 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground">Agregar a solicitud</button>
           </div>
         </div>
       </div>

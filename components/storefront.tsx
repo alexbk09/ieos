@@ -30,88 +30,74 @@ export type StorefrontSettings = {
   map: { lat: number; lng: number; zoom: number }
 }
 
-// ---------- Fallback de config (mismos valores actuales) ----------
+// ---------- Fallback de config (valores IEOS) ----------
 const FALLBACK_SETTINGS: StorefrontSettings = {
   navLinks: [],
-  brand: { name: 'ilumaX', tagline: 'Arquitectura de luz', logoUrl: null, iconUrl: null, whatsapp: '584122649707', address: 'Caracas, Venezuela', email: 'hola@ilumax.ve' },
+  brand: { name: 'IEOS', tagline: 'Wall Panels & Pisos SPC', logoUrl: null, iconUrl: null, whatsapp: '584122649707', address: 'Caracas, Venezuela', email: 'ventas@ieos.ve' },
   hero: {
-    eyebrow: 'Arquitectura de luz',
-    title: 'Luz que define ',
-    titleHighlight: 'espacios.',
-    description: 'Soluciones LED y revestimientos que convierten ambientes cotidianos en experiencias memorables. Diseñamos la atmósfera, tú habitas el resultado.',
+    eyebrow: 'Wall Panels & Pisos SPC',
+    title: 'Espacios que ',
+    titleHighlight: 'transforman.',
+    description: 'Revestimientos de pared y pisos SPC que convierten cualquier ambiente en un espacio moderno, duradero y de instalación rápida.',
     primaryButton: 'Explorar catálogo',
     primaryHref: '#catalogo',
     secondaryButton: 'Ver todo',
     secondaryHref: '/catalogo',
     badge: 'Colección 2025',
-    imageAlt: 'Línea Aura 12W',
-    imageCaption: 'La luz como material',
+    imageAlt: 'Wall panel decorativo 3D',
+    imageCaption: 'Diseño que transforma',
     imagePosition: '01 / 03',
     stats: [
-      { value: '+12', label: 'años de experiencia' },
-      { value: '24/7', label: 'asesoría técnica' },
-      { value: '100%', label: 'diseño venezolano' },
+      { value: '+15', label: 'líneas disponibles' },
+      { value: '100%', label: 'instalación fácil' },
+      { value: '+500', label: 'm² instalados' },
     ],
   },
-  heroImage: `${LOCAL_IMAGES_PREFIX}linea-aura.webp`,
+  heroImage: '/products/webp/wall-tile.webp',
   studio: {
-    eyebrow: 'El studio',
-    title: 'Diseñamos lo que otros solo iluminan.',
+    eyebrow: 'Nuestro espacio',
+    title: 'Materiales con identidad para cada proyecto.',
     items: [
-      { number: '01', text: 'Curaduría de piezas con intención y larga vida útil.' },
-      { number: '02', text: 'Asesoría para traducir ideas en instalaciones reales.' },
-      { number: '03', text: 'Materiales que hacen que cada proyecto tenga identidad.' },
+      { number: '01', text: 'Wall panels 3D que añaden textura, profundidad y estilo a cualquier pared.' },
+      { number: '02', text: 'Pisos SPC resistentes al agua, rayaduras y al uso diario intenso.' },
+      { number: '03', text: 'Asesoría para elegir el acabado perfecto para tu hogar o negocio.' },
     ],
   },
   contact: {
     eyebrow: 'Hablemos',
-    title: 'Tu espacio tiene algo que decir.',
-    description: 'Cuéntanos sobre tu próximo proyecto. Nuestro equipo puede ayudarte a elegir la solución correcta.',
+    title: 'Tu próximo proyecto empieza aquí.',
+    description: 'Cuéntanos qué espacio quieres transformar. Te ayudamos a elegir el wall panel o piso SPC ideal.',
     formNamePlaceholder: 'Tu nombre',
     formEmailPlaceholder: 'Correo electrónico',
     formMessagePlaceholder: 'Cuéntanos sobre tu proyecto',
     formButton: 'Enviar mensaje',
   },
-  footer: { copyright: '© 2025 ilumaX. Caracas, Venezuela.', slogan: 'Iluminamos ideas.' },
-  social: { instagram: 'https://instagram.com', linkedin: 'https://linkedin.com', email: 'mailto:hola@ilumax.ve' },
+  footer: { copyright: '© 2025 IEOS. Caracas, Venezuela.', slogan: 'Transformamos espacios.' },
+  social: { instagram: 'https://instagram.com', linkedin: 'https://linkedin.com', email: 'mailto:ventas@ieos.ve' },
   map: { lat: 10.4806, lng: -66.9036, zoom: 13 },
 }
 
 // ---------- Catálogo fallback (solo si no hay datos) ----------
 const fallbackProducts: Product[] = [
-  { id: '1', name: 'Panel LED Orbis 24W', slug: 'panel-led-orbis-24w', description: 'Iluminación uniforme para espacios contemporáneos.', price_usd: 28, stock: 42, image_url: `${LOCAL_IMAGES_PREFIX}panel-led.webp`, colors: ['Blanco', 'Negro'], specifications: { voltage: '110-240V', watts: '24W', weight: '0.8 kg' }, featured: true },
-  { id: '2', name: 'Línea Aura 12W', slug: 'linea-aura-12w', description: 'Luz lineal para crear atmósferas limpias.', price_usd: 36, stock: 18, image_url: `${LOCAL_IMAGES_PREFIX}linea-aura.webp`, colors: ['Blanco cálido', 'Blanco neutro'], specifications: { voltage: '12V', watts: '12W', weight: '0.4 kg' }, featured: true },
-  { id: '3', name: 'Wall Tile Nova', slug: 'wall-tile-nova', description: 'Revestimiento modular con presencia escultórica.', price_usd: 22.5, stock: 27, image_url: `${LOCAL_IMAGES_PREFIX}wall-tile.webp`, colors: ['Arena', 'Grafito'], specifications: { dimensions: '50 x 50 cm', weight: '1.2 kg' }, featured: true },
+  { id: '1', name: 'Wall Panel 3D Nova', slug: 'wall-panel-3d-nova', description: 'Panel decorativo 3D para paredes con textura y profundidad.', price_usd: 25, stock: 50, image_url: '/products/webp/wall-tile.webp', colors: ['Blanco', 'Grafito'], specifications: { dimensions: '50 x 50 cm', material: 'PVC rígido' }, featured: true },
+  { id: '2', name: 'Piso SPC Roble Natural', slug: 'piso-spc-roble-natural', description: 'Piso SPC resistente al agua con acabado madera natural.', price_usd: 18.5, stock: 35, image_url: '/products/webp/panel-led.webp', colors: ['Roble', 'Wengué'], specifications: { thickness: '4 mm', wear_layer: '0.3 mm' }, featured: true },
+  { id: '3', name: 'Wall Panel Lamas', slug: 'wall-panel-lamas', description: 'Revestimiento de lamas para paredes con estilo moderno.', price_usd: 22, stock: 28, image_url: '/products/webp/linea-aura.webp', colors: ['Natural', 'Gris'], specifications: { dimensions: '15 x 270 cm', material: 'MDF' }, featured: true },
 ]
 
-const categories = ['Todos', 'Iluminación LED', 'Revestimiento 3D', 'Perfiles y accesorios']
+const categories = ['Todos', 'Wall Panels', 'Pisos SPC', 'Accesorios']
 
 /** Devuelve la categoría visible de un producto (fallback para productos sin categoría). */
-const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes('Tile') ? 'Revestimiento 3D' : 'Iluminación LED')
+const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes('SPC') ? 'Pisos SPC' : 'Wall Panels')
 
 /**
  * Componente principal de la tienda.
- * Muestra los 6 productos destacados, permite armar un carrito y enviar la solicitud por WhatsApp.
+ * Muestra los productos destacados, permite armar un carrito y enviar la solicitud por WhatsApp.
  * Todos los textos, imágenes y enlaces de la portada son editables desde el panel admin
  * (site_settings). Si no se pasa configuración, usa los valores por defecto.
  */
 export function Storefront({ initialProducts, settings }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings> }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
   const exchangeRate = useExchangeRate()
-  const { cart, add, change, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('Todos')
-  const [selected, setSelected] = useState<Product | null>(null)
-
-  // Formulario de contacto (envío por SMTP con captcha).
-  const [contactName, setContactName] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
-  const [contactMessage, setContactMessage] = useState('')
-  const [captchaVerified, setCaptchaVerified] = useState(false)
-  const [captchaAnswer, setCaptchaAnswer] = useState('')
-  const [contactSending, setContactSending] = useState(false)
-  const [contactError, setContactError] = useState('')
-  const [contactSent, setContactSent] = useState(false)
 
   // Merge de la configuración recibida con los valores por defecto.
   const cfg: StorefrontSettings = {
@@ -126,10 +112,25 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
     map: { ...FALLBACK_SETTINGS.map, ...settings?.map },
   }
 
+  const { cart, add, change, count, cartOpen, setCartOpen, requestOrder } = useCart(exchangeRate, cfg.brand.whatsapp)
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('Todos')
+  const [selected, setSelected] = useState<Product | null>(null)
+
+  // Formulario de contacto (envío por SMTP con captcha).
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactMessage, setContactMessage] = useState('')
+  const [captchaVerified, setCaptchaVerified] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+  const [contactSending, setContactSending] = useState(false)
+  const [contactError, setContactError] = useState('')
+  const [contactSent, setContactSent] = useState(false)
+
   const brand = cfg.brand
   const hero = cfg.hero
-  const heroImage = cfg.heroImage || `${LOCAL_IMAGES_PREFIX}linea-aura.webp`
-  const heroAlt = hero.imageAlt ?? `${brand.name} — iluminación de portada`
+  const heroImage = cfg.heroImage || '/products/webp/wall-tile.webp'
+  const heroAlt = hero.imageAlt ?? `${brand.name} — revestimiento de portada`
   const heroStats = hero.stats && hero.stats.length > 0 ? hero.stats : FALLBACK_SETTINGS.hero.stats
   const studioItems = cfg.studio.items && cfg.studio.items.length > 0 ? cfg.studio.items : FALLBACK_SETTINGS.studio.items
   const navLinks = cfg.navLinks && cfg.navLinks.length > 0 ? cfg.navLinks : []
@@ -208,7 +209,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
       <section id="inicio" className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
         <div>
           <p className="mb-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[.28em] text-brand-strong"><Sparkles size={14} /> {hero.eyebrow ?? brand.tagline}</p>
-          <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.07em] sm:text-7xl">{hero.title ?? 'Luz que define '}<span className="text-brand">{hero.titleHighlight ?? 'espacios.'}</span></h1>
+          <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.07em] sm:text-7xl">{hero.title ?? 'Espacios que '}<span className="text-brand">{hero.titleHighlight ?? 'transforman.'}</span></h1>
           <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground">{hero.description}</p>
           <div className="mt-9 flex flex-wrap gap-3">
             <a href={hero.primaryHref ?? '#catalogo'} className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground">{hero.primaryButton ?? 'Explorar catálogo'} <ArrowUpRight size={16} /></a>
@@ -229,7 +230,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
 
       <section id="catalogo" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 md:flex-row md:items-end">
-          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Selección {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Encuentra tu próxima atmósfera</h2></div>
+          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Selección {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Encuentra tu próximo revestimiento</h2></div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"><Search size={16} className="text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
@@ -247,7 +248,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
 
       <section id="studio" className="bg-navy px-5 py-20 text-navy-foreground lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
-          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-light">{cfg.studio.eyebrow ?? 'El studio'}</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em]">{cfg.studio.title ?? 'Diseñamos lo que otros solo iluminan.'}</h2></div>
+          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-light">{cfg.studio.eyebrow ?? 'Nuestro espacio'}</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.06em]">{cfg.studio.title ?? 'Materiales con identidad para cada proyecto.'}</h2></div>
           <div className="grid gap-8 sm:grid-cols-3">
             {studioItems?.map((item) => (
               <div key={item.number}><p className="text-3xl font-semibold text-brand-light">{item.number}</p><p className="mt-3 text-sm leading-6 text-navy-muted">{item.text}</p></div>
@@ -259,7 +260,7 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
       <section id="contacto" className="mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">{cfg.contact.eyebrow ?? 'Hablemos'}</p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{cfg.contact.title ?? 'Tu espacio tiene algo que decir.'}</h2>
+          <h2 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{cfg.contact.title ?? 'Tu próximo proyecto empieza aquí.'}</h2>
           <p className="mt-5 max-w-md leading-7 text-muted-foreground">{cfg.contact.description}</p>
 
           {/* Dirección + enlaces rápidos */}
@@ -373,6 +374,6 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
       <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />
     )}
 
-    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onChange={change} total={total} onSubmit={requestOrder} submitting={submitting} requested={requested} exchangeRate={exchangeRate} />
+    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onChange={change} onSubmit={requestOrder} exchangeRate={exchangeRate} />
   </div>
 }

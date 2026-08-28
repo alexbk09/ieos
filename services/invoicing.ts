@@ -87,13 +87,13 @@ export type Invoice = {
 function mapSettings(row: any): InvoiceSettings {
   return {
     id: row?.id ?? 1,
-    issuer_name: row?.issuer_name ?? 'ilumaX C.A.',
+    issuer_name: row?.issuer_name ?? 'IEOS C.A.',
     issuer_rif: row?.issuer_rif ?? 'J-00000000-0',
     issuer_address: row?.issuer_address ?? 'Caracas, Venezuela',
     issuer_city: row?.issuer_city ?? 'Caracas',
     issuer_state: row?.issuer_state ?? 'Distrito Capital',
     issuer_phone: row?.issuer_phone ?? '584122649707',
-    issuer_email: row?.issuer_email ?? 'hola@ilumax.ve',
+    issuer_email: row?.issuer_email ?? 'ventas@ieos.ve',
     regimen: row?.regimen ?? 'contribuyente_formal',
     iva_rate: Number(row?.iva_rate ?? 16),
     prices_include_iva: Boolean(row?.prices_include_iva ?? true),
@@ -112,13 +112,13 @@ function mapSettings(row: any): InvoiceSettings {
 
 const DEFAULT_SETTINGS: InvoiceSettings = {
   id: 1,
-  issuer_name: 'ilumaX C.A.',
+  issuer_name: 'IEOS C.A.',
   issuer_rif: 'J-00000000-0',
   issuer_address: 'Caracas, Venezuela',
   issuer_city: 'Caracas',
   issuer_state: 'Distrito Capital',
   issuer_phone: '584122649707',
-  issuer_email: 'hola@ilumax.ve',
+  issuer_email: 'ventas@ieos.ve',
   regimen: 'contribuyente_formal',
   iva_rate: 16,
   prices_include_iva: true,

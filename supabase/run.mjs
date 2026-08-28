@@ -13,7 +13,7 @@
 //   SUPABASE_DB_PASSWORD=TU_PASSWORD_DE_LA_BASE_DE_DATOS
 //       (o DATABASE_URL con la password incluida; el host se detecta solo)
 //   SUPABASE_SERVICE_ROLE_KEY=eyJ...   (de settings > API keys)
-//   SUPABASE_ADMIN_EMAIL=admin@ilumax.ve          (opcional, default)
+//   SUPABASE_ADMIN_EMAIL=admin@ieos.ve            (opcional, default)
 //   SUPABASE_ADMIN_PASSWORD=CambiaEstaClave123!   (opcional, default)
 //
 // El script detecta automáticamente el host de conexión correcto:
@@ -194,7 +194,7 @@ async function ensureAdminUser(supabaseUrl, serviceRoleKey, adminEmail, adminPas
       password: adminPassword,
       email_confirm: true,
       user_metadata: {
-        full_name: 'Administrador ilumaX',
+        full_name: 'Administrador IEOS',
         role: 'admin',
       },
     }),
@@ -239,7 +239,7 @@ async function main() {
   const supabaseUrl = process.env.SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const existingDatabaseUrl = process.env.DATABASE_URL
-  const adminEmail = process.env.SUPABASE_ADMIN_EMAIL || 'admin@ilumax.ve'
+  const adminEmail = process.env.SUPABASE_ADMIN_EMAIL || 'admin@ieos.ve'
   const adminPassword = process.env.SUPABASE_ADMIN_PASSWORD || 'CambiaEstaClave123!'
 
   const ref = getProjectRef(supabaseUrl)

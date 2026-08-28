@@ -18,7 +18,7 @@ begin
   update public.profiles
   set role = 'admin',
       role_id = (select id from public.roles where name = 'admin'),
-      full_name = coalesce(full_name, 'Administrador ilumaX')
+      full_name = coalesce(full_name, 'Administrador IEOS')
   where email = v_admin_email
     and id in (select id from auth.users where email = v_admin_email);
 
@@ -30,7 +30,7 @@ begin
     values (
       (select id from auth.users where email = v_admin_email limit 1),
       v_admin_email,
-      'Administrador ilumaX',
+      'Administrador IEOS',
       'admin',
       (select id from public.roles where name = 'admin')
     )

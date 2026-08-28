@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Building2, ChevronRight, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Paintbrush, Palette, Plus, Receipt, Save, Trash2, Upload, X } from 'lucide-react'
+import { Building2, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Paintbrush, Palette, Plus, Save, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 import { confirmDelete } from '@/components/confirm-dialog'
@@ -65,7 +64,6 @@ async function uploadImage(file: File): Promise<string> {
  * /api/admin/site-settings; la UI es independiente de Supabase.
  */
 export function SiteSettingsManager({ initialSettings }: { initialSettings: SiteSettingsPayload }) {
-  const router = useRouter()
   // Asegura que el tema siempre tenga todos los campos (fallback al tema por defecto).
   const [form, setForm] = useState<SiteSettingsPayload>({
     ...initialSettings,
@@ -197,7 +195,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
       <div className="grid gap-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <FormInput label="Nombre de la empresa" value={form.company_name} onChange={(e) => setScalar('company_name', e.target.value)} />
-          <FormInput label="Slogan / tagline" value={form.tagline} onChange={(e) => setScalar('tagline', e.target.value)} placeholder="Arquitectura de luz" />
+          <FormInput label="Slogan / tagline" value={form.tagline} onChange={(e) => setScalar('tagline', e.target.value)} placeholder="Wall Panels & Pisos SPC" />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -223,7 +221,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
 
           <div className="grid gap-4">
             <FormInput label="WhatsApp (con código país)" value={form.whatsapp_number} onChange={(e) => setScalar('whatsapp_number', e.target.value)} placeholder="584122649707" hint="Ej: 58412... (código país + número)" />
-            <FormInput label="Correo de contacto" value={form.email} onChange={(e) => setScalar('email', e.target.value)} placeholder="hola@ilumax.ve" />
+            <FormInput label="Correo de contacto" value={form.email} onChange={(e) => setScalar('email', e.target.value)} placeholder="ventas@ieos.ve" />
             <FormInput label="Dirección" value={form.address} onChange={(e) => setScalar('address', e.target.value)} placeholder="Caracas, Venezuela" />
           </div>
         </div>
@@ -430,8 +428,8 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     const f = form.footer_texts as Record<string, string>
     return (
       <div className="grid gap-4">
-        <FormInput label="Copyright" value={f.copyright ?? ''} onChange={(e) => setJsonField('footer_texts', 'copyright', e.target.value)} placeholder="© 2025 ilumaX. Caracas, Venezuela." />
-        <FormInput label="Slogan" value={f.slogan ?? ''} onChange={(e) => setJsonField('footer_texts', 'slogan', e.target.value)} placeholder="Iluminamos ideas." />
+        <FormInput label="Copyright" value={f.copyright ?? ''} onChange={(e) => setJsonField('footer_texts', 'copyright', e.target.value)} placeholder="© 2025 IEOS. Caracas, Venezuela." />
+        <FormInput label="Slogan" value={f.slogan ?? ''} onChange={(e) => setJsonField('footer_texts', 'slogan', e.target.value)} placeholder="Transformamos espacios." />
       </div>
     )
   }
@@ -443,7 +441,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
       <div className="grid gap-4">
         <FormInput label="Instagram" value={s.instagram ?? ''} onChange={(e) => setJsonField('social_links', 'instagram', e.target.value)} placeholder="https://instagram.com" />
         <FormInput label="LinkedIn" value={s.linkedin ?? ''} onChange={(e) => setJsonField('social_links', 'linkedin', e.target.value)} placeholder="https://linkedin.com" />
-        <FormInput label="Correo (mailto)" value={s.email ?? ''} onChange={(e) => setJsonField('social_links', 'email', e.target.value)} placeholder="mailto:hola@ilumax.ve" />
+        <FormInput label="Correo (mailto)" value={s.email ?? ''} onChange={(e) => setJsonField('social_links', 'email', e.target.value)} placeholder="mailto:ventas@ieos.ve" />
       </div>
     )
   }
@@ -490,20 +488,6 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
             </button>
           ))}
 
-          {/* Acceso a la gestión de facturación venezolana (SENIAT) */}
-          <div className="my-2 border-t border-border/70" />
-          <button
-            onClick={() => router.push('/admin/configuracion/facturacion')}
-            className="flex items-center justify-between gap-3 rounded-2xl bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-500/20 dark:text-cyan-400"
-          >
-            <span className="flex items-center gap-3">
-              <Receipt size={16} /> Facturación
-            </span>
-            <ChevronRight size={15} className="text-cyan-600/60" />
-          </button>
-          <p className="px-4 pt-1 text-[11px] leading-relaxed text-muted-foreground">
-            RIF, IVA, correlativos y facturas (normas SENIAT).
-          </p>
         </nav>
       </aside>
 

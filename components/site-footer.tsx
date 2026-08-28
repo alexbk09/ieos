@@ -18,11 +18,11 @@ export type FooterVariant = 'storefront' | 'admin'
 
 // ---------- Fallbacks ----------
 
-const DEFAULT_BRAND: FooterBrand = { name: 'ilumaX', address: 'Caracas, Venezuela' }
+const DEFAULT_BRAND: FooterBrand = { name: 'IEOS', address: 'Caracas, Venezuela' }
 
 const DEFAULT_FOOTER: FooterTexts = {
-  copyright: '© 2025 ilumaX. Caracas, Venezuela.',
-  slogan: 'Iluminamos ideas.',
+  copyright: '© 2025 IEOS. Caracas, Venezuela.',
+  slogan: 'Transformamos espacios.',
 }
 
 /**
@@ -47,7 +47,7 @@ export function SiteFooter({
   const currentFooter: FooterTexts = { ...DEFAULT_FOOTER, ...(footer ?? {}) }
 
   const copyright = currentFooter.copyright ?? `© 2025 ${currentBrand.name}. ${currentBrand.address}.`
-  const slogan = currentFooter.slogan ?? 'Iluminamos ideas.'
+  const slogan = currentFooter.slogan ?? 'Transformamos espacios.'
 
   // Clases según la variante: la tienda y el admin usan los tokens
   // semánticos del tema de marca (--brand, --border, --muted…).

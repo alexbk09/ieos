@@ -15,18 +15,20 @@ export type HeaderBrand = {
   tagline: string
   logoUrl: string | null
   iconUrl: string | null
+  /** Número de WhatsApp configurado en site_settings (para confirmar pedidos). */
+  whatsapp?: string
 }
 
 /** Enlaces por defecto si el admin aún no configura nav_links. */
 const DEFAULT_NAV_LINKS: HeaderNavLink[] = [
   { href: '/', label: 'Inicio' },
-  { href: '/#studio', label: 'Studio' },
+  { href: '/#studio', label: 'Nuestro espacio' },
   { href: '/#contacto', label: 'Contacto' },
   { href: '/catalogo', label: 'Catálogo completo', highlight: true },
 ]
 
 /** Marca por defecto si la BD no tiene configurada. */
-const DEFAULT_BRAND: HeaderBrand = { name: 'ilumaX', tagline: 'Arquitectura de luz', logoUrl: null, iconUrl: null }
+const DEFAULT_BRAND: HeaderBrand = { name: 'IEOS', tagline: 'Wall Panels & Pisos SPC', logoUrl: null, iconUrl: null }
 
 /**
  * Encabezado compartido de la tienda (portada y catálogo completo).
@@ -70,7 +72,7 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
           ) : currentBrand.iconUrl ? (
             <img src={currentBrand.iconUrl} alt={`${currentBrand.name} — ícono`} className="size-9 rounded-xl object-cover" />
           ) : (
-            <span className="grid size-9 place-items-center rounded-xl bg-brand font-mono text-sm font-black text-brand-foreground">iX</span>
+            <span className="grid size-9 place-items-center rounded-xl bg-brand font-mono text-sm font-black text-brand-foreground">IE</span>
           )}
           <span className="text-lg font-semibold tracking-[-0.05em]">
             {currentBrand.name.split(' ')[0]}
