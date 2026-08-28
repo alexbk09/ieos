@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
-import { Download, FileSpreadsheet, Upload, X } from 'lucide-react'
+import { Download, FileSpreadsheet, LoaderCircle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/modal'
 import { FormSubmitButton } from '@/components/ui/form-field'
@@ -135,6 +135,7 @@ export function BulkUploadModal({
 }) {
   const [fileName, setFileName] = useState<string | null>(null)
   const [rows, setRows] = useState<ParseRow[]>([])
+  const [parsing, setParsing] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const [importErrors, setImportErrors] = useState<{ row: number; error: string }[]>([])
@@ -170,8 +171,11 @@ export function BulkUploadModal({
         return
       }
 
+      setParsing(true)
       try {
         const buffer = await file.arrayBuffer()
+        // XLSX.read es síncrono y puede tardar en archivos grandes.
+        // Se muestra un estado de carga para que el usuario sepa que se está procesando el archivo.
         const workbook = XLSX.read(buffer, { type: 'array' })
         const sheetName = workbook.SheetNames[0]
         const sheet = workbook.Sheets[sheetName]
@@ -233,6 +237,8 @@ export function BulkUploadModal({
         setImportErrors([])
       } catch {
         toast.error('Error al leer el archivo', { description: 'Asegúrate de que sea un Excel válido.' })
+      } finally {
+        setParsing(false)
       }
     },
     [],
@@ -302,6 +308,7 @@ export function BulkUploadModal({
   function resetAndClose() {
     setFileName(null)
     setRows([])
+    setParsing(false)
     setImportedCount(0)
     setImportErrors([])
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -319,7 +326,7 @@ export function BulkUploadModal({
       title="Carga masiva de productos"
       description="Sube un archivo Excel con tus productos y se crearán automáticamente."
       icon={<FileSpreadsheet size={18} />}
-      preventBackdropClose={importing}
+      preventBackdropClose={importing || parsing}
       footer={
         <>
           <button
@@ -362,7 +369,13 @@ export function BulkUploadModal({
             Formatos aceptados: <span className="font-mono">.xlsx</span>, <span className="font-mono">.xls</span>, <span className="font-mono">.csv</span>
           </p>
 
-          {!fileName ? (
+          {parsing ? (
+            <div className="mt-3 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-background px-4 py-8 text-center">
+              <LoaderCircle size={24} className="animate-spin text-brand-strong" />
+              <span className="text-sm font-medium">Leyendo archivo…</span>
+              <span className="text-xs text-muted-foreground">Esto puede tardar unos segundos en archivos grandes.</span>
+            </div>
+          ) : !fileName ? (
             <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-background px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-muted/50">
               <Upload size={24} className="text-muted-foreground" />
               <span className="text-sm font-medium">Haz clic para seleccionar el Excel</span>

@@ -11,6 +11,7 @@ import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { SearchableMultiSelect } from '@/components/ui/select-search'
+import { ProductGridSkeleton } from '@/components/ui/skeleton'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogMarca = { id: string; nombre: string }
@@ -324,9 +325,7 @@ export function CatalogView({
         {/* Cuadrícula de productos */}
         <section>
           {loading && products.length === 0 ? (
-            <div className="grid place-items-center py-24">
-              <LoaderCircle className="animate-spin text-brand-strong" size={28} />
-            </div>
+            <ProductGridSkeleton count={6} />
           ) : (
             <>
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
