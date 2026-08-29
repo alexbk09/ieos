@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual de Usuario e Infraestructura Técnica — IEOS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      colors: {
+        primary: '#071d49',
+        accent: { DEFAULT: '#22d3ee', dark: '#0e7490' }
+      }
+    }
+  }
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  html { scroll-behavior: smooth; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(34,211,238,.4); border-radius: 8px; }
+  .step-chip { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: #22d3ee; color: #071d49; font-weight: 800; font-size: .8rem; flex-shrink: 0; }
+  code { background: rgba(34,211,238,.12); padding: .15rem .4rem; border-radius: .4rem; font-family: 'JetBrains Mono', monospace; font-size: .85em; }
+  .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .7rem; border-radius: 9999px; font-size: .72rem; font-weight: 600; letter-spacing: .02em; }
+  .shot { border-radius: 1.25rem; overflow: hidden; box-shadow: 0 20px 50px -12px rgba(0,0,0,.25); border: 1px solid rgba(7,29,73,.08); background: #fff; }
+  .shot-topbar { display: flex; align-items: center; gap: .5rem; background: #0b2545; padding: .6rem 1rem; }
+  .shot-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .shot-body { background: #f8fafc; overflow: hidden; }
+  .shot-body img { display: block; width: 100%; height: auto; object-fit: cover; cursor: zoom-in; }
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(2,6,23,.94); padding: 1.25rem; align-items: center; justify-content: center; cursor: zoom-out; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 92vh; border-radius: 1rem; box-shadow: 0 30px 70px -15px rgba(0,0,0,.7); cursor: zoom-out; animation: zoomIn .3s ease; }
+  .lightbox-caption { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: rgba(7,29,73,.85); color: #fff; padding: .55rem 1.2rem; border-radius: 9999px; font-size: .78rem; font-weight: 600; max-width: 92%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @keyframes zoomIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+  .shot-caption { display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; background: #f8fafc; border-top: 1px solid rgba(7,29,73,.08); font-size: .78rem; color: #475569; }
+  .shot-tag { background: #22d3ee; color: #071d49; font-weight: 800; font-size: .68rem; padding: .2rem .55rem; border-radius: .5rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .table-flow { border-collapse: separate; border-spacing: 0; width: 100%; }
+  .table-flow th { background: #0b2545; color: #fff; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; padding: .6rem .9rem; text-align: left; }
+  .table-flow td { padding: .7rem .9rem; font-size: .85rem; border-bottom: 1px solid rgba(7,29,73,.08); }
+  .table-flow tr:last-child td { border-bottom: none; }
+  .table-flow th:first-child { border-radius: .8rem 0 0 0; }
+  .table-flow th:last-child { border-radius: 0 .8rem 0 0; }
+  	#toc { max-height: calc(100vh - 2rem); overflow-y: auto; }
+  	@media (min-width: 1024px) { #toc { position: sticky; top: 1rem; } }
+  	@media (max-width: 1023px) { .toc-mobile { margin-top: .75rem; } }
+  .toc-link { display: block; padding: .4rem .8rem; border-radius: .6rem; font-size: .83rem; color: #475569; text-decoration: none; transition: all .2s; border-left: 2px solid transparent; }
+  .toc-link:hover { background: #f1f5f9; color: #071d49; }
+  .toc-link.active { background: #ecfeff; color: #0e7490; border-left-color: #22d3ee; font-weight: 600; }
+  .toc-section { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .18em; color: #94a3b8; padding: .9rem .8rem .35rem; }
+  .section-card { scroll-margin-top: 1rem; }
+  .faq-item { border: 1px solid rgba(7,29,73,.1); border-radius: 1rem; overflow: hidden; background: #fff; }
+  .dark .faq-item { background: #0f172a; border-color: rgba(148,163,184,.15); }
+  .faq-q { width: 100%; text-align: left; padding: 1rem 1.2rem; font-weight: 700; font-size: .92rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; cursor: pointer; transition: background .2s; }
+  .faq-q:hover { background: rgba(34,211,238,.06); }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+  .faq-a-inner { padding: 0 1.2rem 1.2rem; font-size: .86rem; color: #475569; line-height: 1.7; }
+  .dark .faq-a-inner { color: #cbd5e1; }
+  @media print {
+    #toc { display: none; }
+    .no-print { display: none; }
+    body { background: white !important; }
+    .shot { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased">
+<div class="mx-auto max-w-[1500px] px-4 sm:px-6 py-6">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <header class="no-print flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/70 dark:border-slate-800 px-6 py-4 shadow-sm">
+    <div class="flex items-center gap-4">
+      <span class="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 font-mono font-black text-primary text-xl shadow-lg shadow-cyan-500/30">IE</span>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-black tracking-tight">Manual de Usuario e Infraestructura Técnica · <span class="text-cyan-500">IEOS</span></h1>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Plataforma Digital Integral · React.js + Supabase + Vercel · v1.0</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="toggleDark()" class="grid size-11 place-items-center rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Cambiar tema">
+        <svg id="icon-sun" class="hidden dark:block" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg id="icon-moon" class="block dark:hidden" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a href="#arquitectura" class="inline-flex items-center gap-2 rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-primary hover:bg-cyan-300 transition shadow-lg shadow-cyan-500/30">
+        Comenzar
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <button id="toc-toggle" onclick="toggleToc()" aria-expanded="false" aria-controls="toc" class="lg:hidden no-print w-full inline-flex items-center justify-between gap-2 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/70 dark:border-slate-800 px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-100 dark:hover:bg-slate-800">
+    <span class="flex items-center gap-2">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      Contenido del manual
+    </span>
+    <svg id="toc-chevron" class="transition-transform duration-300 shrink-0" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+
+  <div class="mt-6 grid gap-8 lg:grid-cols-[280px_1fr]">
+
+    <!-- ═══════════ TOC / SIDEBAR ═══════════ -->
+    <nav id="toc" class="toc-mobile hidden lg:block rounded-3xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800 p-4">
+      <p class="px-3 pb-3 pt-1 font-mono text-[10px] uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Contenido</p>
+      <div class="toc-section">Parte 1 · Arquitectura</div>
+      <a class="toc-link" href="#arquitectura">1 · Arquitectura tecnológica</a>
+      <a class="toc-link" href="#ventajas">2 · Ventajas del sistema</a>
+      <div class="toc-section">Parte 2 · Cliente (Frontend)</div>
+      <a class="toc-link" href="#cliente-inicio">3 · Inicio y navegación</a>
+      <a class="toc-link" href="#cliente-informativa">4 · Sección informativa y contacto</a>
+      <a class="toc-link" href="#cliente-catalogo">5 · Catálogo y filtros</a>
+      <a class="toc-link" href="#cliente-detalle">6 · Detalle de producto</a>
+      <a class="toc-link" href="#cliente-carrito">7 · Carrito y WhatsApp</a>
+      <div class="toc-section">Parte 3 · Administrador (Backoffice)</div>
+      <a class="toc-link" href="#admin-acceso">8 · Acceso al panel</a>
+      <a class="toc-link" href="#admin-dashboard">9 · Visión general (Dashboard)</a>
+      <a class="toc-link" href="#admin-clasificaciones">10 · Categorías, marcas y proveedores</a>
+      <a class="toc-link" href="#admin-inventario">11 · Inventario de productos</a>
+      <a class="toc-link" href="#admin-formulario">12 · Crear y editar productos</a>
+      <a class="toc-link" href="#admin-carga-masiva">13 · Carga masiva vía Excel</a>
+      <a class="toc-link" href="#admin-configuracion">14 · Configuración global (CMS)</a>
+      <a class="toc-link" href="#admin-apariencia">15 · Personalización (Apariencia)</a>
+      <div class="toc-section">Parte 4 · Soporte</div>
+      <a class="toc-link" href="#faq">16 · Preguntas frecuentes</a>
+    </nav>
+
+    <!-- ═══════════ CONTENIDO ═══════════ -->
+    <main class="space-y-10 min-w-0">
+
+      <!-- ── 1. ARQUITECTURA TECNOLÓGICA ── -->
+      <section id="arquitectura" class="section-card rounded-3xl bg-gradient-to-br from-primary via-[#0b2545] to-[#123a6b] text-white p-8 sm:p-12">
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-cyan-400">Parte 1 · Arquitectura</p>
+        <h2 class="mt-3 text-3xl sm:text-5xl font-black tracking-tight leading-tight">Arquitectura Tecnológica<br/><span class="text-cyan-400">y Ventajas del Sistema.</span></h2>
+        <p class="mt-5 max-w-2xl text-sm sm:text-base text-slate-300 leading-relaxed">
+          El sistema ha sido desarrollado utilizando un ecosistema de tecnologías de vanguardia que garantizan un
+          rendimiento óptimo, alta seguridad y una infraestructura moderna.
+        </p>
+        <div class="mt-8 grid gap-3 sm:grid-cols-3 max-w-3xl">
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+            <p class="text-2xl font-black text-cyan-400">01</p>
+            <p class="mt-1 text-xs text-slate-300 font-medium">React.js<br/>Frontend de alta velocidad</p>
+          </div>
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+            <p class="text-2xl font-black text-cyan-400">02</p>
+            <p class="mt-1 text-xs text-slate-300 font-medium">Supabase<br/>Base de datos y backend seguro</p>
+          </div>
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur">
+            <p class="text-2xl font-black text-cyan-400">03</p>
+            <p class="mt-1 text-xs text-slate-300 font-medium">Vercel<br/>Infraestructura en la nube</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 2. VENTAJAS ── -->
+      <section id="ventajas" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 2</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Ventajas de la <span class="text-cyan-500">Arquitectura Utilizada</span></h3>
+        <div class="mt-8 space-y-5">
+
+          <div class="rounded-2xl border border-cyan-500/20 bg-cyan-50 dark:bg-cyan-500/5 p-6">
+            <div class="flex items-start gap-4">
+              <div class="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-400 text-primary"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div>
+                <h4 class="text-lg font-black">React.js — Frontend de Alta Velocidad</h4>
+                <ul class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                  <li><strong>Carga instantánea:</strong> Al ser una aplicación de página única (SPA), el sitio web no se recarga por completo cada vez que el usuario navega entre el catálogo y el inicio; las transiciones son fluidas e instantáneas.</li>
+                  <li><strong>Componentes Reactivos:</strong> El cambio de imágenes según el color del producto y la actualización del carrito en tiempo real ocurren sin latencia, mejorando radicalmente la experiencia de compra.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/5 p-6">
+            <div class="flex items-start gap-4">
+              <div class="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-400 text-white"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+              <div>
+                <h4 class="text-lg font-black">Supabase — Base de Datos y Backend Seguro</h4>
+                <ul class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                  <li><strong>Datos en Tiempo Real:</strong> Las actualizaciones del inventario, stock y tasas de cambio se reflejan de inmediato gracias al motor relacional de Supabase basado en PostgreSQL.</li>
+                  <li><strong>Seguridad de Nivel Bancario:</strong> Toda la información de productos, proveedores y configuraciones del sitio está protegida mediante políticas de seguridad avanzadas (RLS), asegurando que solo los administradores autorizados puedan modificar datos.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-sky-500/20 bg-sky-50 dark:bg-sky-500/5 p-6">
+            <div class="flex items-start gap-4">
+              <div class="grid size-12 shrink-0 place-items-center rounded-2xl bg-sky-400 text-white"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 1 0-.88-8.88A7 7 0 1 0 8 19"/><path d="M12 12v4M9 15l3 3 3-3"/></svg></div>
+              <div>
+                <h4 class="text-lg font-black">Alojamiento en Vercel — Infraestructura en la Nube</h4>
+                <ul class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                  <li><strong>Velocidad de Carga Global (CDN):</strong> El sitio web se almacena en servidores distribuidos globalmente. La página abrirá a la velocidad de la luz tanto en computadoras como en teléfonos móviles desde cualquier operadora.</li>
+                  <li><strong>Disponibilidad del 99.9%:</strong> Al estar alojado en la infraestructura en la nube de Vercel, el sistema no se cae ni se ralentiza ante picos altos de visitas simultáneas de clientes.</li>
+                  <li><strong>Costo de Mantenimiento Eficiente:</strong> La arquitectura permite que el costo de servidores para el volumen actual de la empresa sea extremadamente bajo o incluso cubierto por capas gratuitas, eliminando costosos planes de hosting tradicionales.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-6">
+            <div class="flex items-start gap-4">
+              <div class="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-primary"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <div>
+                <h4 class="text-lg font-black">Garantía y Respaldo (Backups)</h4>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">El sistema incluye un módulo automatizado de copias de seguridad de datos (<strong>backups diarios</strong>) gestionado por Supabase, garantizando que su inventario, historial de proveedores y configuraciones estéticas estén siempre protegidos ante cualquier eventualidad.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="mt-8 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5">
+          <p class="font-mono text-xs uppercase tracking-widest text-cyan-600 dark:text-cyan-400">Stack tecnológico</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">React.js</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Next.js</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">TypeScript</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Tailwind CSS</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Supabase / PostgreSQL</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">Vercel (CDN global)</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">WhatsApp Business API</span>
+            <span class="badge bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">OpenStreetMap</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PARTE 2: BANNER ── -->
+      <section class="section-card rounded-3xl bg-gradient-to-r from-cyan-500 to-cyan-700 text-white p-8 sm:p-10 relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 size-48 rounded-full bg-white/10 blur-2xl"></div>
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-white/80">Parte 2</p>
+        <h3 class="mt-2 text-2xl sm:text-4xl font-black tracking-tight">Manual del Cliente — <span class="text-primary">Frontend</span></h3>
+        <p class="mt-2 max-w-2xl text-sm text-white/90">Todo lo que el usuario final ve y experimenta: navegación, catálogo, productos, carrito y confirmación por WhatsApp.</p>
+      </section>
+
+      <!-- ── 3. INTERFAZ DE INICIO ── -->
+      <section id="cliente-inicio" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 3</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Interfaz de Inicio y <span class="text-cyan-500">Navegación General</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          La página de inicio está diseñada para captar la atención del usuario mediante un diseño minimalista que
+          destaca la propuesta de valor de la marca en <strong>revestimientos de pared y pisos SPC</strong>.
+        </p>
+        <div class="mt-8">
+          <div class="shot">
+            <div class="shot-topbar">
+              <span class="shot-dot bg-red-400"></span>
+              <span class="shot-dot bg-amber-400"></span>
+              <span class="shot-dot bg-emerald-400"></span>
+              <span class="ml-2 font-mono text-[10px] text-slate-400">ieos.vercel.app /</span>
+            </div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183240.png" alt="Pantalla de inicio del sitio web IEOS con sección Hero" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 1</span> Pantalla de inicio del sitio web: sección Hero con título principal, beneficios clave y botones de acción.</div>
+          </div>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-3">
+              <span class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg></span>
+              <h4 class="font-black">Menú Superior (Navbar)</h4>
+            </div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Permite el acceso rápido a las secciones clave de la plataforma: <strong>Inicio, Nuestro espacio, Contacto y Catálogo completo</strong>. En la esquina superior derecha incluye un selector de modo de visualización, acceso de usuario y el acceso al carrito/solicitud.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-3">
+              <span class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+              <h4 class="font-black">Sección Hero</h4>
+            </div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Muestra el título principal de la marca junto con un resumen de beneficios clave (ej. <em>"+15 líneas disponibles"</em>, <em>"100% instalación fácil"</em>, <em>"+500 m² instalados"</em>).</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-3">
+              <span class="grid size-10 place-items-center rounded-xl bg-cyan-400 text-primary"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 15l-6-6 6-6M14 3l6 6-6 6"/></svg></span>
+              <h4 class="font-black">Botones de Acción Inmediata</h4>
+            </div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Los botones <strong>Explorar catálogo</strong> y <strong>Ver todo</strong> redirigen de forma directa a la sección de productos.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-3">
+              <span class="grid size-10 place-items-center rounded-xl bg-emerald-400 text-white"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
+              <h4 class="font-black">Botón Flotante de WhatsApp</h4>
+            </div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Ubicado de manera permanente en la esquina inferior derecha para abrir un canal de comunicación directo en cualquier momento de la navegación.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 4. SECCIÓN INFORMATIVA Y CONTACTO ── -->
+      <section id="cliente-informativa" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 4</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Sección Informativa y <span class="text-cyan-500">Formulario de Contacto</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Desplazándose hacia la parte inferior del sitio, se despliega la información institucional, los pilares de
+          la marca y las herramientas de localización.
+        </p>
+        <div class="mt-8 space-y-8">
+          <div class="grid gap-6 lg:grid-cols-2">
+            <div class="shot">
+              <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">ieos.vercel.app / #nuestro-espacio</span></div>
+              <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183257.png" alt="Pilares de identidad de la marca: Wall panels 3D, Pisos SPC y Asesoría personalizada" loading="lazy" /></div>
+              <div class="shot-caption"><span class="shot-tag">Imagen 2</span> Pilares de identidad de la marca en la sección informativa.</div>
+            </div>
+            <div class="shot">
+              <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">ieos.vercel.app / #contacto</span></div>
+              <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183310.png" alt="Formulario de contacto con campos Nombre, Correo y Mensaje" loading="lazy" /></div>
+              <div class="shot-caption"><span class="shot-tag">Imagen 3</span> Formulario de contacto para captación de prospectos.</div>
+            </div>
+          </div>
+          <div class="grid gap-6 lg:grid-cols-2 items-start">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-6">
+              <h4 class="font-black flex items-center gap-2"><span class="grid size-8 place-items-center rounded-lg bg-cyan-400 text-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Pilares de Identidad</h4>
+              <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">Tres bloques numéricos que resumen el catálogo:</p>
+              <div class="mt-3 space-y-2 text-sm">
+                <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between"><span class="font-bold text-cyan-600 dark:text-cyan-400">01</span> Wall panels 3D</div>
+                <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between"><span class="font-bold text-cyan-600 dark:text-cyan-400">02</span> Pisos SPC</div>
+                <div class="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between"><span class="font-bold text-cyan-600 dark:text-cyan-400">03</span> Asesoría personalizada</div>
+              </div>
+              <div class="mt-4 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-500/20 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                <strong class="text-cyan-600 dark:text-cyan-400">Validación Humana (Anti-Robots):</strong> El formulario incluye un sistema de seguridad matemática
+                (ej. resolver operaciones simples como <code>11 - 2 = ?</code>) con un control deslizable para evitar correos basura (Spam).
+              </div>
+            </div>
+            <div class="shot">
+              <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">OpenStreetMap · La Guaira</span></div>
+              <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183319.png" alt="Mapa interactivo OpenStreetMap con la ubicación de la tienda en La Guaira" loading="lazy" /></div>
+              <div class="shot-caption"><span class="shot-tag">Imagen 4</span> Mapa de ubicación OpenStreetMap al pie de página con botón "Cómo llegar".</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 5. CATÁLOGO Y FILTROS ── -->
+      <section id="cliente-catalogo" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 5</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Catálogo de Productos y <span class="text-cyan-500">Sistema de Filtros</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          La sección de catálogo ofrece al usuario una vista en cuadrícula de todos los revestimientos disponibles
+          con herramientas avanzadas de búsqueda.
+        </p>
+        <div class="mt-8 space-y-8">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">ieos.vercel.app / catalogo</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183335.png" alt="Vista general del catálogo de productos en cuadrícula" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 5</span> Vista general del catálogo con tarjetas de producto en cuadrícula.</div>
+          </div>
+          <div class="grid gap-6 lg:grid-cols-2 items-start">
+            <div class="shot">
+              <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Catálogo · Filtros laterales</span></div>
+              <div class="shot-body"><img src="imagenes/Screenshot 2026-08-29 114208.png" alt="Catálogo con panel lateral de filtros avanzados" loading="lazy" /></div>
+              <div class="shot-caption"><span class="shot-tag">Imagen 6</span> Panel lateral de filtros desplegado con criterios de búsqueda.</div>
+            </div>
+            <div class="space-y-4">
+              <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+                <h4 class="font-black flex items-center gap-2"><span class="grid size-8 place-items-center rounded-lg bg-cyan-400 text-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg></span> Panel Lateral de Filtros</h4>
+                <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Permite refinar los resultados en tiempo real mediante los siguientes criterios:</p>
+                <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  <li class="flex gap-2"><span class="text-cyan-500 font-bold">•</span><span><strong>Buscador de Texto:</strong> Filtrado por nombre o descripción de producto.</span></li>
+                  <li class="flex gap-2"><span class="text-cyan-500 font-bold">•</span><span><strong>Slug:</strong> Búsqueda técnica mediante la URL amigable del artículo.</span></li>
+                  <li class="flex gap-2"><span class="text-cyan-500 font-bold">•</span><span><strong>Rango de Precios (USD):</strong> Campos para delimitar un monto mínimo y máximo.</span></li>
+                  <li class="flex gap-2"><span class="text-cyan-500 font-bold">•</span><span><strong>Categorías y Marcas:</strong> Menús desplegables para agrupar los artículos según su tipo o fabricante.</span></li>
+                </ul>
+              </div>
+              <div class="rounded-2xl border border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/5 p-5">
+                <h4 class="font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2"><span class="grid size-8 place-items-center rounded-lg bg-emerald-400 text-white"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 12v10H4V12M12 2v12M12 2l-4 4M12 2l4 4"/></svg></span> Acciones en Tarjeta</h4>
+                <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">El icono <strong class="text-emerald-600">(+) Verde</strong> añade el artículo directamente al listado de cotización, mientras que el enlace <strong>Ver detalles</strong> despliega la ventana emergente de información extendida.</p>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-5">
+            <p class="font-mono text-xs uppercase tracking-widest text-cyan-600 dark:text-cyan-400">Tarjetas de Producto</p>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Cada artículo muestra una <strong>imagen de vista previa</strong>, etiqueta de disponibilidad (<span class="badge bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">En Stock</span>), <strong>ficha técnica resumida</strong> (espesor, protección, dimensiones) y <strong>variantes de color</strong> disponibles.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 6. VISTA DE DETALLE ── -->
+      <section id="cliente-detalle" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 6</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Vista de Detalle de Producto <span class="text-cyan-500">(Modal Dinámico)</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Al presionar en un artículo, se abre una ventana emergente (Pop-up) que no interrumpe la navegación del
+          catálogo y despliega la ficha técnica completa del material.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-3">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Detalle · Variante Blanco</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-29 114417.png" alt="Modal de detalle de producto con variante de color Blanco" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 7</span> Ventana emergente con la variante de color Blanco.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Detalle · Variante Azul</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183406.png" alt="Modal de detalle de producto con variante de color Azul" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 8</span> Al cambiar el color, la imagen principal cambia automáticamente (Azul).</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Detalle · Variante Marrón</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183416.png" alt="Modal de detalle de producto con variante de color Marrón" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 9</span> Renderizado del acabado Marrón/Negro instalado en un espacio real.</div>
+          </div>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-sm"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12L12 3l10 9"/><path d="M4 10v10h16V10"/></svg> Galería Dinámica por Color</div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Al cambiar entre las opciones de color (ej. Blanco, Azul, Marrón/Negro), la imagen principal cambia automáticamente para mostrar el acabado exacto y un renderizado de cómo luce instalado.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-sm"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Ficha Técnica Expandida</div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Muestra certificaciones de calidad (<strong>CE, ISO 9001, ISO 14001, SGS Gold</strong>), peso del producto (ej. 0,500 kg) y dimensiones de la pieza (ej. 2,9 mts x 16,5 cm).</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <div class="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-sm"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 12v10H4V12M12 2v12M12 2l-4 4M12 2l4 4"/></svg> Botón de Selección</div>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">El botón <strong>Agregar a solicitud</strong> incluye la variante de color elegida en el carrito del usuario.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 7. CARRITO Y WHATSAPP ── -->
+      <section id="cliente-carrito" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 7</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Gestión del Carrito y <span class="text-cyan-500">Enrutamiento a WhatsApp</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Una vez que el usuario ha seleccionado sus productos, el sistema centraliza la información para procesar
+          el cierre de la solicitud.
+        </p>
+        <div class="mt-8 space-y-8">
+          <div class="grid gap-6 lg:grid-cols-2 items-start">
+            <div class="shot">
+              <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Panel · Tu Selección / Solicitud</span></div>
+              <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183436.png" alt="Panel desplegable lateral de Tu Selección / Solicitud con productos y cantidades" loading="lazy" /></div>
+              <div class="shot-caption"><span class="shot-tag">Imagen 10</span> Panel desplegable derecho de "Tu Selección / Solicitud".</div>
+            </div>
+            <div class="space-y-4">
+              <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+                <h4 class="font-black flex items-center gap-2"><span class="grid size-8 place-items-center rounded-lg bg-cyan-400 text-primary"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span> Desplegable Lateral de Solicitud</h4>
+                <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Al presionar el icono del carrito, se abre un panel derecho que lista los productos seleccionados, detallando el <strong>color escogido</strong>, el <strong>código/slug del producto</strong>, el mensaje de <em>"Consultar precio"</em> y un <strong>control numérico ( - / + )</strong> para ajustar las cantidades requeridas.</p>
+              </div>
+              <div class="rounded-2xl border border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/5 p-5">
+                <h4 class="font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Pasarela de Salida (WhatsApp Gateway)</h4>
+                <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Al hacer clic en el botón inferior <strong>Confirmar por WhatsApp</strong>, la plataforma recopila de forma automática la lista de compras y la empaqueta en una cadena de texto estructurada.</p>
+              </div>
+            </div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-emerald-400"></span><span class="shot-dot bg-sky-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-500">api.whatsapp.com · Mensaje pre-redactado</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183454.png" alt="Pasarela de salida de WhatsApp con mensaje pre-redactado con la lista de productos" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 11</span> Pasarela de salida externa de la API oficial de WhatsApp con el mensaje pre-redactado listo para enviar (ej. "Hola, deseo cotizar los siguientes productos: • Wall Panel De Pvc...").</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PARTE 3: BANNER ── -->
+      <section class="section-card rounded-3xl bg-gradient-to-r from-cyan-700 to-cyan-900 text-white p-8 sm:p-10 relative overflow-hidden">
+        <div class="absolute -left-10 -bottom-10 size-48 rounded-full bg-white/10 blur-2xl"></div>
+        <p class="font-mono text-xs uppercase tracking-[.3em] text-white/80">Parte 3</p>
+        <h3 class="mt-2 text-2xl sm:text-4xl font-black tracking-tight">Manual del Administrador — <span class="text-cyan-300">Backoffice</span></h3>
+        <p class="mt-2 max-w-2xl text-sm text-white/90">Gestión avanzada del negocio: inventario, clasificaciones, configuración del sitio y personalización estética.</p>
+      </section>
+
+      <!-- ── 8. ACCESO AL PANEL ── -->
+      <section id="admin-acceso" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 8</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Acceso al Panel de Control <span class="text-cyan-500">Administrativo</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Los usuarios con privilegios de gestión pueden acceder a las herramientas avanzadas desde cualquier
+          pantalla del catálogo.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-2 items-start">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Perfil · Administrador</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183534.png" alt="Menú desplegable del perfil del Administrador con opciones de Modo Oscuro, Panel admin, Mi Perfil y Cerrar sesión" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 12</span> Menú desplegable del perfil del Administrador.</div>
+          </div>
+          <div class="space-y-4">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <h4 class="font-black flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Modo Oscuro</h4>
+              <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Interruptor para alternar la estética visual de la interfaz entre modo claro y oscuro.</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <h4 class="font-black flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg> Panel admin</h4>
+              <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Enlace directo para ingresar al centro de control del sistema (Control Center).</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <h4 class="font-black flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v1"/></svg> Mi Perfil / Cerrar sesión</h4>
+              <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Gestión de credenciales y salida segura de la plataforma.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 9. DASHBOARD ── -->
+      <section id="admin-dashboard" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 9</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Visión General del <span class="text-cyan-500">Tablero (Dashboard)</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Al ingresar al Control Center, la pantalla de Visión general actúa como un tablero financiero y operativo
+          para la toma de decisiones diarias.
+        </p>
+        <div class="mt-8 space-y-8">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Control Center · Visión general</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183534.png" alt="Tablero principal del Control Center con tasas de cambio e indicador de inventario" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 13</span> Tablero principal con tasas de cambio e indicador de inventario.</div>
+          </div>
+          <div class="grid gap-6 lg:grid-cols-2 items-start">
+            <div class="space-y-4">
+              <div class="rounded-2xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-5">
+                <h4 class="font-black text-amber-700 dark:text-amber-400 flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Módulo de Tasas de Cambio</h4>
+                <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Muestra en tiempo real el estado de las monedas de referencia en el país:</p>
+                <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  <li class="flex gap-2"><span class="text-amber-500 font-bold">•</span><span><strong>Tasa oficial del día:</strong> Sincronizada automáticamente desde fuentes oficiales (ej. dolartoday.com).</span></li>
+                  <li class="flex gap-2"><span class="text-amber-500 font-bold">•</span><span><strong>Tasa paralela del día:</strong> Monitoreo del mercado paralelo con el cálculo de la diferencia en bolívares (Bs.).</span></li>
+                </ul>
+              </div>
+              <div class="rounded-2xl border border-red-500/20 bg-red-50 dark:bg-red-500/5 p-5">
+                <h4 class="font-black text-red-600 dark:text-red-400 flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg> Módulo de Alerta de Inventario</h4>
+                <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Monitorea de forma automatizada las existencias físicas e indica mediante una tarjeta de advertencia la cantidad de productos con <strong>stock bajo</strong>, ofreciendo un botón de <strong>Gestionar inventario</strong> para reabastecer de inmediato.</p>
+              </div>
+            </div>
+            <div class="shot">
+              <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Control Center · KPIs</span></div>
+              <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183534.png" alt="Módulos adicionales de KPIs financieros y operativos del tablero" loading="lazy" /></div>
+              <div class="shot-caption"><span class="shot-tag">Imagen 14</span> Indicadores financieros y operativos del tablero de control.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 10. CLASIFICACIONES ── -->
+      <section id="admin-clasificaciones" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 10</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Creación de Clasificaciones <span class="text-cyan-500">(Categorías, Marcas y Proveedores)</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Para garantizar la consistencia de los datos antes de registrar un nuevo revestimiento, el administrador
+          cuenta con tres sub-módulos organizacionales independientes. Todos comparten una interfaz estandarizada
+          con tabla de registros, buscador inteligente, indicador de Estado (Activa/Inactiva) y acciones rápidas de
+          edición y eliminación.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-3">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Categorías</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183545.png" alt="Módulo de listado de Categorías con tabla, buscador y estado" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 15</span> Módulo de listado de Categorías.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Marcas</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183554.png" alt="Módulo de listado de Marcas con tabla y buscador inteligente" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 16</span> Módulo de listado de Marcas.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Proveedores</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183601.png" alt="Módulo de listado de Proveedores con tabla y acciones rápidas" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 17</span> Módulo de listado de Proveedores.</div>
+          </div>
+        </div>
+        <div class="mt-8 grid gap-6 lg:grid-cols-2 items-start">
+          <div class="space-y-4">
+            <p class="text-sm text-slate-600 dark:text-slate-300">Al hacer clic en botones de creación como <strong>"+ Nueva categoría"</strong>, se despliega el siguiente formulario modal:</p>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <table class="table-flow">
+                <thead><tr><th>Campo</th><th>Descripción</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Nombre</strong></td><td>Título descriptivo (ej. "Iluminación LED" o "PVC").</td></tr>
+                  <tr><td><strong>Slug</strong></td><td>Identificador amigable para la estructura de la URL del catálogo.</td></tr>
+                  <tr><td><strong>Descripción</strong></td><td>Breve reseña explicativa sobre el alcance de la clasificación.</td></tr>
+                  <tr><td><strong>Activación</strong></td><td>Interruptor (Toggle) para definir si la clasificación se indexará de inmediato en los filtros de la tienda.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Nueva categoría</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183700.png" alt="Ventana modal de creación de Nueva categoría con Nombre, Slug, Descripción e interruptor" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 18</span> Ventana modal de creación de "Nueva categoría".</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 11. INVENTARIO ── -->
+      <section id="admin-inventario" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 11</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Inventario General de <span class="text-cyan-500">Productos</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          El módulo de Productos reúne la base de datos de todo el catálogo comercial disponible para la venta.
+        </p>
+        <div class="mt-8 space-y-8">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Productos / Inventario</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183610.png" alt="Tabla general de inventario de productos con nombre, precio, stock, marca y estado" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 19</span> Tabla general de inventario de productos.</div>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <h4 class="font-black flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg> Acciones Masivas</h4>
+              <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Herramientas avanzadas de alta productividad como el botón de <strong>Carga masiva</strong> (para importación de catálogos completos) y <strong>Exportar Excel</strong> (para descargas de seguridad locales).</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <h4 class="font-black flex items-center gap-2"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg> Tabla de Atributos Básicos</h4>
+              <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Muestra de forma compacta el <strong>nombre/slug</strong>, <strong>precio en USD</strong>, <strong>pérdida estimada</strong>, <strong>costo inicial</strong>, <strong>stock actual en unidades (uds)</strong>, la <strong>marca/proveedor</strong> asignados y la etiqueta de estado de visibilidad (ej. Destacado).</p>
+            </div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Acciones de inventario</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183610.png" alt="Vista del inventario con acciones de carga masiva y exportación Excel" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 20</span> Vista del inventario con herramientas de importación y exportación.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 12. FORMULARIO PRODUCTO ── -->
+      <section id="admin-formulario" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 12</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Formulario de Creación y <span class="text-cyan-500">Edición de Productos</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Al crear o editar un artículo, se despliega una ventana modal detallada y de scroll fluido que recopila
+          toda la información comercial y técnica.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-2">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Información general</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183617.png" alt="Formulario modal de producto con campos de información general" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 21</span> Formulario modal — Información general (Nombre, Slug, Descripción, Precio USD, Costo y Stock). (PRECIO Y STOCK NO SON OBLIGATORIOS)</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Ficha técnica</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183623.png" alt="Formulario modal de producto con ficha técnica de peso y tamaño" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 22</span> Formulario modal — Ficha técnica (Peso en kg y Tamaño Longitud/Ancho).</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Gestor de variantes</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183639.png" alt="Gestor de variantes de colores con cargador individual de imágenes por color" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 23</span> Gestor de variantes de colores con carga de imágenes independiente por acabado.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Relaciones e imágenes</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183639.png" alt="Formulario de producto con relaciones de categoría, marca, proveedor e imágenes generales" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 24</span> Relaciones del producto e imágenes generales con zona de arrastre.</div>
+          </div>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Campos de Información General</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Nombre, Slug, Descripción (cuadro de texto enriquecido para detallar materiales y bondades técnicas), Precio USD, Costo inicial USD y Stock inicial.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Ficha Técnica</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Campos opcionales de Peso (en kg) y Tamaño (ej. Longitud y Ancho), que se ocultarán automáticamente en el catálogo si se dejan vacíos.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Relaciones del Producto</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Menús desplegables para asociar las Categorías, Marca y Proveedor asignados. Casilla para <strong>Mostrar como destacado</strong> en la portada.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Imágenes Generales</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Zona de arrastre de archivos (<strong>Cargar imagen</strong>) para añadir fotografías generales o renders ambientales complementarios del artículo.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 13. CARGA MASIVA ── -->
+      <section id="admin-carga-masiva" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 13</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Carga Masiva de Productos <span class="text-cyan-500">vía Excel</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          Para optimizar los tiempos de gestión de grandes volúmenes de inventario, el sistema dispone de un módulo
+          de importación automatizada.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-2 items-start">
+          <div class="space-y-4">
+            <div class="flex items-start gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <span class="step-chip">1</span>
+              <div>
+                <h4 class="font-black text-sm">Descarga de la plantilla guía</h4>
+                <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">El administrador hace clic en <strong>Descargar plantilla</strong> para obtener un archivo estructurado con el orden de columnas exacto y una pestaña secundaria con instrucciones de llenado.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+              <span class="step-chip">2</span>
+              <div>
+                <h4 class="font-black text-sm">Carga del archivo</h4>
+                <p class="mt-1 text-xs text-slate-600 dark:text-slate-300">El usuario arrastra su archivo o hace clic en la zona central de carga. El sistema valida formatos <code>.xlsx</code>, <code>.xls</code> y <code>.csv</code>. Al presionar <strong>Importar</strong>, el sistema crea y procesa los productos de forma simultánea.</p>
+              </div>
+            </div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Carga masiva</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183648.png" alt="Ventana emergente del módulo de carga masiva de productos con descarga de plantilla" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 25</span> Módulo de "Carga masiva de productos" — Paso 1: descarga de plantilla.</div>
+          </div>
+        </div>
+        <div class="mt-8">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Modal · Zona de arrastre</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot 2026-08-28 183648.png" alt="Zona central de arrastre de archivos del módulo de carga masiva" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 26</span> Paso 2: zona central de arrastre de archivos (formatos .xlsx, .xls y .csv).</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 14. CONFIGURACIÓN GLOBAL ── -->
+      <section id="admin-configuracion" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 14</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Sistema de Configuración <span class="text-cyan-500">Global (CMS)</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          El módulo de Configuración permite editar la información institucional, textos de marketing, información
+          legal, redes sociales y el diseño visual de toda la tienda desde un único menú centralizado.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-3">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Config · Portada (Hero)</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183746.png" alt="Módulo de configuración de la Portada Hero con textos, botones, banner y estadísticas" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 27</span> Gestión de la Portada (Sección Hero): textos, botones, banner y estadísticas de impacto.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Config · Studio y Contacto</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183756.png" alt="Configuración de secciones Studio y Contacto con textos y placeholders de formularios" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 28</span> Configuración de Secciones (Studio y Contacto): textos y placeholders.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Config · Footer y Redes</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183802.png" alt="Configuración de cierre Footer con copyright, eslogan y redes sociales" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 29</span> Configuración de Cierre (Footer y Redes Sociales).</div>
+          </div>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Gestión de la Portada (Hero)</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Modifica los textos principales (<strong>Eyebrow, Título, Títuloax, Badge de temporada, Descripción</strong>), los botones de acción con sus URLs técnicas y el banner con campos de SEO (Alt y Pie de la imagen). Incluye la administración de estadísticas de impacto.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Configuración de Secciones</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Campos dedicados (Studio y Contacto) para alterar los textos, narrativas, títulos corporativos y los textos de ayuda internos (Placeholders) de los formularios de prospección.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Configuración de Cierre (Footer)</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Actualiza el <strong>Copyright</strong>, el eslogan de la marca y el mapeo de los canales digitales externos (Instagram, LinkedIn y Correo electrónico vía protocolo <code>mailto:</code>).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 15. APARIENCIA ── -->
+      <section id="admin-apariencia" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Sección 15</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Personalización Estética <span class="text-cyan-500">Avanzada (Apariencia)</span></h3>
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          El sub-módulo de Apariencia otorga un control total sobre el diseño gráfico del Frontend, permitiendo
+          rediseñar la marca visual en tiempo real.
+        </p>
+        <div class="mt-8 grid gap-6 lg:grid-cols-2">
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Apariencia / Temas rápidos</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183821.png" alt="Panel de Apariencia con Temas rápidos de colores prestablecidos" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 30</span> Temas Rápidos: Cian ilumaX, Esmeralda, Azul Marino, Violeta Real, Ámbar y Rosa Neón.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Apariencia / Colores avanzados</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183834.png" alt="Panel de Apariencia con selector cromático hexadecimal y colores avanzados" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 31</span> Color de marca inteligente (#100981) y colores avanzados con contraste automático.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Apariencia / Border radius</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183834.png" alt="Panel de Apariencia con control deslizante de radio de esquinas Border Radius" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 32</span> Radio de Esquinas (Border Radius): slider interactivo en unidades rem.</div>
+          </div>
+          <div class="shot">
+            <div class="shot-topbar"><span class="shot-dot bg-red-400"></span><span class="shot-dot bg-amber-400"></span><span class="shot-dot bg-emerald-400"></span><span class="ml-2 font-mono text-[10px] text-slate-400">Admin · Vista previa en vivo</span></div>
+            <div class="shot-body"><img src="imagenes/Screenshot%202026-08-28%20183834.png" alt="Vista previa en vivo de la personalización de apariencia del sitio" loading="lazy" /></div>
+            <div class="shot-caption"><span class="shot-tag">Imagen 33</span> Ventana de Vista Previa (Live Preview) que renderiza los cambios en tiempo real.</div>
+          </div>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Temas Rápidos</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Perfiles cromáticos prestablecidos con un solo clic: <strong>Cian ilumaX, Esmeralda, Azul Marino, Violeta Real, Ámbar, Rosa Neón</strong>.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Color de Marca Inteligente</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Selector cromático hexadecimal (ej. <code>#100981</code>) donde el sistema calcula automáticamente los contrastes óptimos de las variantes mediante un motor interno de legibilidad.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Colores Avanzados</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">Ajustes granulares de <strong>Color de marca, Marca fuerte, Marca clara, Texto sobre marca, Fondo claro/oscuro y Texto claro/oscuro</strong> con soporte perfecto de modo noche.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
+            <h4 class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Guardado y Reversión</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed"><strong>Guardar cambios</strong> publica la personalización globalmente; <strong>Restaurar por defecto</strong> revierte todos los ajustes al tema original.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PARTE 4: FAQ ── -->
+      <section id="faq" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-cyan-600 dark:text-cyan-400">Parte 4 · Soporte y Operación</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Preguntas Frecuentes <span class="text-cyan-500">(FAQ)</span></h3>
+        <div class="mt-8 space-y-4">
+          <div class="faq-item">
+            <button class="faq-q" onclick="toggleFaq(this)">¿Cómo se actualizan los precios si la tasa de cambio en Venezuela varía?
+              <svg class="faq-icon shrink-0 transition-transform duration-300" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a"><div class="faq-a-inner">El sistema cuenta con un monitor dinámico en la <strong>Visión General</strong> que consulta las tasas oficial y paralela diariamente. El administrador puede verificar estas variaciones al instante y ajustar los precios en dólares (USD) de sus productos en el formulario de edición, reflejándose el cambio en bolívares de manera automática si el frontend lo requiere.</div></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" onclick="toggleFaq(this)">¿Existe un límite de productos, marcas o categorías que puedo registrar?
+              <svg class="faq-icon shrink-0 transition-transform duration-300" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a"><div class="faq-a-inner">No. Gracias a la base de datos <strong>PostgreSQL</strong> provista por Supabase, la plataforma está diseñada para soportar miles de registros de forma organizada y con búsquedas indexadas de alta velocidad sin degradar el rendimiento del sitio.</div></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" onclick="toggleFaq(this)">¿Qué pasa si un cliente confirma un pedido por WhatsApp pero se queda sin internet?
+              <svg class="faq-icon shrink-0 transition-transform duration-300" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a"><div class="faq-a-inner">El flujo está blindado. El catálogo funciona de manera local en el teléfono del cliente mientras navega. Al presionar <strong>"Confirmar por WhatsApp"</strong>, si el cliente pierde conexión temporalmente, el mensaje estructurado ya queda guardado en la memoria de su aplicación de WhatsApp listo para despacharse en cuanto recupere su señal, garantizando que la intención de compra no se pierda.</div></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" onclick="toggleFaq(this)">Si cambio los colores o los textos en el panel de configuración, ¿el sitio web se cae mientras se actualiza?
+              <svg class="faq-icon shrink-0 transition-transform duration-300" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a"><div class="faq-a-inner">No, en lo absoluto. Los cambios realizados en el panel de control se guardan de forma inmediata en la base de datos. Los clientes que estén navegando en el sitio web verán la nueva apariencia (colores, banners o textos) de manera transparente en su próxima acción o al refrescar la página, sin interrumpir ninguna preventa.</div></div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" onclick="toggleFaq(this)">¿Puedo subir imágenes de cualquier tamaño para los productos y variantes de color?
+              <svg class="faq-icon shrink-0 transition-transform duration-300" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a"><div class="faq-a-inner">El sistema acepta los formatos estándar de imagen (<code>.jpg</code>, <code>.jpeg</code>, <code>.png</code>). Para mantener la velocidad de carga ultra rápida que ofrece Vercel, se recomienda que las imágenes de los productos estén optimizadas (<strong>peso menor a 1 MB</strong>), lo cual garantiza una navegación fluida en dispositivos móviles con conexiones de datos móviles (3G/4G/5G).</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════ FOOTER ═══════════ -->
+      <footer class="no-print rounded-3xl bg-primary text-white p-8 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <span class="grid size-12 place-items-center rounded-2xl bg-cyan-400 font-mono font-black text-primary text-xl">IE</span>
+          <div>
+            <p class="font-black text-lg leading-tight">IEOS · Plataforma Digital Integral</p>
+            <p class="text-xs text-slate-300">Manual de Usuario e Infraestructura Técnica · v1.0 · React.js + Supabase + Vercel</p>
+          </div>
+        </div>
+        <button onclick="window.print()" class="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 text-sm font-bold transition">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+          Imprimir manual
+        </button>
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════ LIGHTBOX ZOOM ═══════════ -->
+<div id="lightbox" class="lightbox no-print" onclick="closeLightbox()" role="dialog" aria-modal="true">
+  <img id="lightbox-img" src="" alt="Vista ampliada de captura del manual" />
+  <span id="lightbox-caption" class="lightbox-caption"></span>
+</div>
+
+<script>
+  // ── LIGHTBOX: ZOOM DE IMÁGENES ──
+  function openLightbox(e){const lb=document.getElementById('lightbox'),li=document.getElementById('lightbox-img'),lc=document.getElementById('lightbox-caption'),cap=e.closest('.shot')?.querySelector('.shot-caption');li.src=e.src;lc.textContent=cap?cap.textContent.trim().replace(/\s+/g,' '):e.alt;lb.classList.add('open');document.body.style.overflow='hidden';}
+  function closeLightbox(){document.getElementById('lightbox').classList.remove('open');document.body.style.overflow='';}
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+  document.querySelectorAll('.shot-body img').forEach(i=>i.addEventListener('click',()=>openLightbox(i)));
+
+  // ── TOC MOBILE: ABRIR/CERRAR MENÚ ──
+  function toggleToc() {
+    const toc = document.getElementById('toc');
+    const btn = document.getElementById('toc-toggle');
+    const chevron = document.getElementById('toc-chevron');
+    const isHidden = toc.classList.contains('hidden');
+    if (isHidden) {
+      toc.classList.remove('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+      chevron.classList.add('rotate-180');
+    } else {
+      toc.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+      chevron.classList.remove('rotate-180');
+    }
+  }
+
+  // ── TEMA OSCURO/CLARO ──
+  function toggleDark() {
+    const root = document.documentElement;
+    root.classList.toggle('dark');
+    localStorage.setItem('ieos-manual-dark', root.classList.contains('dark') ? 'true' : 'false');
+  }
+  (function initDark() {
+    const stored = localStorage.getItem('ieos-manual-dark');
+    if (stored === 'true') document.documentElement.classList.add('dark');
+  })();
+
+  // ── TOC: RESALTAR SECCIÓN ACTIVA ──
+  const tocLinks = document.querySelectorAll('.toc-link');
+  const sections = document.querySelectorAll('.section-card');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        tocLinks.forEach((l) => l.classList.remove('active'));
+        const id = entry.target.getAttribute('id');
+        const link = document.querySelector(`.toc-link[href="#${id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach((s) => observer.observe(s));
+
+  // ── FAQ ACORDEÓN ──
+  function toggleFaq(btn) {
+    const item = btn.parentElement;
+    const answer = item.querySelector('.faq-a');
+    const icon = btn.querySelector('.faq-icon');
+    const isOpen = answer.style.maxHeight && answer.style.maxHeight !== '0px';
+    document.querySelectorAll('.faq-item').forEach((el) => {
+      el.querySelector('.faq-a').style.maxHeight = '0px';
+      el.querySelector('.faq-icon').classList.remove('rotate-180');
+    });
+    if (!isOpen) {
+      answer.style.maxHeight = answer.scrollHeight + 'px';
+      icon.classList.add('rotate-180');
+    }
+  }
+</script>
+</body>
+</html>
