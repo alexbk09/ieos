@@ -7,6 +7,7 @@ import { moneyUsd, formatBolivars } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
 import { marketplaceForUrl } from '@/lib/affiliate'
+import { trackAffiliateClick } from '@/lib/analytics-client'
 
 /**
  * Modal de confirmación de compra segura para afiliados.
@@ -28,12 +29,15 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
   onClearCheckout: () => void
 }) {
   /** Abre una URL de afiliado en pestaña nueva (gesto directo = nunca bloqueado). */
-  function openAffiliate(url: string | null | undefined) {
+  function openAffiliate(item: CartItem) {
+    const url = bestUrl(item)
     if (!url) {
       toast.error('Este producto no tiene enlace de afiliado todavía')
       return
     }
     window.open(url, '_blank', 'noopener,noreferrer')
+    // Analítica: registro del clic real de salida al marketplace de afiliado.
+    trackAffiliateClick(item.id, url)
     toast.success('Abriendo AliExpress / Amazon en otra pestaña')
   }
 
@@ -138,7 +142,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
                   </p>
                 </div>
                 <button
-                  onClick={() => openAffiliate(url)}
+                  onClick={() => openAffiliate(item)}
                   disabled={!url}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-navy-foreground transition hover:bg-brand hover:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 >

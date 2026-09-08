@@ -2,6 +2,29 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { createPublicClient } from '@/lib/supabase/public'
 
+/** Envuelve una promesa sin esperarla: tracking fire-and-forget del agente. */
+function trackAgentSearchInBackground(query: string, productIds: string[], resultsCount: number) {
+  try {
+    const supabase = createPublicClient()
+    // Registro de la búsqueda IA + impresiones de productos en una sola RPC.
+    // Se usa una promesa async auto-ejecutada para no bloquear la respuesta
+    // del modelo y capturar errores de red sin romper la conversación.
+    void (async () => {
+      try {
+        await supabase.rpc('track_agent_search', {
+          p_query: query,
+          p_results_count: resultsCount,
+          p_product_ids: productIds.filter(Boolean),
+        })
+      } catch (e: any) {
+        console.error('[agent] track_agent_search:', e?.message)
+      }
+    })()
+  } catch {
+    // El tracking nunca debe romper la conversación del asistente.
+  }
+}
+
 /**
  * Capa del Agente de Compra Inteligente.
  * Centraliza las tools que el LLM usa para consultar el catalogo real de
@@ -66,8 +89,14 @@ export const buscarProductosTool = tool({
         .order('sort_order', { ascending: true })
         .limit(maxResults)
       if (error) return { ok: false, error: 'No pudimos consultar el catalogo' }
-      if (!data || data.length === 0) return { ok: true, products: [] }
+      if (!data || data.length === 0) {
+        // Analítica: también se registra cuando la IA no encontró resultados.
+        trackAgentSearchInBackground(term, [], 0)
+        return { ok: true, products: [] }
+      }
       const products = (data as any[]).map(toCartProduct)
+      // Analítica: registra la búsqueda y qué productos mostró la IA al cliente.
+      trackAgentSearchInBackground(term, products.map((p) => p.id), products.length)
       return { ok: true, products }
     } catch {
       return { ok: false, error: 'Error interno consultando el catalogo' }

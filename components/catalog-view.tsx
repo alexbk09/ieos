@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { CATALOG_PAGE_SIZE } from '@/lib/constants'
+import { CATALOG_PAGE_SIZE, SEARCH_LOG_SOURCES } from '@/lib/constants'
+import { trackSearchLog } from '@/lib/analytics-client'
 import { LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
@@ -138,6 +139,12 @@ export function CatalogView({
     setTotalCount(data.total ?? 0)
     setHasMore(data.hasMore ?? false)
     setLoading(false)
+
+    // Analítica: registra el término libre que el cliente buscó en el filtro.
+    // El debounce (400ms) garantiza una sola captura cuando el usuario se detiene.
+    if (search.trim().length >= 2) {
+      trackSearchLog(search.trim(), SEARCH_LOG_SOURCES.CATALOG_FILTER, data.total ?? 0)
+    }
   }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas])
 
   /** Carga la siguiente página (infinite scroll). */

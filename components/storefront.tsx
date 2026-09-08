@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { LOCAL_IMAGES_PREFIX } from '@/lib/constants'
+import { useEffect, useMemo, useState } from 'react'
+import { LOCAL_IMAGES_PREFIX, SEARCH_LOG_SOURCES } from '@/lib/constants'
+import { trackSearchLog } from '@/lib/analytics-client'
 import { ArrowUpRight, CheckCircle2, Globe2, LoaderCircle, MapPin, Navigation, Search, Send, Sparkles, Star } from 'lucide-react'
 import { CaptchaWidget } from '@/components/ui/captcha-widget'
 import { ProductCard, type CardProduct } from '@/components/product-card'
@@ -131,6 +132,16 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
   const navLinks = cfg.navLinks && cfg.navLinks.length > 0 ? cfg.navLinks : []
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
+
+  // Analítica: registra el término buscado en la portada solo cuando el
+  // usuario se detiene de escribir (debounce 500ms). El conteo es local.
+  useEffect(() => {
+    if (query.trim().length < 2) return
+    const t = setTimeout(() => {
+      trackSearchLog(query.trim(), SEARCH_LOG_SOURCES.CATALOG_FILTER, filtered.length)
+    }, 500)
+    return () => clearTimeout(t)
+  }, [query, filtered.length])
 
   function handleCaptchaChange(verified: boolean, answer: string) {
     setCaptchaVerified(verified)

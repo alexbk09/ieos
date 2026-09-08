@@ -2,7 +2,8 @@
 
 import Image from 'next/image'
 import { Plus } from 'lucide-react'
-import { LOW_STOCK_ALERT } from '@/lib/constants'
+import { LOW_STOCK_ALERT, PRODUCT_EVENT_TYPES } from '@/lib/constants'
+import { trackProductEvent } from '@/lib/analytics-client'
 import { formatBolivars, moneyUsd } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 
@@ -98,9 +99,18 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
 }) {
   const image = product.images?.[0]?.url ?? product.image_url
 
+  /**
+   * Abre el detalle desde la card. Se registra card_click para que el
+   * admin sepa qué productos generan más interés desde catálogo/portada.
+   */
+  function handleOpenDetails() {
+    onViewDetails(product)
+    trackProductEvent(product.id, PRODUCT_EVENT_TYPES.CARD_CLICK)
+  }
+
   return (
     <article className="group overflow-hidden rounded-3xl border border-border bg-card">
-      <button onClick={() => onViewDetails(product)} aria-label={`Ver detalles de ${product.name}`} className="relative block w-full overflow-hidden bg-muted">
+      <button onClick={handleOpenDetails} aria-label={`Ver detalles de ${product.name}`} className="relative block w-full overflow-hidden bg-muted">
         {image ? (
           <Image src={image} alt={product.name} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
@@ -120,7 +130,14 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
             <h3 className="mt-1 font-medium">{product.name}</h3>
           </div>
           <button
-            onClick={() => (product.colors && product.colors.length > 0 ? onViewDetails(product) : onAdd(product))}
+            onClick={() => {
+              // Con colores se abre el modal (el detalle también es card_click).
+              if (product.colors && product.colors.length > 0) {
+                handleOpenDetails()
+              } else {
+                onAdd(product)
+              }
+            }}
             aria-label={`Agregar ${product.name}`}
             className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground transition hover:bg-navy hover:text-navy-foreground"
           >
@@ -174,7 +191,7 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
             <p className="font-semibold">{priceLabel(product)}</p>
             <p className="text-xs text-muted-foreground">{formatBolivars(product.price_usd, rate)}</p>
           </div>
-          <button onClick={() => onViewDetails(product)} className="text-xs text-muted-foreground underline underline-offset-4">Ver detalles</button>
+          <button onClick={handleOpenDetails} className="text-xs text-muted-foreground underline underline-offset-4">Ver detalles</button>
         </div>
       </div>
     </article>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import { ProductCarousel } from '@/components/product-carousel'
 import { categoryFor, colorImagesFor, type CardProduct } from '@/components/product-card'
+import { trackProductView } from '@/lib/analytics-client'
 import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
 import { toGrams, formatWeight } from '@/lib/price-calculator'
 
@@ -33,6 +34,12 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
 
   // Estado del color seleccionado (null = galería general)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
+
+  // Analítica: registra la vista del detalle cuando el modal se abre.
+  // Se ejecuta una única vez por apertura (dedupe corto en analytics-client).
+  useEffect(() => {
+    trackProductView(product.id)
+  }, [product.id])
 
   // Para productos por peso: unidad (g/kg) y cantidad
   const isWeight = product.pricing_type === 'weight'

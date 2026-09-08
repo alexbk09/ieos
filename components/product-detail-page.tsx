@@ -1,7 +1,7 @@
 'use client'
 
 import { ImagePlus, Plus, ShieldCheck, Truck, ExternalLink } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
@@ -9,6 +9,7 @@ import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart, type CartProduct } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
+import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
 import { moneyUsd, formatBolivars, formatRate } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
 
@@ -95,6 +96,12 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
+
+  // Analítica: la página /productos/[slug] cuenta como una vista de detalle
+  // del producto (el carrito exporta el id del producto real).
+  useEffect(() => {
+    trackProductView(product.id)
+  }, [product.id])
 
   // ----- Galería conmutada por color -----
   const generalImages = product.images.filter((img) => !img.color_name)
@@ -292,7 +299,10 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
                   if (!affiliateUrl) {
                     e.preventDefault()
                     add(cartProduct, 'u', 1, selectedColor ?? undefined)
+                    return
                   }
+                  // Analítica: registro de salida real al marketplace de afiliado.
+                  trackAffiliateClick(product.id, affiliateUrl)
                 }}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-strong active:scale-[0.99]"
               >

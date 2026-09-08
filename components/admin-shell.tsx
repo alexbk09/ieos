@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, BookOpen, Building2, ClipboardList, CreditCard, FileText, FolderTree, Landmark, LogOut, MapPin, Menu, Package, Percent, Receipt, Settings2, ShieldCheck, Tag, Truck, UserRound, Users, Wallet, Warehouse, X } from 'lucide-react'
+import { BarChart3, BookOpen, Building2, ClipboardList, CreditCard, FileText, FolderTree, Landmark, LineChart, LogOut, MapPin, Menu, Package, Percent, Receipt, Settings2, ShieldCheck, Tag, Truck, UserRound, Users, Wallet, Warehouse, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -48,6 +48,7 @@ const navGroups: NavGroup[] = [
       { href: '/admin/categorias', label: 'Categorías', icon: FolderTree, moduleSlug: 'categorias' },
       { href: '/admin/marcas', label: 'Marcas', icon: Tag, moduleSlug: 'marcas' },
       { href: '/admin/proveedores', label: 'Proveedores', icon: Building2, moduleSlug: 'proveedores' },
+      { href: '/admin/analytics-productos', label: 'Analítica de Productos', icon: LineChart, moduleSlug: 'analytics_productos' },
     ],
   },
   {

@@ -83,6 +83,43 @@ export const FACTURACION_XML_MODULE_SLUG = 'facturacion_xml'
 /** Slug del módulo "Reporte de Margen Neto" para permisos. */
 export const REPORTE_MARGEN_MODULE_SLUG = 'reporte_margen'
 
+/** Slug del módulo "Analítica de Productos" para permisos. */
+export const ANALYTICS_PRODUCTS_MODULE_SLUG = 'analytics_productos'
+
+// ---------- Analítica de productos ----------
+
+/**
+ * Tipos de evento de producto rastreados para el panel de analítica.
+ * Cada uno incrementa un contador diario en product_daily_analytics.
+ */
+export const PRODUCT_EVENT_TYPES = {
+  /** Vista del detalle del producto (modal o página /productos/[slug]). */
+  VIEW: 'product_view',
+  /** Clic sobre la card para abrir el detalle. */
+  CARD_CLICK: 'card_click',
+  /** Producto agregado al carrito híbrido (local). */
+  ADD_TO_CART: 'add_to_cart',
+  /** Clic de salida a un marketplace de afiliado (AliExpress/Amazon/store). */
+  AFFILIATE_CLICK: 'affiliate_click',
+  /** Producto mostrado como resultado del Asistente IA. */
+  AI_IMPRESSION: 'ai_impression',
+} as const
+
+/** Mercados de afiliado reconocidos por la analítica (ali/amazon/store). */
+export const PRODUCT_ANALYTICS_MARKETS = {
+  ALIEXPRESS: 'aliexpress',
+  AMAZON: 'amazon',
+  STORE: 'store',
+} as const
+
+/** Origen de una búsqueda rastreada (filtro del catálogo o asistente IA). */
+export const SEARCH_LOG_SOURCES = {
+  /** Búsqueda por filtro en el catálogo público. */
+  CATALOG_FILTER: 'catalog_filter',
+  /** Búsqueda ejecutada por el Asistente IA. */
+  AGENT: 'agent',
+} as const
+
 // ---------- Constantes de negocio nuevas ----------
 
 /** Factor estándar aéreo para peso volumétrico (cm³ / kg). */

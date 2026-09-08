@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { toGrams } from '@/lib/price-calculator'
+import { trackProductEvent, trackAffiliateClick } from '@/lib/analytics-client'
+import { PRODUCT_EVENT_TYPES } from '@/lib/constants'
 
 /**
  * Campos de enlace de afiliado soportados por el carrito híbrido.
@@ -183,6 +185,8 @@ export function useCart() {
     })
     setCartOpen(true)
     toast.success(`${product.name}${colorName ? ` (${colorName})` : ''} agregado a tu selección`)
+    // Analítica: registra cada alta al carrito híbrido (local) por producto.
+    trackProductEvent(product.id, PRODUCT_EVENT_TYPES.ADD_TO_CART)
   }, [])
 
   /** Cambia la cantidad de un ítem; si llega a 0 se elimina del carrito. */
@@ -270,15 +274,23 @@ export function useCart() {
     // Abre las URLs de afiliado. La primera va sincrónica (gesto de click);
     // el resto se programa con un pequeño delay para respetar los límites
     // de cada navegador (ventanas múltiples en un mismo evento).
+    // Solo se registra el clic de afiliado cuando window.open devolvió un
+    // handle real (la ventana sí se abrió) para no inflar la analítica.
     const openedRef: { url: string }[] = []
     itemsWithLink.forEach((entry, index) => {
       if (index === 0) {
         const win = window.open(entry.url, '_blank', 'noopener,noreferrer')
-        if (win) openedRef.push({ url: entry.url })
+        if (win) {
+          openedRef.push({ url: entry.url })
+          trackAffiliateClick(entry.item.id, entry.url)
+        }
       } else {
         window.setTimeout(() => {
           const win = window.open(entry.url, '_blank', 'noopener,noreferrer')
-          if (win) openedRef.push({ url: entry.url })
+          if (win) {
+            openedRef.push({ url: entry.url })
+            trackAffiliateClick(entry.item.id, entry.url)
+          }
         }, index * 300)
       }
     })
