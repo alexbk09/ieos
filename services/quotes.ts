@@ -1,4 +1,5 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { formatWeight } from '@/lib/price-calculator'
 import {
   calculateQuoteTotals,
   calculateValidUntil,
@@ -37,6 +38,10 @@ export type QuoteItem = {
   product_name: string
   quantity: number
   unit_price_usd: number
+  /** Unidad cotizada (u, g, kg...). */
+  unit_label?: string | null
+  /** Peso total en gramos (solo si el producto es por peso). */
+  weight_grams?: number | null
 }
 
 export type QuoteClient = {
@@ -77,6 +82,8 @@ export type Quote = {
 export type NewQuoteItem = {
   product_id: string
   quantity: number
+  /** Unidad del ítem: 'g', 'kg' o 'u'. Default: 'u'. */
+  unit?: string
 }
 
 export type NewQuoteInput = {
@@ -255,7 +262,7 @@ export async function createQuote(input: NewQuoteInput) {
 
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('id,name,price_usd,stock')
+    .select('id,name,price_usd,stock,pricing_type,price_per_gram_usd,stock_grams,min_order_grams,unit_label')
     .in('id', ids)
   if (productsError) return { data: null, error: { message: 'No se pudieron leer los productos' } }
 
@@ -319,7 +326,7 @@ export async function createQuote(input: NewQuoteInput) {
   // 8) Insertar ítems.
   const { error: itemsError } = await supabase
     .from('quote_items')
-    .insert(result.items.map((item) => ({ ...item, quote_id: quote.id })))
+    .insert(result.items.map((item: any) => ({ ...item, quote_id: quote.id })))
   if (itemsError) return { data: null, error: { message: 'La cotización se creó pero no se pudieron guardar los ítems' } }
 
   return { data: mapQuote({ ...quote, quote_items: result.items }), error: null }
@@ -436,7 +443,7 @@ export async function convertQuoteToRequest(quoteId: string) {
     return { data: null, error: { message: `No se pudo crear la solicitud: ${solError?.message ?? 'Error'}` } }
   }
 
-  // 3) Copiar ítems.
+  // 3) Copiar ítems (con unidad y peso para productos por peso).
   const { error: itemsError } = await supabase
     .from('solicitud_items')
     .insert(items.map((item: any) => ({
@@ -445,6 +452,8 @@ export async function convertQuoteToRequest(quoteId: string) {
       product_name: item.product_name,
       quantity: item.quantity,
       unit_price_usd: item.unit_price_usd,
+      unit_label: item.unit_label ?? 'u',
+      weight_grams: item.weight_grams ?? null,
     })))
   if (itemsError) {
     // Limpiar la solicitud huérfana.
@@ -514,11 +523,11 @@ export async function sendQuoteEmail(quote: Quote, companyName: string) {
 function escapeHtml(text: string | null | undefined): string {
   if (!text) return ''
   return String(text)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '&#039;')
+    .replace(/&/g, `\x26amp;`)
+    .replace(/</g, `\x26lt;`)
+    .replace(/>/g, `\x26gt;`)
+    .replace(/"/g, `\x26quot;`)
+    .replace(/'/g, `\x26#039;`)
 }
 
 /**
@@ -528,14 +537,22 @@ function escapeHtml(text: string | null | undefined): string {
  */
 function renderQuoteHtml(quote: Quote, companyName: string): string {
   const items = (quote.quote_items ?? [])
-    .map((item) => `
+    .map((item) => {
+      // Para productos por peso, la cantidad ya está en gramos → mostrar kg/g.
+      const isWeightItem = item.weight_grams != null && item.weight_grams > 0
+      const qtyLabel = isWeightItem ? formatWeight(item.weight_grams!) : `${item.quantity} ${item.unit_label ?? 'u'}`
+      const lineTotal = isWeightItem
+        ? Number(item.unit_price_usd) * Number(item.weight_grams)
+        : Number(item.unit_price_usd) * item.quantity
+      return `
       <tr style="border-bottom:1px solid #e5e7eb">
         <td style="padding:10px 12px;font-size:14px;color:#1f2937">${escapeHtml(item.product_name)}</td>
-        <td style="padding:10px 12px;font-size:14px;color:#6b7280;text-align:center">${item.quantity}</td>
-        <td style="padding:10px 12px;font-size:14px;color:#1f2937;text-align:right">$${Number(item.unit_price_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        <td style="padding:10px 12px;font-size:14px;color:#1f2937;text-align:right;font-weight:600">$${(Number(item.unit_price_usd) * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="padding:10px 12px;font-size:14px;color:#6b7280;text-align:center">${qtyLabel}</td>
+        <td style="padding:10px 12px;font-size:14px;color:#1f2937;text-align:right">$${Number(item.unit_price_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+        <td style="padding:10px 12px;font-size:14px;color:#1f2937;text-align:right;font-weight:600">$${lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       </tr>
-    `)
+    `
+    })
     .join('')
 
   // ---------- Desglose de totales para el correo ----------

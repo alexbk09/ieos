@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { UserManager } from '@/components/user-manager'
 import { listAdminUsers } from '@/services/admin-users'
 import { getRolesWithPermissions } from '@/services/roles'
@@ -19,7 +19,7 @@ export default async function UsersPage() {
   ])
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader eyebrow="Comunidad" title="Usuarios" description="Gestiona perfiles, roles y creación de usuarios del sistema." />
       <div className="p-5 sm:p-8">
         <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
@@ -46,6 +46,6 @@ export default async function UsersPage() {
 
         <UserManager initialUsers={users ?? []} roles={roles ?? []} />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

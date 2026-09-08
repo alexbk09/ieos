@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { QuoteManager } from '@/components/quote-manager'
 import { getQuotesWithItems, getQuoteSettings } from '@/services/quotes'
 import { getProductsWithCategories } from '@/services/catalog'
@@ -32,7 +32,7 @@ export default async function QuotesPage() {
   ])
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader eyebrow="Comercial" title="Cotizaciones" description="Crea cotizaciones con descuentos, envía por correo y convierte a solicitudes." />
       <div className="p-5 sm:p-8">
         <QuoteManager
@@ -52,6 +52,6 @@ export default async function QuotesPage() {
           }
         />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

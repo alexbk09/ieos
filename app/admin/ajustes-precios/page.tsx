@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { getExchangeRates } from '@/services/exchange-rate'
 import { getAdjustmentHistory, getLastAppliedRate, getProductsForAdjustment } from '@/services/margin-adjustment'
 import { hasPermission } from '@/services/roles'
@@ -19,7 +19,7 @@ export default async function AjustesPreciosPage() {
   const canRead = await hasPermission(MARGIN_ADJUSTMENT_MODULE_SLUG, 'read')
   if (!canRead) {
     return (
-      <AdminShell>
+<>
         <AdminPageHeader
           eyebrow="Finanzas"
           title="Ajuste de Margen y Control de Pérdidas"
@@ -30,8 +30,8 @@ export default async function AjustesPreciosPage() {
             <p className="text-sm text-muted-foreground">No tienes permiso para ver este módulo.</p>
           </div>
         </div>
-      </AdminShell>
-    )
+    
+</>)
   }
 
   const [{ data: products }, { data: history }, { data: lastRate }, { official, parallel }] = await Promise.all([
@@ -42,7 +42,7 @@ export default async function AjustesPreciosPage() {
   ])
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader
         eyebrow="Finanzas"
         title="Ajuste de Margen y Control de Pérdidas"
@@ -57,6 +57,6 @@ export default async function AjustesPreciosPage() {
           parallelRate={parallel.rate}
         />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

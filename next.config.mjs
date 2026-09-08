@@ -7,13 +7,6 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.supabase.co' },
     ],
   },
-  async rewrites() {
-    return [
-      // Sirve el manual de usuario (documentación) y sus archivos de ejemplo
-      // tanto en desarrollo como en producción (Vercel / Next.js standalone).
-      { source: '/manual', destination: '/manual/index.html' },
-    ]
-  },
 }
 
 export default nextConfig

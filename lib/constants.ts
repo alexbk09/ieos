@@ -47,3 +47,46 @@ export const IVA_RATE = 0.16
 
 /** Slug del módulo "Ajuste de Margen y Control de Pérdidas" para permisos. */
 export const MARGIN_ADJUSTMENT_MODULE_SLUG = 'ajustes_precios'
+
+// ---------- Slugs de módulos nuevos (Logística, Finanzas, Contabilidad) ----------
+
+/** Slug del módulo "Almacenes" (multi-almacén) para permisos. */
+export const ALMACENES_MODULE_SLUG = 'almacenes'
+
+/** Slug del módulo "Despacho y Rutas" para permisos. */
+export const DESPACHOS_MODULE_SLUG = 'despachos'
+
+/** Slug del módulo "Transportistas" para permisos. */
+export const TRANSPORTISTAS_MODULE_SLUG = 'transportistas'
+
+/** Slug del módulo "Zonas de Envío" para permisos. */
+export const ENVIOS_MODULE_SLUG = 'envios'
+
+/** Slug del módulo "Cuentas por Cobrar" para permisos. */
+export const CUENTAS_COBRAR_MODULE_SLUG = 'cuentas_cobrar'
+
+/** Slug del módulo "Conciliación Bancaria" para permisos. */
+export const CONCILIACION_MODULE_SLUG = 'conciliacion'
+
+/** Slug del módulo "Cuentas Bancarias" para permisos. */
+export const CUENTAS_BANCARIAS_MODULE_SLUG = 'cuentas_bancarias'
+
+/** Slug del módulo "Pasarelas de Pago" para permisos. */
+export const PASARELAS_MODULE_SLUG = 'pasarelas'
+
+/** Slug del módulo "Libros Fiscales" para permisos. */
+export const LIBROS_FISCALES_MODULE_SLUG = 'libros_fiscales'
+
+/** Slug del módulo "Facturación XML SENIAT" para permisos. */
+export const FACTURACION_XML_MODULE_SLUG = 'facturacion_xml'
+
+/** Slug del módulo "Reporte de Margen Neto" para permisos. */
+export const REPORTE_MARGEN_MODULE_SLUG = 'reporte_margen'
+
+// ---------- Constantes de negocio nuevas ----------
+
+/** Factor estándar aéreo para peso volumétrico (cm³ / kg). */
+export const SHIPPING_VOLUMETRIC_FACTOR = 5000
+
+/** Tarifa por defecto para envíos dentro del estado (USD por kg). */
+export const DEFAULT_SHIPPING_RATE_PER_KG = 2

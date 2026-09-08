@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { MarcaManager } from '@/components/marca-manager'
 import { getMarcas } from '@/services/marcas'
 
@@ -12,7 +12,7 @@ export default async function MarcasPage() {
   const { data: marcas, error } = await getMarcas()
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader
         eyebrow="Catálogo"
         title="Marcas"
@@ -26,6 +26,6 @@ export default async function MarcasPage() {
         )}
         <MarcaManager initialMarcas={marcas ?? []} />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

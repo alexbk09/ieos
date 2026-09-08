@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme'
+import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig, type HomepageConfig } from '@/lib/homepage-config'
 
 /**
  * Servicio de configuración del sitio.
@@ -87,19 +88,21 @@ export type SiteSettings = {
   contact_texts: ContactTexts
   footer_texts: FooterTexts
   social_links: SocialLinks
+  /** Personalización del inicio: layout de portada y segmentos apilables. */
+  homepage_config: HomepageConfig
 }
 
 /** Valores por defecto de una fila de site_settings (para el mapa seguro). */
 function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettings {
   return {
     id: row?.id ?? 1,
-    company_name: row?.company_name ?? fallback.company_name ?? 'IEOS',
-    tagline: row?.tagline ?? fallback.tagline ?? 'Wall Panels & Pisos SPC',
+    company_name: row?.company_name ?? fallback.company_name ?? 'ilumaX',
+    tagline: row?.tagline ?? fallback.tagline ?? 'Arquitectura de luz',
     logo_url: row?.logo_url ?? fallback.logo_url ?? null,
     icon_url: row?.icon_url ?? fallback.icon_url ?? null,
     whatsapp_number: row?.whatsapp_number ?? fallback.whatsapp_number ?? '584122649707',
     address: row?.address ?? fallback.address ?? 'Caracas, Venezuela',
-    email: row?.email ?? fallback.email ?? 'ventas@ieos.ve',
+    email: row?.email ?? fallback.email ?? 'hola@ilumax.ve',
     // Coordenadas por defecto: Caracas, Venezuela.
     map_lat: Number(row?.map_lat ?? fallback.map_lat ?? 10.4806),
     map_lng: Number(row?.map_lng ?? fallback.map_lng ?? -66.9036),
@@ -113,78 +116,80 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
     contact_texts: row?.contact_texts ?? fallback.contact_texts ?? {},
     footer_texts: row?.footer_texts ?? fallback.footer_texts ?? {},
     social_links: row?.social_links ?? fallback.social_links ?? {},
+    homepage_config: normalizeHomepageConfig(row?.homepage_config ?? fallback.homepage_config ?? {}),
   }
 }
 
 /** Configuración por defecto del sitio (usada si no hay fila en la BD). */
 const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
-  company_name: 'IEOS',
-  tagline: 'Wall Panels & Pisos SPC',
+  company_name: 'ilumaX',
+  tagline: 'Arquitectura de luz',
   logo_url: null,
   icon_url: null,
   whatsapp_number: '584122649707',
   address: 'Caracas, Venezuela',
-  email: 'ventas@ieos.ve',
+  email: 'hola@ilumax.ve',
   map_lat: 10.4806,
   map_lng: -66.9036,
   map_zoom: 13,
   nav_links: [
     { href: '/', label: 'Inicio' },
-    { href: '/#studio', label: 'Nuestro espacio' },
+    { href: '/#studio', label: 'Studio' },
     { href: '/#contacto', label: 'Contacto' },
     { href: '/catalogo', label: 'Catálogo completo', highlight: true },
   ],
   hero_texts: {
-    eyebrow: 'Wall Panels & Pisos SPC',
-    title: 'Espacios que ',
-    titleHighlight: 'transforman.',
+    eyebrow: 'Arquitectura de luz',
+    title: 'Luz que define ',
+    titleHighlight: 'espacios.',
     description:
-      'Revestimientos de pared y pisos SPC que convierten cualquier ambiente en un espacio moderno, duradero y de instalación rápida.',
+      'Soluciones LED y revestimientos que convierten ambientes cotidianos en experiencias memorables. Diseñamos la atmósfera, tú habitas el resultado.',
     primaryButton: 'Explorar catálogo',
     primaryHref: '#catalogo',
     secondaryButton: 'Ver todo',
     secondaryHref: '/catalogo',
     badge: 'Colección 2025',
-    imageAlt: 'Wall panel decorativo 3D',
-    imageCaption: 'Diseño que transforma',
+    imageAlt: 'Línea Aura 12W',
+    imageCaption: 'La luz como material',
     imagePosition: '01 / 03',
     stats: [
-      { value: '+15', label: 'líneas disponibles' },
-      { value: '100%', label: 'instalación fácil' },
-      { value: '+500', label: 'm² instalados' },
+      { value: '+12', label: 'años de experiencia' },
+      { value: '24/7', label: 'asesoría técnica' },
+      { value: '100%', label: 'diseño venezolano' },
     ],
   },
-  hero_images: { main: '/products/webp/wall-tile.webp' },
+  hero_images: { main: '/products/webp/linea-aura.webp' },
   studio_texts: {
-    eyebrow: 'Nuestro espacio',
-    title: 'Materiales con identidad para cada proyecto.',
+    eyebrow: 'El studio',
+    title: 'Diseñamos lo que otros solo iluminan.',
     items: [
-      { number: '01', text: 'Wall panels 3D que añaden textura, profundidad y estilo a cualquier pared.' },
-      { number: '02', text: 'Pisos SPC resistentes al agua, rayaduras y al uso diario intenso.' },
-      { number: '03', text: 'Asesoría para elegir el acabado perfecto para tu hogar o negocio.' },
+      { number: '01', text: 'Curaduría de piezas con intención y larga vida útil.' },
+      { number: '02', text: 'Asesoría para traducir ideas en instalaciones reales.' },
+      { number: '03', text: 'Materiales que hacen que cada proyecto tenga identidad.' },
     ],
   },
   contact_texts: {
     eyebrow: 'Hablemos',
-    title: 'Tu próximo proyecto empieza aquí.',
+    title: 'Tu espacio tiene algo que decir.',
     description:
-      'Cuéntanos qué espacio quieres transformar. Te ayudamos a elegir el wall panel o piso SPC ideal.',
+      'Cuéntanos sobre tu próximo proyecto. Nuestro equipo puede ayudarte a elegir la solución correcta.',
     formNamePlaceholder: 'Tu nombre',
     formEmailPlaceholder: 'Correo electrónico',
     formMessagePlaceholder: 'Cuéntanos sobre tu proyecto',
     formButton: 'Enviar mensaje',
   },
   footer_texts: {
-    copyright: '© 2025 IEOS. Caracas, Venezuela.',
-    slogan: 'Transformamos espacios.',
+    copyright: '© 2025 ilumaX. Caracas, Venezuela.',
+    slogan: 'Iluminamos ideas.',
   },
   social_links: {
     instagram: 'https://instagram.com',
     linkedin: 'https://linkedin.com',
-    email: 'mailto:ventas@ieos.ve',
+    email: 'mailto:hola@ilumax.ve',
   },
   theme: DEFAULT_THEME,
+  homepage_config: DEFAULT_HOMEPAGE_CONFIG,
 }
 
 /**
@@ -252,7 +257,7 @@ export async function updateSiteSettings(payload: Partial<SiteSettings>) {
 
   // Columnas JSONB: se copian tal cual (objetos/arreglos).
   const jsonb: Record<string, unknown> = {}
-  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme'] as const) {
+  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme', 'homepage_config'] as const) {
     if (payload[key] !== undefined) jsonb[key] = payload[key]
   }
 

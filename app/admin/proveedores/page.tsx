@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { ProveedorManager } from '@/components/proveedor-manager'
 import { getProveedores } from '@/services/proveedores'
 
@@ -12,7 +12,7 @@ export default async function ProveedoresPage() {
   const { data: proveedores, error } = await getProveedores()
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader
         eyebrow="Catálogo"
         title="Proveedores"
@@ -26,6 +26,6 @@ export default async function ProveedoresPage() {
         )}
         <ProveedorManager initialProveedores={proveedores ?? []} />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

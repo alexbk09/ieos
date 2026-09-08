@@ -41,6 +41,19 @@ export async function POST(request: Request) {
     colors: Array.isArray(body.colors) ? body.colors.map(String).filter(Boolean) : [],
     peso: body.peso || null,
     tamaño: body.tamaño || null,
+    pricing_type: (body.pricing_type === 'weight' ? 'weight' : 'unit') as 'unit' | 'weight',
+    price_per_kilo_usd: Number(body.price_per_kilo_usd ?? 0),
+    price_per_gram_usd: Number(body.price_per_gram_usd ?? 0),
+    stock_grams: Number(body.stock_grams ?? 0),
+    min_order_grams: Number(body.min_order_grams ?? 0),
+    unit_label: body.unit_label || null,
+    is_available: body.is_available !== undefined ? Boolean(body.is_available) : true,
+    low_stock_threshold: Number(body.low_stock_threshold ?? 10),
+    sku: body.sku || null,
+    bar_code: body.bar_code || null,
+    bulk_discount_percent: Number(body.bulk_discount_percent ?? 0),
+    sort_order: Number(body.sort_order ?? 0),
+    weight_grams: body.weight_grams != null ? Number(body.weight_grams) : null,
   }
 
   if (!payload.name || !payload.slug || !Number.isFinite(payload.price_usd)) {
@@ -82,6 +95,19 @@ export async function PATCH(request: Request) {
     colors: Array.isArray(body.colors) ? body.colors.map(String).filter(Boolean) : [],
     peso: body.peso || null,
     tamaño: body.tamaño || null,
+    pricing_type: (body.pricing_type === 'weight' ? 'weight' : 'unit') as 'unit' | 'weight',
+    price_per_kilo_usd: Number(body.price_per_kilo_usd ?? 0),
+    price_per_gram_usd: Number(body.price_per_gram_usd ?? 0),
+    stock_grams: Number(body.stock_grams ?? 0),
+    min_order_grams: Number(body.min_order_grams ?? 0),
+    unit_label: body.unit_label || null,
+    is_available: body.is_available !== undefined ? Boolean(body.is_available) : true,
+    low_stock_threshold: Number(body.low_stock_threshold ?? 10),
+    sku: body.sku || null,
+    bar_code: body.bar_code || null,
+    bulk_discount_percent: Number(body.bulk_discount_percent ?? 0),
+    sort_order: Number(body.sort_order ?? 0),
+    weight_grams: body.weight_grams != null ? Number(body.weight_grams) : null,
   })
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
   return NextResponse.json({ product: result.data })

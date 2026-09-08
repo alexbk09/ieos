@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { normalizeCartItems } from '@/lib/price-calculator'
 import { getOfficialExchangeRate } from '@/services/exchange-rate'
+import { notifyAdmins, createNotification } from '@/services/notifications'
 import { REQUEST_STATUSES, REQUEST_STATUS_LABELS } from '@/lib/request-status.mjs'
 
 /**
@@ -16,6 +17,12 @@ export type RequestItem = {
   product_name: string
   quantity: number
   unit_price_usd: number
+  /** Unidad vendida (u, g, kg...). */
+  unit_label?: string | null
+  /** Peso total en gramos (solo si el producto es por peso). */
+  weight_grams?: number | null
+  /** Color exacto elegido por el cliente en el catálogo (snapshot). */
+  color_name?: string | null
 }
 
 export type RequestStatusHistory = {
@@ -65,6 +72,10 @@ export type Request = {
 export type NewRequestItem = {
   product_id: string
   quantity: number
+  /** Unidad del ítem: 'g', 'kg' o 'u'. Default: 'u'. */
+  unit?: string
+  /** Color exacto elegido por el cliente en el catálogo (opcional). */
+  color_name?: string | null
 }
 
 // ---------- Solicitudes del cliente ----------
@@ -87,7 +98,7 @@ export async function createRequest(userId: string, items: NewRequestItem[]): Pr
   const ids = items.map((item) => item.product_id).filter(Boolean)
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('id,name,price_usd,stock')
+    .select('id,name,price_usd,stock,pricing_type,price_per_gram_usd,stock_grams,min_order_grams,unit_label')
     .in('id', ids)
   if (productsError) return { error: 'products_unavailable' }
 
@@ -111,6 +122,13 @@ export async function createRequest(userId: string, items: NewRequestItem[]): Pr
     .from('solicitud_items')
     .insert(validItems.map((item) => ({ ...item, solicitud_id: solicitud.id })))
   if (itemsError) return { error: 'items_failed' }
+
+  // Notifica a los administradores (feed del panel): nueva solicitud.
+  // El try/catch garantiza que una falla del centro de notificaciones
+  // (p. ej. migración no aplicada aún) nunca cancele el pedido.
+  try {
+    await notifyAdmins('solicitud', 'Nueva solicitud recibida', 'Un cliente realizó un pedido en la tienda.', '/admin')
+  } catch { /* No bloquear la operación principal. */ }
 
   return { id: solicitud.id, total }
 }
@@ -209,7 +227,32 @@ export async function getRequestStatusHistory(solicitudId: string) {
  */
 export async function updateRequestStatus(id: string, status: string) {
   const supabase = await createServerClient()
-  return supabase.from('solicitudes').update({ status }).eq('id', id).select('id, status, updated_at').single()
+
+  // Obtiene el owner (user_id) para notificar al cliente del cambio.
+  const { data: current } = await supabase
+    .from('solicitudes')
+    .select('id, user_id, total_usd')
+    .eq('id', id)
+    .maybeSingle()
+
+  const { data, error } = await supabase.from('solicitudes').update({ status }).eq('id', id).select('id, status, updated_at').single()
+
+  // Avisa al cliente cuando el estado del pedido cambia.
+  if (!error && current?.user_id) {
+    try {
+      await createNotification({
+        userId: current.user_id,
+        type: 'solicitud',
+        title: `Tu solicitud ahora está "${status}"`,
+        body: `Estado actualizado de tu pedido #${id.slice(0, 8)}.`,
+        href: '/dashboard',
+      })
+    } catch {
+      // Las notificaciones nunca deben romper la operación principal.
+    }
+  }
+
+  return { data, error }
 }
 
 /**

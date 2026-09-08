@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     const name = String(item.name ?? '').trim()
     const slug = String(item.slug ?? '').trim()
 
+    const pricing_type = (item.pricing_type === 'weight' ? 'weight' : 'unit') as 'unit' | 'weight'
+
     return {
       name,
       slug,
@@ -44,6 +46,20 @@ export async function POST(request: Request) {
       featured: Boolean(item.featured),
       category_ids: Array.isArray(item.category_ids) ? item.category_ids.filter(Boolean) : [],
       images: Array.isArray(item.images) ? item.images.filter(Boolean) : [],
+      // Nuevos campos: precio por peso, unidad, stock gramos, sku, etc.
+      pricing_type,
+      price_per_kilo_usd: Number(item.price_per_kilo_usd ?? 0),
+      price_per_gram_usd: Number(item.price_per_gram_usd ?? 0),
+      stock_grams: Number(item.stock_grams ?? 0),
+      min_order_grams: Number(item.min_order_grams ?? 0),
+      unit_label: item.unit_label || null,
+      is_available: item.is_available !== undefined ? Boolean(item.is_available) : true,
+      low_stock_threshold: Number(item.low_stock_threshold ?? 10),
+      sku: item.sku || null,
+      bar_code: item.bar_code || null,
+      bulk_discount_percent: Number(item.bulk_discount_percent ?? 0),
+      sort_order: Number(item.sort_order ?? 0),
+      weight_grams: item.weight_grams != null ? Number(item.weight_grams) : null,
       _row: index + 2, // fila en Excel (1 = encabezado)
     }
   })

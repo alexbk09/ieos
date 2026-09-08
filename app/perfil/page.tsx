@@ -3,6 +3,7 @@ import { getProfile } from '@/services/profiles'
 import { getUserRole } from '@/services/auth-server'
 import { ProfileForm } from '@/components/profile-form'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { NotificationsBell } from '@/components/notifications-bell'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
@@ -26,7 +27,7 @@ export default async function ProfilePage() {
         <header className="flex items-center justify-between gap-3 py-5">
           <div className="flex items-center gap-3">
             <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500">
-              <ArrowLeft size={16} /> Volver a IEOS
+              <ArrowLeft size={16} /> Volver a ilumaX
             </Link>
             {isAdmin && (
               <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-slate-500">
@@ -34,7 +35,10 @@ export default async function ProfilePage() {
               </Link>
             )}
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <NotificationsBell />
+            <ThemeToggle />
+          </div>
         </header>
 
         {/* Título */}

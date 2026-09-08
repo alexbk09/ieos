@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { RoleManager } from '@/components/role-manager'
 import { getModules, getRolesWithPermissions } from '@/services/roles'
 import { Shield } from 'lucide-react'
@@ -18,7 +18,7 @@ export default async function RolesPage() {
   ])
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader
         eyebrow="Accesos"
         title="Roles y permisos"
@@ -48,6 +48,6 @@ export default async function RolesPage() {
 
         <RoleManager initialRoles={roles ?? []} modules={modules ?? []} />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

@@ -36,6 +36,32 @@ export type Product = {
   peso?: string | null
   /** Tamaño del producto (texto libre, opcional). Ej: "50 x 50 cm" */
   tamaño?: string | null
+  /** Tipo de precio: 'unit' (por unidad) o 'weight' (por peso). */
+  pricing_type: 'unit' | 'weight'
+  /** Precio en USD por kilogramo (solo si pricing_type = 'weight'). */
+  price_per_kilo_usd: number
+  /** Precio en USD por gramo (solo si pricing_type = 'weight'). */
+  price_per_gram_usd: number
+  /** Inventario en gramos (solo si pricing_type = 'weight'). */
+  stock_grams: number
+  /** Peso mínimo de compra en gramos (solo si pricing_type = 'weight'). */
+  min_order_grams: number
+  /** Etiqueta de la unidad de venta: u, g, kg, m, caja, etc. */
+  unit_label: string
+  /** Visible/oculto en el catálogo público. */
+  is_available: boolean
+  /** Umbral de stock bajo (configurable). */
+  low_stock_threshold: number
+  /** SKU interno (opcional). */
+  sku: string | null
+  /** Código de barras EAN/UPC (opcional). */
+  bar_code: string | null
+  /** Descuento por volumen en % (mayoreo). */
+  bulk_discount_percent: number
+  /** Orden manual en el catálogo (menor = primero). */
+  sort_order: number
+  /** Peso neto por unidad/presentación en gramos (opcional). */
+  weight_grams: number | null
   categories?: Category[]
   images?: ProductImage[]
   colors?: string[]
@@ -91,6 +117,32 @@ export type ProductInput = {
   /** Tamaño del producto (texto libre, opcional). */
   tamaño?: string | null
   specifications?: Record<string, string>
+  /** Tipo de precio: 'unit' (por unidad) o 'weight' (por peso). */
+  pricing_type?: 'unit' | 'weight'
+  /** Precio por kilogramo (peso). */
+  price_per_kilo_usd?: number
+  /** Precio por gramo (peso). Se re-deriva si se envía price_per_kilo_usd. */
+  price_per_gram_usd?: number
+  /** Stock en gramos (peso). */
+  stock_grams?: number
+  /** Peso mínimo de compra en gramos (peso). */
+  min_order_grams?: number
+  /** Etiqueta de la unidad de venta. */
+  unit_label?: string
+  /** Visible/oculto en el catálogo público. */
+  is_available?: boolean
+  /** Umbral de stock bajo. */
+  low_stock_threshold?: number
+  /** SKU interno. */
+  sku?: string | null
+  /** Código de barras EAN/UPC. */
+  bar_code?: string | null
+  /** Descuento por volumen en % (mayoreo). */
+  bulk_discount_percent?: number
+  /** Orden manual en el catálogo (menor = primero). */
+  sort_order?: number
+  /** Peso neto por unidad/presentación en gramos. */
+  weight_grams?: number | null
   // Solo para carga masiva: nombres de marca/proveedor/categoria.
   // Si el item trae nombre y no trae id, se resuelve o crea automaticamente.
   marca_nombre?: string | null
@@ -130,6 +182,19 @@ function mapProduct(row: any): Product {
     featured: row.featured,
     peso: row.peso ?? null,
     tamaño: row.tamaño ?? null,
+    pricing_type: row.pricing_type === 'weight' ? 'weight' : 'unit',
+    price_per_kilo_usd: Number(row.price_per_kilo_usd ?? 0),
+    price_per_gram_usd: Number(row.price_per_gram_usd ?? 0),
+    stock_grams: Number(row.stock_grams ?? 0),
+    min_order_grams: Number(row.min_order_grams ?? 0),
+    unit_label: row.unit_label ?? 'u',
+    is_available: row.is_available !== false,
+    low_stock_threshold: Number(row.low_stock_threshold ?? 10),
+    sku: row.sku ?? null,
+    bar_code: row.bar_code ?? null,
+    bulk_discount_percent: Number(row.bulk_discount_percent ?? 0),
+    sort_order: Number(row.sort_order ?? 0),
+    weight_grams: row.weight_grams != null ? Number(row.weight_grams) : null,
     colors: row.colors ?? [],
     specifications: row.specifications ?? {},
     categories:
@@ -173,6 +238,8 @@ export async function getFeaturedProducts() {
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('featured', true)
+    .eq('is_available', true)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(FEATURED_PRODUCTS_LIMIT)
   if (error) return { products: null, error }
@@ -197,6 +264,8 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
   let query = supabase
     .from('products')
     .select(PRODUCT_SELECT, { count: 'exact' })
+    .eq('is_available', true)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
     .range(from, from + CATALOG_PAGE_SIZE - 1)
 
@@ -242,6 +311,50 @@ function buildProductImages(payload: ProductInput) {
 }
 
 /**
+ * Construye el payload de la tabla products con los nuevos campos de
+ * precio por peso, unidades, disponibilidad, SKU, mayoreo y orden.
+ * Si el producto es 'weight', deriva el precio por gramo desde el
+ * precio por kilo enviado (para mantener consistencia).
+ */
+function buildProductRow(payload: ProductInput) {
+  const isWeight = payload.pricing_type === 'weight'
+  // Precio por gramo: si el usuario envía precio por kilo, se re-deriva.
+  const pricePerGram =
+    isWeight && Number(payload.price_per_kilo_usd) > 0
+      ? Number(payload.price_per_kilo_usd) / 1000
+      : Number(payload.price_per_gram_usd ?? 0)
+
+  return {
+    name: payload.name,
+    slug: payload.slug,
+    description: payload.description ?? null,
+    price_usd: payload.price_usd,
+    stock: payload.stock,
+    costo_inicial: payload.costo_inicial ?? 0,
+    marca_id: payload.marca_id ?? null,
+    proveedor_id: payload.proveedor_id ?? null,
+    featured: payload.featured ?? false,
+    colors: payload.colors ?? [],
+    peso: payload.peso ?? null,
+    tamaño: payload.tamaño ?? null,
+    specifications: payload.specifications ?? {},
+    pricing_type: isWeight ? 'weight' : 'unit',
+    price_per_kilo_usd: isWeight ? Number(payload.price_per_kilo_usd ?? 0) : 0,
+    price_per_gram_usd: isWeight ? Number(pricePerGram || 0) : 0,
+    stock_grams: isWeight ? Number(payload.stock_grams ?? 0) : 0,
+    min_order_grams: isWeight ? Number(payload.min_order_grams ?? 0) : 0,
+    unit_label: payload.unit_label?.trim() || (isWeight ? 'g' : 'u'),
+    is_available: payload.is_available !== undefined ? payload.is_available : true,
+    low_stock_threshold: Number(payload.low_stock_threshold ?? 10),
+    sku: payload.sku?.trim() || null,
+    bar_code: payload.bar_code?.trim() || null,
+    bulk_discount_percent: Number(payload.bulk_discount_percent ?? 0),
+    sort_order: Number(payload.sort_order ?? 0),
+    weight_grams: payload.weight_grams != null ? Number(payload.weight_grams) : null,
+  }
+}
+
+/**
  * Crea un producto con sus categorías (N:N), imágenes múltiples,
  * marca y proveedor. Requiere sesión de admin — usa cliente servidor.
  */
@@ -255,26 +368,11 @@ export async function createProduct(payload: ProductInput) {
 
   const productImages = buildProductImages(payload)
   const firstImage = productImages[0]?.url ?? payload.image_url ?? null
+  const productRow = buildProductRow(payload)
 
   const { data, error } = await supabase
     .from('products')
-    .insert({
-      name: payload.name,
-      slug: payload.slug,
-      description: payload.description ?? null,
-      price_usd: payload.price_usd,
-      stock: payload.stock,
-      costo_inicial: payload.costo_inicial ?? 0,
-      image_url: firstImage,
-      category_id: categoryIds[0],
-      marca_id: payload.marca_id ?? null,
-      proveedor_id: payload.proveedor_id ?? null,
-      featured: payload.featured ?? false,
-      colors: payload.colors ?? [],
-      peso: payload.peso ?? null,
-      tamaño: payload.tamaño ?? null,
-      specifications: payload.specifications ?? {},
-    })
+    .insert({ ...productRow, image_url: firstImage, category_id: categoryIds[0] })
     .select(PRODUCT_SELECT)
     .single()
   if (error || !data) return { error: error ?? { message: 'No se pudo crear el producto.' } }
@@ -309,26 +407,11 @@ export async function updateProduct(id: string, payload: ProductInput) {
 
   const productImages = buildProductImages(payload)
   const firstImage = productImages[0]?.url ?? payload.image_url ?? null
+  const productRow = buildProductRow(payload)
 
   const { data, error } = await supabase
     .from('products')
-    .update({
-      name: payload.name,
-      slug: payload.slug,
-      description: payload.description ?? null,
-      price_usd: payload.price_usd,
-      stock: payload.stock,
-      costo_inicial: payload.costo_inicial ?? 0,
-      image_url: firstImage,
-      category_id: categoryIds[0],
-      marca_id: payload.marca_id ?? null,
-      proveedor_id: payload.proveedor_id ?? null,
-      featured: payload.featured ?? false,
-      colors: payload.colors ?? [],
-      peso: payload.peso ?? null,
-      tamaño: payload.tamaño ?? null,
-      specifications: payload.specifications ?? {},
-    })
+    .update({ ...productRow, image_url: firstImage, category_id: categoryIds[0] })
     .eq('id', id)
     .select('id')
     .single()
@@ -510,7 +593,7 @@ export async function createProductsBulk(items: ProductInput[]) {
 /** Obtiene el resumen del inventario. */
 export async function getInventorySummary() {
   const supabase = await createServerClient()
-  return supabase.from('products').select('id,stock')
+  return supabase.from('products').select('id,stock,stock_grams,pricing_type,unit_label')
 }
 
 // ---------- Categorías ----------

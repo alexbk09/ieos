@@ -28,6 +28,20 @@ type BulkProduct = {
   proveedor_id?: string | null
   featured: boolean
   category_ids: string[]
+  // Nuevos campos de peso/unidad/robustez
+  pricing_type?: 'unit' | 'weight'
+  price_per_kilo_usd?: number
+  price_per_gram_usd?: number
+  stock_grams?: number
+  min_order_grams?: number
+  unit_label?: string
+  is_available?: boolean
+  low_stock_threshold?: number
+  sku?: string | null
+  bar_code?: string | null
+  bulk_discount_percent?: number
+  sort_order?: number
+  weight_grams?: number | null
 }
 
 /** Producto retornado por la API con todos sus datos. */
@@ -56,15 +70,28 @@ type ParseRow = {
   marca: string
   proveedor: string
   featured: boolean
+  pricing_type: 'unit' | 'weight'
+  price_per_kg: number
+  stock_grams: number
+  min_grams: number
+  unit_label: string
+  available: boolean
+  sku: string
+  bar_code: string
+  bulk_pct: number
+  sort_order: number
+  weight_grams: string
   validated: boolean
   error?: string
 }
 
 /**
- * Genera y descarga la plantilla Excel guía.
+ * Genera y descarga la plantilla Excel guía con los nuevos campos.
  * Columnas: nombre, slug, descripcion, precio_usd, stock, categoria,
  *           featured, image_url, marca, proveedor, costo_inicial,
- *           categoria_dos (al final)
+ *           categoria_dos, pricing_type, price_per_kg_usd, stock_grams,
+ *           min_grams, unit_label, disponible, umbral_stock, sku,
+ *           codigo_barra, mayoreo_pct, orden, peso_unitario_g
  */
 function downloadTemplate() {
   const template = [
@@ -81,13 +108,47 @@ function downloadTemplate() {
       proveedor: 'Distribuidora Eléctrica C.A.',
       costo_inicial: 12.5,
       categoria_dos: 'Electrodomésticos',
+      pricing_type: 'unidad',
+      price_per_kg_usd: '',
+      stock_grams: '',
+      min_grams: '',
+      unit_label: 'u',
+      disponible: 'SI',
+      umbral_stock: 10,
+      sku: 'LED-PNL-24W',
+      codigo_barra: '',
+      mayoreo_pct: 0,
+      orden: 1,
+      peso_unitario_g: 800,
+    },
+    {
+      nombre: 'Granos de café artesanal',
+      slug: 'granos-cafe-artesanal',
+      descripcion: 'Café de altura, molido o en grano. Se vende por peso.',
+      precio_usd: 12,
+      stock: 0,
+      categoria: 'Alimentos',
+      featured: 'NO',
+      image_url: '',
+      marca: 'Café Montaña',
+      proveedor: 'Tostaduría Andes',
+      costo_inicial: 6,
+      categoria_dos: '',
+      pricing_type: 'peso',
+      price_per_kg_usd: 12,
+      stock_grams: 50000,
+      min_grams: 500,
+      unit_label: 'g',
+      disponible: 'SI',
+      umbral_stock: 5000,
+      sku: 'CAFE-ART-1KG',
+      codigo_barra: '7501234567890',
+      mayoreo_pct: 10,
+      orden: 2,
+      peso_unitario_g: '',
     },
   ]
   const worksheet = XLSX.utils.json_to_sheet(template)
-  worksheet['!cols'] = [
-    { wch: 28 }, { wch: 28 }, { wch: 42 }, { wch: 12 }, { wch: 10 },
-    { wch: 18 }, { wch: 10 }, { wch: 34 }, { wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 22 },
-  ]
 
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Productos')
@@ -104,10 +165,22 @@ function downloadTemplate() {
     { Instrucción: '"marca" se crea automáticamente si no existe.' },
     { Instrucción: '"proveedor" se crea automáticamente si no existe.' },
     { Instrucción: '"costo_inicial" es el costo del producto (opcional, se usa 0 si se deja vacío).' },
-    { Instrucción: '"categoria_dos" es una segunda categoría opcional. Se crea si no existe y el producto puede tener varias categorías. Si se deja vacío, no se agrega.' },
+    { Instrucción: '"categoria_dos" es una segunda categoría opcional. Se crea si no existe.' },
+    { Instrucción: '"pricing_type" acepta "peso" (se vende por gramos/kilos) o "unidad" (normal). Si se deja vacío, se usa "unidad".' },
+    { Instrucción: '"price_per_kg_usd" es el precio por KILOGRAMO cuando pricing_type = peso. Ej: 12 = $12/kg.' },
+    { Instrucción: '"stock_grams" es el inventario en gramos cuando pricing_type = peso. Ej: 50000 = 50 kg disponibles.' },
+    { Instrucción: '"min_grams" es el peso mínimo de compra en gramos cuando pricing_type = peso. Ej: 500 = mínimo 500 g.' },
+    { Instrucción: '"unit_label" es la unidad de venta: u, g, kg, m, cm, pkg, box. Default: u.' },
+    { Instrucción: '"disponible" acepta SI/NO para ocultar el producto del catálogo sin borrarlo. Default: SI.' },
+    { Instrucción: '"umbral_stock" es el límite para la alerta de stock bajo. Default: 10.' },
+    { Instrucción: '"sku" es el código interno de inventario. Opcional.' },
+    { Instrucción: '"codigo_barra" es el EAN/UPC. Opcional.' },
+    { Instrucción: '"mayoreo_pct" es el descuento por compra al mayor (0-100) que se muestra como incentivo. Default: 0.' },
+    { Instrucción: '"orden" es la posición en el catálogo (menor = primero). Default: 0.' },
+    { Instrucción: '"peso_unitario_g" es el peso en gramos de una unidad para la ficha técnica. Opcional.' },
   ]
   const instructionsSheet = XLSX.utils.json_to_sheet(instructions)
-  instructionsSheet['!cols'] = [{ wch: 110 }]
+  instructionsSheet['!cols'] = [{ wch: 130 }]
   XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instrucciones')
 
   XLSX.writeFile(workbook, 'plantilla-productos.xlsx')
@@ -150,6 +223,13 @@ export function BulkUploadModal({
     return text === 'SI' || text === 'TRUE' || text === '1' || text === 'SÍ'
   }
 
+  /** Convertir SI/TRUE/1 a true, NO/FALSE/vacío a false. */
+  const parseAvailable = (value: unknown) => {
+    const text = cleanCell(value).toUpperCase()
+    if (!text) return true
+    return text === 'SI' || text === 'TRUE' || text === '1' || text === 'SÍ'
+  }
+
   /** Convierte un valor a número válido; si es inválido devuelve 0. */
   const parseNumber = (value: unknown) => {
     const num = Number(String(value).replace(/[^\d.-]/g, ''))
@@ -174,8 +254,6 @@ export function BulkUploadModal({
       setParsing(true)
       try {
         const buffer = await file.arrayBuffer()
-        // XLSX.read es síncrono y puede tardar en archivos grandes.
-        // Se muestra un estado de carga para que el usuario sepa que se está procesando el archivo.
         const workbook = XLSX.read(buffer, { type: 'array' })
         const sheetName = workbook.SheetNames[0]
         const sheet = workbook.Sheets[sheetName]
@@ -192,7 +270,9 @@ export function BulkUploadModal({
           // Posiciones de columnas:
           // 0 nombre, 1 slug, 2 descripcion, 3 precio_usd, 4 stock, 5 categoria,
           // 6 featured, 7 image_url, 8 marca, 9 proveedor, 10 costo_inicial,
-          // 11 categoria_dos
+          // 11 categoria_dos, 12 pricing_type, 13 price_per_kg_usd, 14 stock_grams,
+          // 15 min_grams, 16 unit_label, 17 disponible, 18 umbral_stock, 19 sku,
+          // 20 codigo_barra, 21 mayoreo_pct, 22 orden, 23 peso_unitario_g
           const name = cleanCell(values[0] ?? '')
 
           // Genera un slug automáticamente si no viene en el Excel
@@ -203,6 +283,9 @@ export function BulkUploadModal({
               .replace(/[\u0300-\u036f]/g, '')
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-+|-+$/g, '') || `producto-${index + 1}`
+
+          const pricingTypeRaw = cleanCell(values[12] ?? '').toUpperCase()
+          const pricing_type: 'unit' | 'weight' = pricingTypeRaw === 'PESO' || pricingTypeRaw === 'WEIGHT' ? 'weight' : 'unit'
 
           const row: ParseRow = {
             row: index + 2,
@@ -216,6 +299,17 @@ export function BulkUploadModal({
             marca: cleanCell(values[8] ?? ''),
             proveedor: cleanCell(values[9] ?? ''),
             featured: parseFeatured(values[6]),
+            pricing_type,
+            price_per_kg: parseNumber(values[13]),
+            stock_grams: parseNumber(values[14]),
+            min_grams: parseNumber(values[15]),
+            unit_label: cleanCell(values[16] ?? '') || (pricing_type === 'weight' ? 'g' : 'u'),
+            available: parseAvailable(values[17]),
+            sku: cleanCell(values[19] ?? ''),
+            bar_code: cleanCell(values[20] ?? ''),
+            bulk_pct: parseNumber(values[21]),
+            sort_order: Math.max(0, Math.floor(parseNumber(values[22]))),
+            weight_grams: cleanCell(values[23] ?? ''),
             validated: true,
           }
 
@@ -266,6 +360,19 @@ export function BulkUploadModal({
       categoria_dos_nombre: row.category2 || null,
       featured: row.featured,
       category_ids: [],
+      // Nuevos campos
+      pricing_type: row.pricing_type,
+      price_per_kilo_usd: row.pricing_type === 'weight' ? row.price_per_kg : 0,
+      stock_grams: row.pricing_type === 'weight' ? row.stock_grams : 0,
+      min_order_grams: row.pricing_type === 'weight' ? row.min_grams : 0,
+      unit_label: row.unit_label,
+      is_available: row.available,
+      low_stock_threshold: row.sku ? (row.stock < 10 ? 10 : 10) : 10,
+      sku: row.sku || null,
+      bar_code: row.bar_code || null,
+      bulk_discount_percent: row.bulk_pct,
+      sort_order: row.sort_order,
+      weight_grams: row.weight_grams ? parseNumber(row.weight_grams) : null,
     }))
 
     setImporting(true)
@@ -349,7 +456,7 @@ export function BulkUploadModal({
             <div>
               <p className="text-sm font-medium">Paso 1: Descarga la plantilla guía</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Contiene el orden correcto de columnas y una segunda hoja con instrucciones.
+                Contiene el orden correcto de columnas (incluye precio por peso, unidad, SKU, mayoreo) y una segunda hoja con instrucciones.
               </p>
             </div>
             <button
@@ -429,7 +536,8 @@ export function BulkUploadModal({
             <span className="font-mono text-cyan-700">categoria_dos</span>,{' '}
             <span className="font-mono text-cyan-700">marca</span> y{' '}
             <span className="font-mono text-cyan-700">proveedor</span> se crean automáticamente si no existen. Solo el
-            nombre del producto es obligatorio.
+            nombre del producto es obligatorio. Usa <span className="font-mono text-cyan-700">pricing_type = peso</span> para
+            productos que se venden por gramos/kilos (con price_per_kg_usd, stock_grams y min_grams).
           </div>
         )}
 
@@ -452,6 +560,7 @@ export function BulkUploadModal({
                     <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Nombre</th>
                     <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Slug</th>
                     <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Precio</th>
+                    <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Tipo</th>
                     <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Stock</th>
                     <th className="hidden px-3 py-2 text-xs font-medium text-muted-foreground sm:table-cell">Categorías</th>
                     <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Estado</th>
@@ -463,8 +572,19 @@ export function BulkUploadModal({
                       <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{row.row}</td>
                       <td className="px-3 py-2 font-medium">{row.name}</td>
                       <td className="hidden px-3 py-2 font-mono text-xs text-muted-foreground sm:table-cell">/{row.slug}</td>
-                      <td className="px-3 py-2">${row.price.toFixed(2)}</td>
-                      <td className="hidden px-3 py-2 sm:table-cell">{row.stock}</td>
+                      <td className="px-3 py-2">
+                        {row.pricing_type === 'weight'
+                          ? `$${row.price_per_kg.toFixed(2)}/kg`
+                          : `$${row.price.toFixed(2)}`}
+                      </td>
+                      <td className="hidden px-3 py-2 sm:table-cell">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${row.pricing_type === 'weight' ? 'bg-cyan-500/10 text-cyan-600' : 'bg-muted text-muted-foreground'}`}>
+                          {row.pricing_type === 'weight' ? '⚖ peso' : 'unidad'}
+                        </span>
+                      </td>
+                      <td className="hidden px-3 py-2 sm:table-cell">
+                        {row.pricing_type === 'weight' ? `${row.stock_grams.toLocaleString('es-VE')} g` : row.stock}
+                      </td>
                       <td className="hidden px-3 py-2 sm:table-cell">
                         {[row.category, row.category2].filter(Boolean).join(', ') || '—'}
                       </td>

@@ -160,7 +160,17 @@ export function RequestDetailModal({ request, exchangeRate, onClose, onStatusCha
                 <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{item.product_name}</p>
-                    <p className="text-xs text-muted-foreground">Cantidad: {item.quantity}</p>
+                    {item.color_name && (
+                      <p className="text-xs font-medium text-cyan-600 dark:text-cyan-400">🎨 {item.color_name}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Cantidad: {item.quantity} <span className="text-muted-foreground/70">{item.unit_label ?? 'u'}</span>
+                      {item.weight_grams != null && item.weight_grams > 0 && (
+                        <span className="ml-2 text-muted-foreground/70">
+                          · {item.weight_grams >= 1000 ? `${(item.weight_grams / 1000).toFixed(3)} kg` : `${item.weight_grams} g`}
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{moneyUsd(Number(item.unit_price_usd))}</p>

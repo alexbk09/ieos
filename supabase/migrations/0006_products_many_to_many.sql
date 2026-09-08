@@ -94,11 +94,12 @@ end $$;
 -- Sincronizar datos existentes
 -- ============================================================
 -- 1) Copiar category_id de products a product_categories
---    (products.category_id ya es uuid desde la migración 0001)
+--    (products.category_id puede ser text; se castea a uuid cuando tiene formato válido)
 insert into public.product_categories (product_id, category_id)
-select p.id, p.category_id
+select p.id, p.category_id::uuid
 from public.products p
 where p.category_id is not null
+  and p.category_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 on conflict (product_id, category_id) do nothing;
 
 -- 2) Copiar image_url de products a product_images como primera imagen

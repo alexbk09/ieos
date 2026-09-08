@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { InvoiceSettingsManager } from '@/components/invoice-settings-manager'
 import { getInvoiceSettings, getInvoicesWithDetails, getInvoiceableRequests } from '@/services/invoicing'
 
@@ -18,7 +18,7 @@ export default async function FacturacionPage() {
   ])
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader
         eyebrow="Finanzas"
         title="Facturación"
@@ -31,6 +31,6 @@ export default async function FacturacionPage() {
           availableRequests={availableRequests ?? []}
         />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

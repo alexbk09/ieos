@@ -1,13 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, Globe2, LayoutDashboard, Link2, MapPin, MessageCircle, Paintbrush, Palette, Plus, Save, Trash2, Upload, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Building2, ChevronRight, Globe2, Home, LayoutDashboard, Link2, MapPin, MessageCircle, Paintbrush, Palette, Plus, Receipt, Save, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton, FormTextarea } from '@/components/ui/form-field'
 import { confirmDelete } from '@/components/confirm-dialog'
 import { cn } from '@/lib/utils'
 import { ThemeSettingsManager } from '@/components/theme-settings-manager'
 import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme'
+import { HomepageConfigManager } from '@/components/homepage-config-manager'
+import { StudioConfigManager } from '@/components/studio-config-manager'
+import { PortadaConfigManager } from '@/components/portada-config-manager'
+import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig, type HomepageConfig } from '@/lib/homepage-config'
 
 // ---------- Tipos (espejo de /services/site-settings) ----------
 type NavLink = { href: string; label: string; highlight?: boolean }
@@ -31,12 +36,14 @@ type SiteSettingsPayload = {
   footer_texts: Record<string, unknown>
   social_links: Record<string, unknown>
   theme: ThemeConfig
+  homepage_config: HomepageConfig
 }
 
 // ---------- Íconos por sección ----------
 const SECTIONS = [
   { key: 'marca', label: 'Marca', icon: Building2 },
   { key: 'menu', label: 'Menú', icon: Link2 },
+  { key: 'inicio', label: 'Inicio', icon: Home },
   { key: 'portada', label: 'Portada', icon: LayoutDashboard },
   { key: 'studio', label: 'Studio', icon: Palette },
   { key: 'contacto', label: 'Contacto', icon: MessageCircle },
@@ -64,10 +71,12 @@ async function uploadImage(file: File): Promise<string> {
  * /api/admin/site-settings; la UI es independiente de Supabase.
  */
 export function SiteSettingsManager({ initialSettings }: { initialSettings: SiteSettingsPayload }) {
+  const router = useRouter()
   // Asegura que el tema siempre tenga todos los campos (fallback al tema por defecto).
   const [form, setForm] = useState<SiteSettingsPayload>({
     ...initialSettings,
     theme: { ...DEFAULT_THEME, ...(initialSettings.theme ?? {}) },
+    homepage_config: normalizeHomepageConfig(initialSettings.homepage_config ?? {}),
   })
   const [active, setActive] = useState<SectionKey>('marca')
   const [saving, setSaving] = useState(false)
@@ -195,7 +204,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
       <div className="grid gap-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <FormInput label="Nombre de la empresa" value={form.company_name} onChange={(e) => setScalar('company_name', e.target.value)} />
-          <FormInput label="Slogan / tagline" value={form.tagline} onChange={(e) => setScalar('tagline', e.target.value)} placeholder="Wall Panels & Pisos SPC" />
+          <FormInput label="Slogan / tagline" value={form.tagline} onChange={(e) => setScalar('tagline', e.target.value)} placeholder="Arquitectura de luz" />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -221,7 +230,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
 
           <div className="grid gap-4">
             <FormInput label="WhatsApp (con código país)" value={form.whatsapp_number} onChange={(e) => setScalar('whatsapp_number', e.target.value)} placeholder="584122649707" hint="Ej: 58412... (código país + número)" />
-            <FormInput label="Correo de contacto" value={form.email} onChange={(e) => setScalar('email', e.target.value)} placeholder="ventas@ieos.ve" />
+            <FormInput label="Correo de contacto" value={form.email} onChange={(e) => setScalar('email', e.target.value)} placeholder="hola@ilumax.ve" />
             <FormInput label="Dirección" value={form.address} onChange={(e) => setScalar('address', e.target.value)} placeholder="Caracas, Venezuela" />
           </div>
         </div>
@@ -304,13 +313,14 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     )
   }
 
-  /** Sección: Portada (hero). */
+  /** Sección: Portada (hero) — textos, imagen y diseño visual. */
   function renderPortada() {
     const hero = form.hero_texts as Record<string, string>
     const stats = Array.isArray(hero.stats) ? (hero.stats as Record<string, string>[]) : []
     const heroImage = (form.hero_images as Record<string, string>).main ?? ''
     return (
       <div className="grid gap-5">
+        <PortadaConfigManager value={form.homepage_config.hero} onChange={(heroCfg) => setForm((f) => ({ ...f, homepage_config: { ...f.homepage_config, hero: heroCfg } }))} />
         <div className="grid gap-4 sm:grid-cols-2">
           <FormInput label="Eyebrow" value={hero.eyebrow ?? ''} onChange={(e) => setJsonField('hero_texts', 'eyebrow', e.target.value)} />
           <FormInput label="Título" value={hero.title ?? ''} onChange={(e) => setJsonField('hero_texts', 'title', e.target.value)} hint="La parte resaltada se separa en el campo Título resaltado" />
@@ -378,6 +388,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     const items = Array.isArray(studio.items) ? (studio.items as Record<string, string>[]) : []
     return (
       <div className="grid gap-5">
+        <StudioConfigManager value={form.homepage_config.studio} onChange={(studioCfg) => setForm((f) => ({ ...f, homepage_config: { ...f.homepage_config, studio: studioCfg } }))} />
         <div className="grid gap-4 sm:grid-cols-2">
           <FormInput label="Eyebrow" value={String(studio.eyebrow ?? '')} onChange={(e) => setJsonField('studio_texts', 'eyebrow', e.target.value)} />
           <FormInput label="Título" value={String(studio.title ?? '')} onChange={(e) => setJsonField('studio_texts', 'title', e.target.value)} />
@@ -428,8 +439,8 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     const f = form.footer_texts as Record<string, string>
     return (
       <div className="grid gap-4">
-        <FormInput label="Copyright" value={f.copyright ?? ''} onChange={(e) => setJsonField('footer_texts', 'copyright', e.target.value)} placeholder="© 2025 IEOS. Caracas, Venezuela." />
-        <FormInput label="Slogan" value={f.slogan ?? ''} onChange={(e) => setJsonField('footer_texts', 'slogan', e.target.value)} placeholder="Transformamos espacios." />
+        <FormInput label="Copyright" value={f.copyright ?? ''} onChange={(e) => setJsonField('footer_texts', 'copyright', e.target.value)} placeholder="© 2025 ilumaX. Caracas, Venezuela." />
+        <FormInput label="Slogan" value={f.slogan ?? ''} onChange={(e) => setJsonField('footer_texts', 'slogan', e.target.value)} placeholder="Iluminamos ideas." />
       </div>
     )
   }
@@ -441,7 +452,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
       <div className="grid gap-4">
         <FormInput label="Instagram" value={s.instagram ?? ''} onChange={(e) => setJsonField('social_links', 'instagram', e.target.value)} placeholder="https://instagram.com" />
         <FormInput label="LinkedIn" value={s.linkedin ?? ''} onChange={(e) => setJsonField('social_links', 'linkedin', e.target.value)} placeholder="https://linkedin.com" />
-        <FormInput label="Correo (mailto)" value={s.email ?? ''} onChange={(e) => setJsonField('social_links', 'email', e.target.value)} placeholder="mailto:ventas@ieos.ve" />
+        <FormInput label="Correo (mailto)" value={s.email ?? ''} onChange={(e) => setJsonField('social_links', 'email', e.target.value)} placeholder="mailto:hola@ilumax.ve" />
       </div>
     )
   }
@@ -456,11 +467,24 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     )
   }
 
+  /** Sección: Inicio personalizable con preview en vivo. */
+  function renderInicio() {
+    const hero = form.hero_texts as Record<string, string>
+    const heroImage = (form.hero_images as Record<string, string>).main ?? ''
+    return (
+      <div className="grid gap-5">
+        <p className="text-sm text-muted-foreground">Personaliza el layout de la portada, el fondo y agrega segmentos con imagen + texto, estadísticas, CTA o frases. El preview se actualiza en vivo.</p>
+        <HomepageConfigManager value={form.homepage_config} onChange={(homepage_config) => setForm((f) => ({ ...f, homepage_config }))} heroTexts={hero} heroImage={heroImage} />
+      </div>
+    )
+  }
+
   /** Renderiza la sección activa. */
   function renderSection() {
     switch (active) {
       case 'marca': return renderMarca()
       case 'menu': return renderMenu()
+      case 'inicio': return renderInicio()
       case 'portada': return renderPortada()
       case 'studio': return renderStudio()
       case 'contacto': return renderContacto()
@@ -488,6 +512,20 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
             </button>
           ))}
 
+          {/* Acceso a la gestión de facturación venezolana (SENIAT) */}
+          <div className="my-2 border-t border-border/70" />
+          <button
+            onClick={() => router.push('/admin/configuracion/facturacion')}
+            className="flex items-center justify-between gap-3 rounded-2xl bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-500/20 dark:text-cyan-400"
+          >
+            <span className="flex items-center gap-3">
+              <Receipt size={16} /> Facturación
+            </span>
+            <ChevronRight size={15} className="text-cyan-600/60" />
+          </button>
+          <p className="px-4 pt-1 text-[11px] leading-relaxed text-muted-foreground">
+            RIF, IVA, correlativos y facturas (normas SENIAT).
+          </p>
         </nav>
       </aside>
 

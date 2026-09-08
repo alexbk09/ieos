@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { CategoryManager } from '@/components/category-manager'
 import { getCategories } from '@/services/catalog'
 
@@ -12,11 +12,11 @@ export default async function CategoriesPage() {
   const { data: categories } = await getCategories()
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader eyebrow="Organización" title="Categorías" description="Agrupa el catálogo para que sea fácil de explorar." />
       <div className="p-5 sm:p-8">
         <CategoryManager initialCategories={categories ?? []} />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

@@ -81,13 +81,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-12 flex items-center justify-between">
           <a href="/" className="inline-flex items-center gap-2 text-sm text-slate-300">
-            <ArrowLeft size={16} /> Volver a IEOS
+            <ArrowLeft size={16} /> Volver a ilumaX
           </a>
           <ThemeToggle />
         </div>
 
         <div className="mb-8">
-          <span className="grid size-10 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">IE</span>
+          <span className="grid size-10 place-items-center rounded-xl bg-cyan-400 font-mono text-sm font-black text-blue-950">iX</span>
           <h1 className="mt-6 text-4xl font-semibold tracking-[-.06em]">{register ? 'Crea tu cuenta.' : 'Bienvenido de vuelta.'}</h1>
           <p className="mt-3 text-slate-300">Gestiona tus solicitudes y proyectos desde un solo lugar.</p>
         </div>

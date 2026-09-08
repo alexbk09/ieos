@@ -10,6 +10,8 @@ import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
+import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
+import { AgentChat } from '@/components/agent-chat'
 import { SearchableMultiSelect } from '@/components/ui/select-search'
 import { ProductGridSkeleton } from '@/components/ui/skeleton'
 
@@ -74,7 +76,6 @@ export function CatalogView({
   footer,
   social,
   brandAddress,
-  whatsapp,
 }: {
   initialProducts: CatalogProduct[]
   total: number
@@ -85,8 +86,6 @@ export function CatalogView({
   footer?: { copyright?: string; slogan?: string }
   social?: { instagram?: string; linkedin?: string; email?: string }
   brandAddress?: string
-  /** Número de WhatsApp configurado en site_settings (para confirmar pedidos). */
-  whatsapp?: string
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
@@ -105,7 +104,11 @@ export function CatalogView({
 
   // Estado compartido con la portada: carrito funcional.
   const exchangeRate = useExchangeRate()
-  const { cart, add, change, count, cartOpen, setCartOpen, requestOrder } = useCart(exchangeRate, whatsapp)
+  const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
+
+  // Escucha el Asistente IA: agrega al carrito si el agente emite agregarAlCarrito.
+  useAgentAddToCart(add)
+
 
   const activeFilterCount =
     (search ? 1 : 0) + (slug ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length
@@ -344,7 +347,7 @@ export function CatalogView({
               )}
               {!hasMore && products.length > 0 && (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  Has visto todos los productos de IEOS.
+                  Has visto todos los productos de ilumaX.
                 </p>
               )}
               {!hasMore && products.length === 0 && (
@@ -366,9 +369,15 @@ export function CatalogView({
       </main>
 
       {selected && (
-        <ProductDetailModal product={selected as CardProduct} rate={exchangeRate} onClose={() => setSelected(null)} onAdd={add} />
+        <ProductDetailModal
+          product={selected as CardProduct}
+          rate={exchangeRate}
+          onClose={() => setSelected(null)}
+          onAdd={(product, unit, quantity, colorName) => add(product, unit, quantity, colorName)}
+        />
       )}
 
+      <AgentChat />
       <SiteFooter footer={footer} brand={{ name: brand?.name, address: brandAddress }} social={social} />
 
       <CartDrawer
@@ -376,7 +385,10 @@ export function CatalogView({
         onClose={() => setCartOpen(false)}
         cart={cart}
         onChange={change}
+        total={cartTotal}
         onSubmit={requestOrder}
+        submitting={submitting}
+        requested={requested}
         exchangeRate={exchangeRate}
       />
     </div>

@@ -27,13 +27,13 @@ create table if not exists public.invoice_settings (
   id integer primary key default 1 check (id = 1),
 
   -- Datos del emisor (contribuyente)
-  issuer_name text not null default 'IEOS C.A.',
+  issuer_name text not null default 'ilumaX C.A.',
   issuer_rif text not null default 'J-00000000-0',
   issuer_address text not null default 'Caracas, Venezuela',
   issuer_city text not null default 'Caracas',
   issuer_state text not null default 'Distrito Capital',
   issuer_phone text not null default '584122649707',
-  issuer_email text not null default 'ventas@ieos.ve',
+  issuer_email text not null default 'hola@ilumax.ve',
 
   -- Régimen fiscal
   regimen text not null default 'contribuyente_formal'
@@ -138,8 +138,8 @@ insert into public.invoice_settings (
   issuer_phone, issuer_email, regimen, iva_rate, prices_include_iva
 )
 values (
-  1, 'IEOS C.A.', 'J-00000000-0', 'Caracas, Venezuela', 'Caracas',
-  'Distrito Capital', '584122649707', 'ventas@ieos.ve',
+  1, 'ilumaX C.A.', 'J-00000000-0', 'Caracas, Venezuela', 'Caracas',
+  'Distrito Capital', '584122649707', 'hola@ilumax.ve',
   'contribuyente_formal', 16.00, true
 )
 on conflict (id) do nothing;

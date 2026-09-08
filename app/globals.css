@@ -44,6 +44,67 @@ html { scroll-behavior: smooth; }
 ::selection { background: oklch(0.84 0.14 195); color: oklch(0.14 0.04 255); }
 
 /* ============================================================
+   Skeleton shimmer moderno.
+   Un barrido diagonal sutil sobre el bloque base (sin reemplazar
+   el fondo del tema) para dar una sensación de "carga viva"
+   sin parpadeos y respetando modo oscuro (usa CSS variables).
+   ============================================================ */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in oklch, var(--foreground) 6%, transparent) 50%,
+    transparent 80%
+  );
+  animation: ilumax-shimmer 1.6s infinite;
+}
+@keyframes ilumax-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ============================================================
+   Barra de progreso superior de navegación.
+   Fixed en el borde superior, 100% ancho y z alto: no interfiere
+   los layouts porque solo mide 2px.
+   ============================================================ */
+.navigation-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  height: 2px;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.navigation-progress-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--brand), transparent);
+  animation: ilumax-progress-slide 1.1s ease-in-out infinite;
+}
+@keyframes ilumax-progress-slide {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(300%); }
+}
+.navigation-progress-done {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+/* ============================================================
    Scrollbar con colores del tema (claro/oscuro).
    Se usa en áreas internas con scroll, como la navegación del
    panel admin. El thumb usa el mismo color del hover de los

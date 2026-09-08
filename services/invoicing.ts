@@ -6,6 +6,7 @@ import {
 } from '@/lib/invoice-calculator'
 import nodemailer from 'nodemailer'
 import { moneyUsd } from '@/lib/currency'
+import { createNotification } from '@/services/notifications'
 
 /**
  * Servicio de facturación venezolana (SENIAT).
@@ -87,13 +88,13 @@ export type Invoice = {
 function mapSettings(row: any): InvoiceSettings {
   return {
     id: row?.id ?? 1,
-    issuer_name: row?.issuer_name ?? 'IEOS C.A.',
+    issuer_name: row?.issuer_name ?? 'ilumaX C.A.',
     issuer_rif: row?.issuer_rif ?? 'J-00000000-0',
     issuer_address: row?.issuer_address ?? 'Caracas, Venezuela',
     issuer_city: row?.issuer_city ?? 'Caracas',
     issuer_state: row?.issuer_state ?? 'Distrito Capital',
     issuer_phone: row?.issuer_phone ?? '584122649707',
-    issuer_email: row?.issuer_email ?? 'ventas@ieos.ve',
+    issuer_email: row?.issuer_email ?? 'hola@ilumax.ve',
     regimen: row?.regimen ?? 'contribuyente_formal',
     iva_rate: Number(row?.iva_rate ?? 16),
     prices_include_iva: Boolean(row?.prices_include_iva ?? true),
@@ -112,13 +113,13 @@ function mapSettings(row: any): InvoiceSettings {
 
 const DEFAULT_SETTINGS: InvoiceSettings = {
   id: 1,
-  issuer_name: 'IEOS C.A.',
+  issuer_name: 'ilumaX C.A.',
   issuer_rif: 'J-00000000-0',
   issuer_address: 'Caracas, Venezuela',
   issuer_city: 'Caracas',
   issuer_state: 'Distrito Capital',
   issuer_phone: '584122649707',
-  issuer_email: 'ventas@ieos.ve',
+  issuer_email: 'hola@ilumax.ve',
   regimen: 'contribuyente_formal',
   iva_rate: 16,
   prices_include_iva: true,
@@ -476,6 +477,19 @@ export async function issueInvoice(solicitudId: string, customer: InvoiceCustome
     .single()
 
   if (error) return { data: null, error: { message: `No se pudo emitir la factura: ${error.message}` } }
+
+  // Notifica al cliente dueño de la solicitud: su factura quedó emitida.
+  if (request.user_id) {
+    try {
+      await createNotification({
+        userId: request.user_id,
+        type: 'factura',
+        title: `Factura ${invoiceNumber} emitida`,
+        body: `Tu factura por ${moneyUsd(Number(totals.total))} fue generada correctamente.`,
+        href: '/dashboard',
+      })
+    } catch { /* Las notificaciones nunca bloquean la facturación. */ }
+  }
 
   return { data: mapInvoice(data), error: null }
 }

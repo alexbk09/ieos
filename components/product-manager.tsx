@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import * as XLSX from 'xlsx'
 import { Building2, Download, FileSpreadsheet, ImagePlus, Package, Pencil, Plus, Tag, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,6 +12,7 @@ import { SearchableMultiSelect, SearchableSelect } from '@/components/ui/select-
 import { BulkUploadModal } from '@/components/bulk-upload-modal'
 import { confirmDelete } from '@/components/confirm-dialog'
 import { lossPerProductUnit } from '@/lib/rate-spread-calculator'
+import { resetBodyScroll } from '@/lib/scroll-lock'
 
 type ProductImage = { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }
 type Category = { id: string; name: string; slug: string }
@@ -48,6 +50,19 @@ type Product = {
   featured: boolean
   peso?: string | null
   tamaño?: string | null
+  pricing_type: 'unit' | 'weight'
+  price_per_kilo_usd: number
+  price_per_gram_usd: number
+  stock_grams: number
+  min_order_grams: number
+  unit_label: string
+  is_available: boolean
+  low_stock_threshold: number
+  sku: string | null
+  bar_code: string | null
+  bulk_discount_percent: number
+  sort_order: number
+  weight_grams: number | null
   colors?: string[]
   categories?: Category[]
   images?: ProductImage[]
@@ -72,6 +87,19 @@ type EditorState = {
   costo_inicial?: number
   peso?: string
   tamaño?: string
+  pricing_type?: 'unit' | 'weight'
+  price_per_kilo_usd?: number
+  price_per_gram_usd?: number
+  stock_grams?: number
+  min_order_grams?: number
+  unit_label?: string
+  is_available?: boolean
+  low_stock_threshold?: number
+  sku?: string
+  bar_code?: string
+  bulk_discount_percent?: number
+  sort_order?: number
+  weight_grams?: number
   marca_id?: string
   proveedor_id?: string
   featured?: boolean
@@ -99,6 +127,63 @@ function productColors(product?: Product): ColorVariant[] {
   return colors.map((name) => ({ name, image: imageByColor.get(name) }))
 }
 
+/** Opciones de unidades de venta comunes. */
+const UNIT_OPTIONS = [
+  { value: 'u', label: 'u (unidad)' },
+  { value: 'g', label: 'g (gramo)' },
+  { value: 'kg', label: 'kg (kilo)' },
+  { value: 'm', label: 'm (metro)' },
+  { value: 'cm', label: 'cm (centímetro)' },
+  { value: 'pkg', label: 'pkg (paquete)' },
+  { value: 'box', label: 'box (caja)' },
+]
+
+/**
+ * Botón de selección de imagen con input oculto por completo.
+ * Usa un input con display:none + click programático (ref.click()) en
+ * lugar de un <label> envolviendo un input sr-only. Así el navegador
+ * NUNCA devuelve el foco visual al input al cerrar el selector de
+ * archivos nativo, evitando el anillo de foco azul/ring que quedaba
+ * pegado en el modal al elegir una fotografía para un color.
+ */
+function ImagePickerButton({
+  onPick,
+  children,
+  disabled,
+  className,
+}: {
+  onPick: (file: File) => void
+  children: ReactNode
+  disabled?: boolean
+  className?: string
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+        className={className}
+      >
+        {children}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          // Limpia el valor para permitir re-seleccionar el mismo archivo.
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) onPick(file)
+        }}
+      />
+    </>
+  )
+}
+
 export function ProductManager({
   initialProducts,
   categories,
@@ -119,6 +204,8 @@ export function ProductManager({
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editing, setEditing] = useState<EditorState | null>(null)
   const [uploading, setUploading] = useState(false)
+  /** Índice del color cuya imagen se está subiendo (null = ninguno). */
+  const [uploadingColorIndex, setUploadingColorIndex] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -178,14 +265,24 @@ export function ProductManager({
         Proveedor: product.proveedor?.nombre ?? '',
         Destacado: product.featured ? 'SI' : 'NO',
         'URL imagen': product.images?.[0]?.url ?? product.image_url ?? '',
+        // Nuevos campos de peso/venta
+        'Tipo de precio': product.pricing_type === 'weight' ? 'peso' : 'unidad',
+        'Precio por kg USD': Number(product.price_per_kilo_usd),
+        'Precio por g USD': Number(product.price_per_gram_usd),
+        'Stock gramos': Number(product.stock_grams),
+        'Mín. gramos': Number(product.min_order_grams),
+        Unidad: product.unit_label,
+        Disponible: product.is_available ? 'SI' : 'NO',
+        'Stock bajo umbral': Number(product.low_stock_threshold),
+        SKU: product.sku ?? '',
+        'Código barra': product.bar_code ?? '',
+        'Mayoreo %': Number(product.bulk_discount_percent),
+        Orden: Number(product.sort_order),
+        'Peso unitario g': product.weight_grams ?? '',
       }))
 
       // Crea la hoja de cálculo con ancho de columnas legible
       const worksheet = XLSX.utils.json_to_sheet(rows)
-      worksheet['!cols'] = [
-        { wch: 32 }, { wch: 28 }, { wch: 50 }, { wch: 12 }, { wch: 16 },
-        { wch: 10 }, { wch: 24 }, { wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 42 },
-      ]
 
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Productos')
@@ -216,6 +313,19 @@ export function ProductManager({
       costo_inicial: 0,
       peso: '',
       tamaño: '',
+      pricing_type: 'unit',
+      price_per_kilo_usd: 0,
+      price_per_gram_usd: 0,
+      stock_grams: 0,
+      min_order_grams: 0,
+      unit_label: 'u',
+      is_available: true,
+      low_stock_threshold: 10,
+      sku: '',
+      bar_code: '',
+      bulk_discount_percent: 0,
+      sort_order: 0,
+      weight_grams: undefined,
       marca_id: '',
       proveedor_id: '',
       featured: false,
@@ -238,6 +348,19 @@ export function ProductManager({
       costo_inicial: product.costo_inicial ?? 0,
       peso: product.peso ?? '',
       tamaño: product.tamaño ?? '',
+      pricing_type: product.pricing_type,
+      price_per_kilo_usd: product.price_per_kilo_usd ?? 0,
+      price_per_gram_usd: product.price_per_gram_usd ?? 0,
+      stock_grams: product.stock_grams ?? 0,
+      min_order_grams: product.min_order_grams ?? 0,
+      unit_label: product.unit_label ?? 'u',
+      is_available: product.is_available !== false,
+      low_stock_threshold: product.low_stock_threshold ?? 10,
+      sku: product.sku ?? '',
+      bar_code: product.bar_code ?? '',
+      bulk_discount_percent: product.bulk_discount_percent ?? 0,
+      sort_order: product.sort_order ?? 0,
+      weight_grams: product.weight_grams ?? undefined,
       marca_id: product.marca_id ?? '',
       proveedor_id: product.proveedor_id ?? '',
       featured: product.featured,
@@ -271,10 +394,15 @@ export function ProductManager({
       .filter((c) => c.name.trim() && c.image)
       .map((c) => ({ color_name: c.name.trim(), url: c.image! }))
 
+    // Calcula precio por gramo desde el precio por kilo (si viene)
+    const isWeight = editing.pricing_type === 'weight'
+    const pricePerKilo = Number(editing.price_per_kilo_usd ?? 0)
+    const pricePerGram = isWeight && pricePerKilo > 0 ? pricePerKilo / 1000 : Number(editing.price_per_gram_usd ?? 0)
+
     const response = await fetch('/api/admin/products', {
       method: editing.id ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...editing, colors, colorImages }),
+      body: JSON.stringify({ ...editing, colors, colorImages, price_per_gram_usd: pricePerGram }),
     })
     setSaving(false)
     if (!response.ok) {
@@ -352,12 +480,13 @@ export function ProductManager({
 
   /** Sube una imagen para un color específico y la asigna a la variante. */
   async function uploadColorImage(index: number, file: File) {
-    setUploading(true)
+    // Estado de carga LOCAL al color: no debe alterar el resto del modal.
+    setUploadingColorIndex(index)
     const form = new FormData()
     form.append('file', file)
     const response = await fetch('/api/admin/upload', { method: 'POST', body: form })
     const result = await response.json()
-    setUploading(false)
+    setUploadingColorIndex(null)
     if (!response.ok) {
       toast.error('No se pudo cargar la imagen', { description: result.error ?? 'Verifica el bucket y vuelve a intentarlo.' })
       return
@@ -370,6 +499,17 @@ export function ProductManager({
     })
     toast.success('Imagen del color cargada', { description: 'La imagen se mostrará al seleccionar este color.' })
   }
+
+  /**
+   * Limpieza de scroll: cuando el modal de producto se cierra (guardado,
+   * cancelado o backdrop), restaura el overflow del body por si el
+   * contador del scroll-lock quedó desincronizado (p. ej. un modal
+   * anidado que cierra antes que el padre). Sin esto, el body puede
+   * quedar con overflow:hidden y bloquear el scroll / clicks del panel.
+   */
+  useEffect(() => {
+    if (!modalOpen) resetBodyScroll()
+  }, [modalOpen])
 
   /**
    * Opciones de marca para el formulario.
@@ -425,6 +565,13 @@ export function ProductManager({
               {(product.categories?.length ?? 0) > 2 && (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">+{(product.categories ?? []).length - 2}</span>
               )}
+              {/* Badge de tipo de precio */}
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${product.pricing_type === 'weight' ? 'bg-cyan-500/10 text-cyan-600' : 'bg-muted text-muted-foreground'}`}>
+                {product.pricing_type === 'weight' ? '⚖ por peso' : 'por unidad'}
+              </span>
+              {!product.is_available && (
+                <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-600">Oculto</span>
+              )}
             </div>
           </div>
         </div>
@@ -435,7 +582,16 @@ export function ProductManager({
       header: 'Precio',
       sortable: true,
       sortValue: (p) => Number(p.price_usd),
-      render: (product) => <span className="font-medium">${Number(product.price_usd).toFixed(2)}</span>,
+      render: (product) => (
+        <div>
+          <span className="font-medium">${Number(product.price_usd).toFixed(2)}</span>
+          {product.pricing_type === 'weight' && (
+            <p className="text-xs text-muted-foreground">
+              ${Number(product.price_per_gram_usd).toFixed(4)}/g
+            </p>
+          )}
+        </div>
+      ),
     },
     {
       key: 'loss',
@@ -446,25 +602,35 @@ export function ProductManager({
       render: (product) => { const { lossUsd } = lossPerProductUnit(Number(product.price_usd), officialRate, parallelRate); if (lossUsd === null) return <span className="text-xs text-muted-foreground/60">—</span>; return <span className="font-medium text-rose-600" title={`Diferencia entre tasa paralela y oficial: Bs. ${(parallelRate - officialRate).toFixed(2)} por USD`}>${lossUsd.toFixed(2)}</span> },
     },
     {
-      key: 'costo',
-      header: 'Costo inicial',
-      sortable: true,
-      sortValue: (p) => Number(p.costo_inicial),
-      render: (product) => (
-        <span className="font-medium text-muted-foreground">
-          ${Number(product.costo_inicial ?? 0).toFixed(2)}
-        </span>
-      ),
-    },
-    {
       key: 'stock',
       header: 'Stock',
       sortable: true,
-      sortValue: (p) => p.stock,
+      sortValue: (p) => (p.pricing_type === 'weight' ? p.stock_grams : p.stock),
+      render: (product) => {
+        const isWeight = product.pricing_type === 'weight'
+        const stockValue = isWeight ? product.stock_grams : product.stock
+        const low = isWeight ? stockValue < (product.min_order_grams * 10) : stockValue < product.low_stock_threshold
+        return (
+          <span className={low ? 'font-medium text-amber-600' : ''}>
+            {isWeight
+              ? `${stockValue.toLocaleString('es-VE')} g`
+              : `${stockValue} ${product.unit_label || 'uds'}`}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      sortable: true,
+      sortValue: (p) => p.sku ?? '',
+      hiddenMobile: true,
       render: (product) => (
-        <span className={product.stock < 20 ? 'font-medium text-amber-600' : ''}>
-          {product.stock} <span className="text-xs text-muted-foreground">uds</span>
-        </span>
+        product.sku ? (
+          <span className="font-mono text-xs text-muted-foreground">{product.sku}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground/60">—</span>
+        )
       ),
     },
     {
@@ -505,12 +671,16 @@ export function ProductManager({
       key: 'status',
       header: 'Estado',
       hiddenMobile: true,
-      render: (product) =>
-        product.featured ? (
-          <span className="rounded-full bg-accent/30 px-2.5 py-1 text-xs font-medium text-accent-foreground">Destacado</span>
-        ) : (
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">Activo</span>
-        ),
+      render: (product) => (
+        <div className="flex flex-col gap-1">
+          {product.featured && (
+            <span className="rounded-full bg-accent/30 px-2.5 py-1 text-xs font-medium text-accent-foreground">Destacado</span>
+          )}
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${product.is_available ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+            {product.is_available ? 'Visible' : 'Oculto'}
+          </span>
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -543,6 +713,8 @@ export function ProductManager({
     },
   ]
 
+  const isWeightEditing = editing?.pricing_type === 'weight'
+
   return (
     <div className="grid gap-6">
       <DataTable
@@ -550,7 +722,7 @@ export function ProductManager({
         columns={columns}
         rowKey={(p) => p.id}
         searchKeys={(p) =>
-          `${p.name} ${p.slug} ${p.description ?? ''} ${(p.categories ?? []).map((c) => c.name).join(' ')} ${p.marca?.nombre ?? ''} ${p.proveedor?.nombre ?? ''}`
+          `${p.name} ${p.slug} ${p.description ?? ''} ${(p.categories ?? []).map((c) => c.name).join(' ')} ${p.marca?.nombre ?? ''} ${p.proveedor?.nombre ?? ''} ${p.sku ?? ''}`
         }
         searchPlaceholder="Buscar productos…"
         emptyMessage="No se encontraron productos"
@@ -644,39 +816,167 @@ export function ProductManager({
               placeholder="Describe las características del producto…"
             />
 
-            {/* Precio, costo y stock */}
-            <div className="grid gap-4 sm:grid-cols-3">
-              <FormInput
-                label="Precio USD"
-                type="number"
-                min="0"
-                step="0.01"
-                value={editing.price_usd ?? 0}
-                onChange={(e) => updateField('price_usd', Number(e.target.value))}
-              />
-              <FormInput
-                label="Costo inicial USD"
-                type="number"
-                min="0"
-                step="0.01"
-                value={editing.costo_inicial ?? 0}
-                onChange={(e) => updateField('costo_inicial', Number(e.target.value))}
-                hint="Costo de adquisición (opcional)."
-              />
-              <FormInput
-                label="Stock"
-                type="number"
-                min="0"
-                step="1"
-                value={editing.stock ?? 0}
-                onChange={(e) => updateField('stock', Number(e.target.value))}
-              />
+            {/* Tipo de precio: selector moderno peso/unidad */}
+            <div className="rounded-2xl border border-border bg-muted/30 p-4">
+              <p className="mb-2 text-sm font-medium">¿Cómo se vende este producto?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateField('pricing_type', 'unit')}
+                  className={`rounded-xl border p-4 text-left transition ${
+                    !isWeightEditing
+                      ? 'border-brand bg-brand/10'
+                      : 'border-border bg-background hover:border-brand/50'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">📦 Por unidad</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Se cobra por pieza (u, caja, metro…)
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateField('pricing_type', 'weight')}
+                  className={`rounded-xl border p-4 text-left transition ${
+                    isWeightEditing
+                      ? 'border-brand bg-brand/10'
+                      : 'border-border bg-background hover:border-brand/50'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">⚖️ Por peso</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Se cobra por gramos o kilos
+                  </p>
+                </button>
+              </div>
             </div>
 
-            {/* Peso y Tamaño (opcionales) */}
+            {/* Precio y stock según el tipo */}
+            {isWeightEditing ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormInput
+                  label="Precio por kg USD"
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={editing.price_per_kilo_usd ?? 0}
+                  onChange={(e) => {
+                    const kilo = Number(e.target.value)
+                    updateField('price_per_kilo_usd', kilo)
+                    if (kilo > 0) updateField('price_per_gram_usd', kilo / 1000)
+                  }}
+                  hint="El precio por gramo se calcula automáticamente."
+                />
+                <FormInput
+                  label="Precio por g USD (derivado)"
+                  type="number"
+                  min="0"
+                  step="0.000001"
+                  value={editing.price_per_gram_usd ?? 0}
+                  onChange={(e) => updateField('price_per_gram_usd', Number(e.target.value))}
+                />
+                <FormInput
+                  label="Stock disponible (gramos)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editing.stock_grams ?? 0}
+                  onChange={(e) => updateField('stock_grams', Number(e.target.value))}
+                />
+                <FormInput
+                  label="Peso mínimo de compra (gramos)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editing.min_order_grams ?? 0}
+                  onChange={(e) => updateField('min_order_grams', Number(e.target.value))}
+                  hint="Ej: 100 = mínimo 100 g por pedido."
+                />
+                <FormInput
+                  label="Costo inicial USD"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editing.costo_inicial ?? 0}
+                  onChange={(e) => updateField('costo_inicial', Number(e.target.value))}
+                />
+                <label className="grid gap-2 text-sm">
+                  <span className="font-medium">Unidad de venta</span>
+                  <select
+                    value={editing.unit_label ?? 'g'}
+                    onChange={(e) => updateField('unit_label', e.target.value)}
+                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  >
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u.value} value={u.value}>{u.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormInput
+                  label="Precio USD"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editing.price_usd ?? 0}
+                  onChange={(e) => updateField('price_usd', Number(e.target.value))}
+                />
+                <FormInput
+                  label="Costo inicial USD"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editing.costo_inicial ?? 0}
+                  onChange={(e) => updateField('costo_inicial', Number(e.target.value))}
+                  hint="Costo de adquisición (opcional)."
+                />
+                <FormInput
+                  label="Stock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editing.stock ?? 0}
+                  onChange={(e) => updateField('stock', Number(e.target.value))}
+                />
+                <label className="grid gap-2 text-sm">
+                  <span className="font-medium">Unidad de venta</span>
+                  <select
+                    value={editing.unit_label ?? 'u'}
+                    onChange={(e) => updateField('unit_label', e.target.value)}
+                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  >
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u.value} value={u.value}>{u.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <FormInput
+                  label="Stock bajo umbral"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editing.low_stock_threshold ?? 10}
+                  onChange={(e) => updateField('low_stock_threshold', Number(e.target.value))}
+                  hint="Alerta cuando el stock baje de este valor."
+                />
+                <FormInput
+                  label="Peso por unidad (gramos)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editing.weight_grams ?? ''}
+                  onChange={(e) => updateField('weight_grams', e.target.value === '' ? undefined : Number(e.target.value))}
+                  hint="Opcional. Se muestra en la ficha técnica."
+                />
+              </div>
+            )}
+
+            {/* Peso y Tamaño (opcionales, ficha técnica) */}
             <div className="grid gap-4 sm:grid-cols-2">
               <FormInput
-                label="Peso"
+                label="Peso (ficha técnica)"
                 value={editing.peso ?? ''}
                 onChange={(e) => updateField('peso', e.target.value)}
                 placeholder="Ej: 0.8 kg"
@@ -688,6 +988,47 @@ export function ProductManager({
                 onChange={(e) => updateField('tamaño', e.target.value)}
                 placeholder="Ej: 50 x 50 cm"
                 hint="Opcional. Se muestra en el catálogo solo si se completa."
+              />
+            </div>
+
+            {/* SKU y código de barras */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormInput
+                label="SKU"
+                value={editing.sku ?? ''}
+                onChange={(e) => updateField('sku', e.target.value)}
+                placeholder="Ej: LED-PNL-24W"
+                hint="Código interno de inventario."
+              />
+              <FormInput
+                label="Código de barras"
+                value={editing.bar_code ?? ''}
+                onChange={(e) => updateField('bar_code', e.target.value)}
+                placeholder="Ej: 7501234567890"
+                hint="EAN/UPC (opcional)."
+              />
+            </div>
+
+            {/* Mayoreo y orden */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormInput
+                label="Descuento mayoreo (%)"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={editing.bulk_discount_percent ?? 0}
+                onChange={(e) => updateField('bulk_discount_percent', Number(e.target.value))}
+                hint="Se muestra como incentivo en el catálogo."
+              />
+              <FormInput
+                label="Orden en catálogo"
+                type="number"
+                min="0"
+                step="1"
+                value={editing.sort_order ?? 0}
+                onChange={(e) => updateField('sort_order', Number(e.target.value))}
+                hint="Menor = aparece primero."
               />
             </div>
 
@@ -734,16 +1075,18 @@ export function ProductManager({
                       />
 
                       {/* Imagen del color */}
-                      <label className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-muted">
-                        <Upload size={13} />
-                        {color.image ? 'Cambiar' : 'Imagen'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="sr-only"
-                          onChange={(e) => e.target.files?.[0] && uploadColorImage(i, e.target.files[0])}
-                        />
-                      </label>
+                      <ImagePickerButton
+                        onPick={(file) => uploadColorImage(i, file)}
+                        disabled={uploadingColorIndex === i}
+                        className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                      >
+                        {uploadingColorIndex === i ? (
+                          <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+                        ) : (
+                          <Upload size={13} />
+                        )}
+                        {uploadingColorIndex === i ? 'Cargando…' : color.image ? 'Cambiar' : 'Imagen'}
+                      </ImagePickerButton>
 
                       {/* Quitar color */}
                       <button
@@ -800,17 +1143,33 @@ export function ProductManager({
               </div>
             </div>
 
-            {/* Destacado */}
-            <label className="flex cursor-pointer items-center gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(editing.featured)}
-                onChange={(e) => updateField('featured', e.target.checked)}
-                className="size-4 accent-primary"
-              />
-              <span className="font-medium">Mostrar como destacado</span>
-              <span className="text-muted-foreground">en la portada</span>
-            </label>
+            {/* Disponibilidad y destacado */}
+            <div className="grid gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.is_available)}
+                  onChange={(e) => updateField('is_available', e.target.checked)}
+                  className="size-4 accent-primary"
+                />
+                <div>
+                  <span className="font-medium">Visible en el catálogo</span>
+                  <p className="text-xs text-muted-foreground">Si lo desactivas, el producto se oculta sin borrarse.</p>
+                </div>
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.featured)}
+                  onChange={(e) => updateField('featured', e.target.checked)}
+                  className="size-4 accent-primary"
+                />
+                <div>
+                  <span className="font-medium">Mostrar como destacado</span>
+                  <p className="text-xs text-muted-foreground">Aparece en la portada.</p>
+                </div>
+              </label>
+            </div>
 
             {/* Imágenes */}
             <div className="rounded-2xl border border-dashed border-border p-4">
@@ -831,16 +1190,14 @@ export function ProductManager({
                   ))}
                 </div>
               )}
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-muted px-4 py-3 text-sm transition-colors hover:bg-secondary">
+              <ImagePickerButton
+                onPick={upload}
+                disabled={uploading}
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-muted px-4 py-3 text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
                 <Upload size={16} />
                 {uploading ? 'Cargando…' : 'Cargar imagen'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-                />
-              </label>
+              </ImagePickerButton>
             </div>
           </div>
         )}

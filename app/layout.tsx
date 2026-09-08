@@ -2,6 +2,8 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ToastProvider } from '@/components/toast-provider'
+import { AppProviders } from '@/components/app-providers'
+import { NavigationProgress } from '@/components/navigation-progress'
 import { WhatsAppButton } from '@/components/whatsapp-button'
 import { ScrollReset } from '@/components/scroll-reset'
 import { getSiteSettings } from '@/services/site-settings'
@@ -13,12 +15,12 @@ export const revalidate = 300
 // ---------- Metadata dinámica ----------
 export async function generateMetadata(): Promise<Metadata> {
   const { settings } = await getSiteSettings()
-  const name = settings.company_name || 'IEOS'
-  const tagline = settings.tagline || 'Wall Panels & Pisos SPC'
+  const name = settings.company_name || 'ilumaX'
+  const tagline = settings.tagline || 'Arquitectura de luz'
 
   return {
     title: `${name} — ${tagline}`,
-    description: settings.hero_texts?.description ?? 'Revestimientos de pared y pisos SPC que convierten cualquier ambiente en un espacio moderno, duradero y de instalación rápida.',
+    description: settings.hero_texts?.description ?? 'Soluciones LED y revestimientos que convierten espacios en experiencias memorables.',
     generator: name,
     icons: settings.icon_url
       ? { icon: settings.icon_url, apple: settings.icon_url }
@@ -54,11 +56,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       </head>
       <body className="antialiased">
-        {children}
+        <AppProviders>
+          {children}
+        </AppProviders>
+        <NavigationProgress />
         <ScrollReset />
         <ToastProvider />
         {process.env.NODE_ENV === 'production' && <Analytics />}
-        <WhatsAppButton number={settings.whatsapp_number} />
+        <WhatsAppButton whatsappNumber={settings.whatsapp_number} />
       </body>
     </html>
   )

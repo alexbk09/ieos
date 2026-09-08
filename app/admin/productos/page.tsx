@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { AdminPageHeader, AdminShell } from '@/components/admin-shell'
+import { AdminPageHeader } from '@/components/admin-shell'
 import { ProductManager } from '@/components/product-manager'
 import { getProductsWithCategories } from '@/services/catalog'
 import { getExchangeRates } from '@/services/exchange-rate'
@@ -20,7 +20,7 @@ export default async function ProductsPage() {
   ])
 
   return (
-    <AdminShell>
+<>
       <AdminPageHeader
         eyebrow="Catálogo"
         title="Productos"
@@ -36,6 +36,6 @@ export default async function ProductsPage() {
           parallelRate={parallel.rate}
         />
       </div>
-    </AdminShell>
-  )
+  
+</>)
 }

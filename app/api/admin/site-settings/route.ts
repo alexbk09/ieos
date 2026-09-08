@@ -23,7 +23,7 @@ export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Partial<SiteSettings>
 
   // Validación de tipos JSONB: deben ser objeto o arreglo, nunca null.
-  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme'] as const) {
+  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme', 'homepage_config'] as const) {
     if (body[key] !== undefined && (typeof body[key] !== 'object' || body[key] === null)) {
       return NextResponse.json({ error: `El campo ${key} debe ser un objeto o arreglo JSON válido.` }, { status: 400 })
     }

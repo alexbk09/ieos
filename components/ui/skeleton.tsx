@@ -1,14 +1,81 @@
-'use client'
-
 import { cn } from '@/lib/utils'
 
 /**
- * Primitivo de skeleton reutilizable.
- * Puro CSS (animate-pulse): ligero, sin JS adicional y con soporte de modo oscuro.
- * Usar SOLO durante estados de carga; nunca reemplaza contenido real.
+ * Primitivo de skeleton reutilizable con efecto shimmer moderno.
+ * El shimmer se aplica automáticamente a toda pieza de carga y
+ * respeta dark mode usando variables de tema. Se debe usar SOLO
+ * durante estados de carga; nunca reemplaza contenido real.
  */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-xl bg-muted', className)} />
+  return <div className={cn('skeleton-shimmer animate-pulse rounded-xl bg-muted', className)} />
+}
+
+/** Línea de texto simulada (ancho recibido por className). */
+export function SkeletonText({ className }: { className?: string }) {
+  return <Skeleton className={cn('h-3.5 w-full', className)} />
+}
+
+/** Fila esqueleto para tablas (mismo alto de fila y bordes del diseño actual). */
+export function TableRowSkeleton({ cells = 4 }: { cells?: number }) {
+  return (
+    <tr className="border-b border-border/70">
+      {Array.from({ length: cells }).map((_, i) => (
+        <td key={i} className="px-4 py-3.5">
+          <Skeleton className={cn('h-4', i === 0 ? 'w-3/4' : 'w-full')} />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
+/** Header esqueleto para páginas internas (eyebrow + título + descripción). */
+export function PageHeaderSkeleton() {
+  return (
+    <header className="flex flex-col gap-5 border-b border-border px-5 py-7 sm:flex-row sm:items-end sm:justify-between sm:px-8">
+      <div className="max-w-xl space-y-3">
+        <Skeleton className="h-3 w-32 rounded-full" />
+        <Skeleton className="h-8 w-56 sm:h-9" />
+        <SkeletonText className="max-w-md" />
+      </div>
+      <Skeleton className="h-11 w-40 rounded-xl" />
+    </header>
+  )
+}
+
+/** Card esqueleto para KPI/resúmenes del dashboard. */
+export function StatCardSkeleton() {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="size-10 rounded-2xl" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+      <SkeletonText className="mt-8 max-w-[7rem]" />
+      <Skeleton className="mt-2 h-3.5 w-24" />
+    </div>
+  )
+}
+
+/**
+ * Layout esqueleto típico de una página admin:
+ * header + cuerpo. Fácil de componer con variantes extra
+ * (fill para rellenar el área principal).
+ */
+export function AdminPageSkeleton() {
+  return (
+    <>
+      <PageHeaderSkeleton />
+      <div className="space-y-5 p-5 sm:p-8">
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-2xl" />
+      </div>
+    </>
+  )
 }
 
 /** Grid de skeletons para productos (misma estructura que la cuadrícula real). */
