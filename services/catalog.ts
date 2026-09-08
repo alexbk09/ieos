@@ -62,6 +62,12 @@ export type Product = {
   sort_order: number
   /** Peso neto por unidad/presentación en gramos (opcional). */
   weight_grams: number | null
+  /** URL de afiliado de AliExpress (con tag de seguimiento). Opcional. */
+  url_afiliado_ali?: string | null
+  /** URL de afiliado de Amazon (con tag de seguimiento). Opcional. */
+  url_afiliado_amazon?: string | null
+  /** URL de afiliado genérica de la store (legado). Opcional. */
+  url_afiliado_store?: string | null
   categories?: Category[]
   images?: ProductImage[]
   colors?: string[]
@@ -143,6 +149,12 @@ export type ProductInput = {
   sort_order?: number
   /** Peso neto por unidad/presentación en gramos. */
   weight_grams?: number | null
+  /** URL de afiliado de AliExpress (con tag de seguimiento). Opcional. */
+  url_afiliado_ali?: string | null
+  /** URL de afiliado de Amazon (con tag de seguimiento). Opcional. */
+  url_afiliado_amazon?: string | null
+  /** URL de afiliado genérica de la store (legado). Opcional. */
+  url_afiliado_store?: string | null
   // Solo para carga masiva: nombres de marca/proveedor/categoria.
   // Si el item trae nombre y no trae id, se resuelve o crea automaticamente.
   marca_nombre?: string | null
@@ -195,6 +207,9 @@ function mapProduct(row: any): Product {
     bulk_discount_percent: Number(row.bulk_discount_percent ?? 0),
     sort_order: Number(row.sort_order ?? 0),
     weight_grams: row.weight_grams != null ? Number(row.weight_grams) : null,
+    url_afiliado_ali: row.url_afiliado_ali ?? null,
+    url_afiliado_amazon: row.url_afiliado_amazon ?? null,
+    url_afiliado_store: row.url_afiliado_store ?? null,
     colors: row.colors ?? [],
     specifications: row.specifications ?? {},
     categories:
@@ -351,6 +366,9 @@ function buildProductRow(payload: ProductInput) {
     bulk_discount_percent: Number(payload.bulk_discount_percent ?? 0),
     sort_order: Number(payload.sort_order ?? 0),
     weight_grams: payload.weight_grams != null ? Number(payload.weight_grams) : null,
+    url_afiliado_ali: payload.url_afiliado_ali?.trim() || null,
+    url_afiliado_amazon: payload.url_afiliado_amazon?.trim() || null,
+    url_afiliado_store: payload.url_afiliado_store?.trim() || null,
   }
 }
 

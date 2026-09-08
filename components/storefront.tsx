@@ -9,6 +9,7 @@ import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
+import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
@@ -91,7 +92,7 @@ const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes(
 export function Storefront({ initialProducts, settings }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings> }) {
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
   const exchangeRate = useExchangeRate()
-  const { cart, add, change, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
+  const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
 
   // El Asistente IA agrega productos al carrito cuando ejecuta agregarAlCarrito.
   useAgentAddToCart(add)
@@ -285,7 +286,24 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
       />
     )}
 
-    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onChange={change} total={total} onSubmit={requestOrder} submitting={submitting} requested={requested} exchangeRate={exchangeRate} />
+    <CartDrawer
+      open={cartOpen}
+      onClose={() => setCartOpen(false)}
+      cart={cart}
+      onChange={change}
+      total={total}
+      onFinishCheckout={finishAffiliateCheckout}
+      exchangeRate={exchangeRate}
+      hasNonAffiliate={cart.some((item) => !item.url_afiliado_ali && !item.url_afiliado_amazon && !item.url_afiliado_store)}
+    />
+
+    <AffiliateRedirectModal
+      open={popupsBlocked}
+      items={cart}
+      rate={exchangeRate}
+      onClose={() => setPopupsBlocked(false)}
+      onClearCheckout={clear}
+    />
 
     <AgentChat />
   </div>

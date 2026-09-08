@@ -63,6 +63,9 @@ type Product = {
   bulk_discount_percent: number
   sort_order: number
   weight_grams: number | null
+  url_afiliado_ali?: string | null
+  url_afiliado_amazon?: string | null
+  url_afiliado_store?: string | null
   colors?: string[]
   categories?: Category[]
   images?: ProductImage[]
@@ -100,6 +103,9 @@ type EditorState = {
   bulk_discount_percent?: number
   sort_order?: number
   weight_grams?: number
+  url_afiliado_ali?: string
+  url_afiliado_amazon?: string
+  url_afiliado_store?: string
   marca_id?: string
   proveedor_id?: string
   featured?: boolean
@@ -326,6 +332,9 @@ export function ProductManager({
       bulk_discount_percent: 0,
       sort_order: 0,
       weight_grams: undefined,
+      url_afiliado_ali: '',
+      url_afiliado_amazon: '',
+      url_afiliado_store: '',
       marca_id: '',
       proveedor_id: '',
       featured: false,
@@ -361,6 +370,9 @@ export function ProductManager({
       bulk_discount_percent: product.bulk_discount_percent ?? 0,
       sort_order: product.sort_order ?? 0,
       weight_grams: product.weight_grams ?? undefined,
+      url_afiliado_ali: product.url_afiliado_ali ?? '',
+      url_afiliado_amazon: product.url_afiliado_amazon ?? '',
+      url_afiliado_store: product.url_afiliado_store ?? '',
       marca_id: product.marca_id ?? '',
       proveedor_id: product.proveedor_id ?? '',
       featured: product.featured,
@@ -1030,6 +1042,54 @@ export function ProductManager({
                 onChange={(e) => updateField('sort_order', Number(e.target.value))}
                 hint="Menor = aparece primero."
               />
+            </div>
+
+            {/* Enlaces de afiliado e-commerce (AliExpress / Amazon / Store) */}
+            <div className="rounded-2xl border border-dashed border-border p-4">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <span aria-hidden>🔗</span> Enlaces de afiliado e-commerce
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Si el producto se compra como afiliado (AliExpress/Amazon), pega aquí la URL con tu tag de seguimiento.
+                  Al finalizar la compra en el carrito, el cliente será redirigido a estos enlaces.
+                </p>
+              </div>
+              <div className="mt-3 grid gap-3">
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium">AliExpress (url_afiliado_ali)</span>
+                  <input
+                    type="url"
+                    value={editing.url_afiliado_ali ?? ''}
+                    onChange={(e) => updateField('url_afiliado_ali', e.target.value)}
+                    placeholder="https://s.click.aliexpress.com/e/…"
+                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  />
+                  <span className="text-xs text-muted-foreground">Opcional. Se usa para el botón “Finalizar Compra Segura en AliExpress”.</span>
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium">Amazon (url_afiliado_amazon)</span>
+                  <input
+                    type="url"
+                    value={editing.url_afiliado_amazon ?? ''}
+                    onChange={(e) => updateField('url_afiliado_amazon', e.target.value)}
+                    placeholder="https://www.amazon.com/dp/…?tag=…"
+                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  />
+                  <span className="text-xs text-muted-foreground">Opcional. Se ofrece como alternativa en el modal de confirmación.</span>
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium">Store genérica (url_afiliado_store)</span>
+                  <input
+                    type="url"
+                    value={editing.url_afiliado_store ?? ''}
+                    onChange={(e) => updateField('url_afiliado_store', e.target.value)}
+                    placeholder="https://tu-tienda.com/producto/…"
+                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  />
+                  <span className="text-xs text-muted-foreground">Legado. Se usa como respaldo si el producto no tiene enlace de AliExpress/Amazon.</span>
+                </label>
+              </div>
             </div>
 
             {/* Colores (variantes con imagen opcional) */}

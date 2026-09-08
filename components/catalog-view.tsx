@@ -8,6 +8,7 @@ import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
+import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
@@ -102,9 +103,9 @@ export function CatalogView({
   const pageRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Estado compartido con la portada: carrito funcional.
+  // Estado compartido con la portada: carrito híbrido de afiliados.
   const exchangeRate = useExchangeRate()
-  const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, submitting, requested, requestOrder } = useCart(exchangeRate)
+  const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
 
   // Escucha el Asistente IA: agrega al carrito si el agente emite agregarAlCarrito.
   useAgentAddToCart(add)
@@ -386,10 +387,17 @@ export function CatalogView({
         cart={cart}
         onChange={change}
         total={cartTotal}
-        onSubmit={requestOrder}
-        submitting={submitting}
-        requested={requested}
+        onFinishCheckout={finishAffiliateCheckout}
         exchangeRate={exchangeRate}
+        hasNonAffiliate={cart.some((item) => !item.url_afiliado_ali && !item.url_afiliado_amazon && !item.url_afiliado_store)}
+      />
+
+      <AffiliateRedirectModal
+        open={popupsBlocked}
+        items={cart}
+        rate={exchangeRate}
+        onClose={() => setPopupsBlocked(false)}
+        onClearCheckout={clear}
       />
     </div>
   )

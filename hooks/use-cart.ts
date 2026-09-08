@@ -2,13 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { getBrowserUser } from '@/services/auth-client'
-import { WHATSAPP_NUMBER } from '@/lib/constants'
-import { formatBolivars, moneyUsd } from '@/lib/currency'
 import { toGrams } from '@/lib/price-calculator'
 
+/**
+ * Campos de enlace de afiliado soportados por el carrito híbrido.
+ * Cada producto puede tener una URL de AliExpress y/o una de Amazon
+ * (o la store legada). Se toman desde Supabase al mapear el producto.
+ */
+export type AffiliateLinks = {
+  /** URL de afiliado de AliExpress (con tag de seguimiento). */
+  url_afiliado_ali?: string | null
+  /** URL de afiliado de Amazon (con tag de seguimiento). */
+  url_afiliado_amazon?: string | null
+  /** URL de afiliado genérica de la store (legado). */
+  url_afiliado_store?: string | null
+}
+
 /** Tipo de producto compatible con el carrito (portada y catálogo). */
-export type CartProduct = {
+export type CartProduct = AffiliateLinks & {
   id: string
   name: string
   slug: string
@@ -53,21 +64,37 @@ export type CartItem = CartProduct & {
 
 const CART_STORAGE_KEY = 'ilumax-cart'
 
+/** Detalle de un marketplace de afiliado para la confirmación final. */
+export type AffiliateMarket = 'ali' | 'amazon' | 'store'
+
+/**
+ * Resuelve la mejor URL de afiliado de un ítem.
+ * Prioridad: AliExpress → Amazon → store genérica.
+ * @param item Ítem del carrito.
+ * @returns URL de afiliado lista para abrir, o null si no tiene ninguna.
+ */
+export function affiliateUrlFor(item: CartItem): string | null {
+  return item.url_afiliado_ali ?? item.url_afiliado_amazon ?? item.url_afiliado_store ?? null
+}
+
 /**
  * Hook de carrito de compra compartido entre la portada y el catálogo completo.
  * Maneja agregar productos, cambiar cantidades, abrir/cerrar el panel
- * y enviar la solicitud por WhatsApp con la sesión activa.
+ * y finalizar la compra como AFILIADO (AliExpress/Amazon) abriendo
+ * los enlaces de afiliado en pestañas nuevas.
  *
  * El carrito persiste en localStorage, por lo que NO se pierde al navegar
  * entre la portada y el catálogo completo (u otras páginas del sitio).
  *
- * @param exchangeRate Tasa oficial del día para mostrar totales en bolívares.
+ * NO existe pasarela de pago local: el pago se cierra en el marketplace
+ * del afiliado (AliExpress/Amazon) usando la URL de seguimiento guardada
+ * en Supabase (url_afiliado_ali / url_afiliado_amazon).
  */
-export function useCart(exchangeRate: number) {
+export function useCart() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [requested, setRequested] = useState(false)
+  /** Indica si el navegador bloqueó los pop-ups al finalizar la compra. */
+  const [popupsBlocked, setPopupsBlocked] = useState(false)
 
   // Carga el carrito guardado al montar (solo navegador).
   useEffect(() => {
@@ -114,6 +141,11 @@ export function useCart(exchangeRate: number) {
    * Agrega un producto al carrito respetando el stock disponible.
    * Para 'unit', quantity = cantidad de unidades.
    * Para 'weight', unit = 'g'|'kg' y quantity = peso en esa unidad.
+   *
+   * El producto conserva sus URLs de afiliado (url_afiliado_ali,
+   * url_afiliado_amazon, url_afiliado_store) porque el checkout híbrido
+   * las necesita para redirigir al marketplace correspondiente.
+   *
    * @param colorName Color exacto elegido en el catálogo (opcional).
    * Si se vuelve a agregar el mismo producto con OTRO color, se crea
    * una línea separada para no mezclar variantes.
@@ -150,7 +182,7 @@ export function useCart(exchangeRate: number) {
         : [...current, { ...product, cartItemId, quantity: Math.min(Math.max(1, Math.floor(addQty)), product.stock), unit: 'u', color_name: colorKey }]
     })
     setCartOpen(true)
-    toast.success(`${product.name}${colorName ? ` (${colorName})` : ''} agregado a tu solicitud`)
+    toast.success(`${product.name}${colorName ? ` (${colorName})` : ''} agregado a tu selección`)
   }, [])
 
   /** Cambia la cantidad de un ítem; si llega a 0 se elimina del carrito. */
@@ -200,23 +232,98 @@ export function useCart(exchangeRate: number) {
     return sum + value
   }, 0), [cart])
 
-  /** Envía la solicitud actual por WhatsApp (requiere sesión iniciada). */
-  const requestOrder = useCallback(async () => {
-    const user = await getBrowserUser()
-    if (!user) { toast.error('Inicia sesión para enviar tu solicitud'); setRequested(true); return }
-    setSubmitting(true)
-    const response = await fetch('/api/solicitudes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: cart.map((item) => ({ product_id: item.id, quantity: item.quantity, unit: item.unit || 'u', color_name: item.color_name ?? null })) }),
-    })
-    const result = await response.json().catch(() => ({}))
-    setSubmitting(false)
-    if (!response.ok) { toast.error(result.error === 'stock_or_quantity_invalid' ? 'Revisa las cantidades disponibles.' : 'No pudimos crear la solicitud. Inténtalo de nuevo.'); return }
-    const message = encodeURIComponent(`Hola ilumaX, mi nombre es ${user.email} y deseo procesar la Solicitud #${result.id}. Adjunto mi carrito con ${count} producto(s). Total: ${moneyUsd(result.total)} / ${formatBolivars(result.total, exchangeRate)}.`)
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank')
-    setCart([]); setCartOpen(false); toast.success('Solicitud creada. Abriendo WhatsApp.')
-  }, [cart, count, exchangeRate])
+  /**
+   * Finaliza la compra en el modo AFILIADO.
+   *
+   * Recorre los ítems del carrito y abre en pestañas nuevas la URL de
+   * afiliado correspondiente (AliExpress, Amazon o store legada).
+   *
+   * Navegadores modernos bloquean multiples window.open si no ocurren
+   * dentro del mismo gesto de usuario. Para evitarlo se abre la PRIMERA
+   * URL sincrónicamente (gesto válido) y el resto se difiere con un
+   * pequeño intervalo. Si el navegador bloquea igualmente, se activa
+   * popupsBlocked=true para que la vista muestre un modal elegante con
+   * botones individuales (clic directo = nunca bloqueado).
+   *
+   * @returns true si al menos una URL se abrió; false si todas fallaron.
+   */
+  const finishAffiliateCheckout = useCallback((): boolean => {
+    const itemsWithLink = cart
+      .map((item) => ({ item, url: affiliateUrlFor(item) }))
+      .filter((entry): entry is { item: CartItem; url: string } => Boolean(entry.url))
 
-  return { cart, add, change, setQuantity, total, count, cartOpen, setCartOpen, submitting, requested, requestOrder }
+    if (itemsWithLink.length === 0) {
+      toast.error('Algunos productos aún no tienen enlace de afiliado', {
+        description: 'Contacta al vendedor para completar tu selección.',
+      })
+      return false
+    }
+
+    if (cart.length === 0) {
+      toast.error('Tu selección está vacía')
+      return false
+    }
+
+    // Limpia el estado previo de bloqueo antes de intentar de nuevo.
+    setPopupsBlocked(false)
+
+    // Abre las URLs de afiliado. La primera va sincrónica (gesto de click);
+    // el resto se programa con un pequeño delay para respetar los límites
+    // de cada navegador (ventanas múltiples en un mismo evento).
+    const openedRef: { url: string }[] = []
+    itemsWithLink.forEach((entry, index) => {
+      if (index === 0) {
+        const win = window.open(entry.url, '_blank', 'noopener,noreferrer')
+        if (win) openedRef.push({ url: entry.url })
+      } else {
+        window.setTimeout(() => {
+          const win = window.open(entry.url, '_blank', 'noopener,noreferrer')
+          if (win) openedRef.push({ url: entry.url })
+        }, index * 300)
+      }
+    })
+
+    // Verifica después del gesto si algún pop-up fue bloqueado.
+    window.setTimeout(() => {
+      const allOpened = openedRef.length === itemsWithLink.length
+      if (!allOpened) {
+        setPopupsBlocked(true)
+      } else {
+        toast.success('Redirigiendo a AliExpress y Amazon', {
+          description: `Se abrieron ${itemsWithLink.length} enlaces de afiliado.`,
+        })
+      }
+    }, 800)
+
+    return true
+  }, [cart])
+
+  /** Cierra el carrito y limpia la bandera de pop-ups (usado por el modal). */
+  const dismissCheckout = useCallback(() => {
+    setCartOpen(false)
+    setPopupsBlocked(false)
+  }, [])
+
+  /** Vacía el carrito por completo y cierra los estados (tras compra exitosa). */
+  const clear = useCallback(() => {
+    setCart([])
+    setCartOpen(false)
+    setPopupsBlocked(false)
+  }, [])
+
+  return {
+    cart,
+    add,
+    change,
+    setQuantity,
+    total,
+    count,
+    cartOpen,
+    setCartOpen,
+    popupsBlocked,
+    setPopupsBlocked,
+    finishAffiliateCheckout,
+    dismissCheckout,
+    clear,
+  }
 }

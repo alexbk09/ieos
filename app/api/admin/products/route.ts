@@ -31,6 +31,9 @@ export async function POST(request: Request) {
     marca_id: body.marca_id || null,
     proveedor_id: body.proveedor_id || null,
     featured: Boolean(body.featured),
+    url_afiliado_ali: body.url_afiliado_ali || null,
+    url_afiliado_amazon: body.url_afiliado_amazon || null,
+    url_afiliado_store: body.url_afiliado_store || null,
     category_ids: Array.isArray(body.category_ids) ? body.category_ids.filter(Boolean) : [],
     images: Array.isArray(body.images) ? body.images.filter(Boolean) : [],
     colorImages: Array.isArray(body.colorImages)
@@ -85,6 +88,9 @@ export async function PATCH(request: Request) {
     marca_id: body.marca_id || null,
     proveedor_id: body.proveedor_id || null,
     featured: Boolean(body.featured),
+    url_afiliado_ali: body.url_afiliado_ali || null,
+    url_afiliado_amazon: body.url_afiliado_amazon || null,
+    url_afiliado_store: body.url_afiliado_store || null,
     category_ids: Array.isArray(body.category_ids) ? body.category_ids.filter(Boolean) : [],
     images: Array.isArray(body.images) ? body.images.filter(Boolean) : [],
     colorImages: Array.isArray(body.colorImages)

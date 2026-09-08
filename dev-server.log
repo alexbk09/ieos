@@ -1,0 +1,16 @@
+▲ Next.js 16.3.0 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://172.16.0.8:3000
+- Environments: .env.development.local, .env.local
+✓ Ready in 1291ms
+✓ Running next.config.mjs took 51ms
+
+○ Compiling /catalogo ...
+ GET /catalogo 200 in 15.3s (next.js: 12.7s, application-code: 2.6s)
+ GET /catalogo 200 in 1122ms (next.js: 73ms, application-code: 1049ms)
+[browser] Image with src "https://stjjgjiflkpmufimigbw.supabase.co/storage/v1/object/public/productos-bucket/products/08ba4a57-6410-4439-97a9-817d3887050b.webp" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /api/exchange-rate 200 in 4.1s (next.js: 3.2s, application-code: 854ms)
+ GET /api/catalog?from=0 200 in 3.7s (next.js: 2.8s, application-code: 866ms)
+ GET /api/exchange-rate 200 in 30ms (next.js: 6ms, application-code: 25ms)
+ GET /catalogo 200 in 699ms (next.js: 169ms, application-code: 530ms)
