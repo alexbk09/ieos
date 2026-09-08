@@ -190,11 +190,11 @@ export type CatalogFilters = {
   featuredOnly?: boolean
 }
 
-const PRODUCT_SELECT =
+export const PRODUCT_SELECT =
   '*, product_categories(categories(id,name,slug,description)), product_images(id,url,alt_text,sort_order,color_name), marcas(id,nombre,activa), proveedores(id,nombre,rif,activo)'
 
 /** Convierte una fila de Supabase en Product tipado. */
-function mapProduct(row: any): Product {
+export function mapProduct(row: any): Product {
   return {
     id: row.id,
     name: row.name,
@@ -354,7 +354,7 @@ export async function getPublicProductSlugs() {
 }
 
 /** Slug simple desde un texto (minúsculas, sin acentos, guiones). */
-function slugify(text: string): string {
+export function slugify(text: string): string {
   return (
     text
       .toLowerCase()

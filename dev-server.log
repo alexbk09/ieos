@@ -76,3 +76,133 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
  GET /api/captcha 200 in 26ms (next.js: 6ms, application-code: 20ms)
  GET /api/exchange-rate 200 in 24ms (next.js: 6ms, application-code: 19ms)
  GET /api/exchange-rate 200 in 32ms (next.js: 7ms, application-code: 25ms)
+ GET /login 200 in 1062ms (next.js: 58ms, application-code: 1004ms)
+○ Compiling proxy ...
+○ Compiling /admin ...
+ GET /admin 200 in 14.4s (next.js: 7.6s, proxy.ts: 1852ms, application-code: 4.9s)
+ GET /admin 200 in 4.2s (next.js: 17ms, proxy.ts: 432ms, application-code: 3.7s)
+ GET /admin 200 in 3.3s (next.js: 211ms, proxy.ts: 2.2s, application-code: 941ms)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+○ Compiling /api/site-settings ...
+ GET /api/site-settings 200 in 5.4s (next.js: 4.5s, application-code: 951ms)
+ GET /api/admin/permissions 200 in 6.4s (next.js: 5.2s, application-code: 1221ms)
+ GET /api/admin/permissions 200 in 5.7s (next.js: 4.5s, application-code: 1233ms)
+ GET /api/site-settings 200 in 468ms (next.js: 16ms, application-code: 452ms)
+○ Compiling /admin/productos ...
+ GET /admin/productos 200 in 13.3s (next.js: 8.7s, proxy.ts: 530ms, application-code: 4.1s)
+ GET /admin/productos 200 in 2.9s (next.js: 14ms, proxy.ts: 1823ms, application-code: 1017ms)
+ GET /admin/productos 200 in 826ms (next.js: 32ms, proxy.ts: 265ms, application-code: 529ms)
+[browser] In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  ...
+    <SegmentViewNode type="page" pagePath="admin/prod...">
+      <SegmentTrieNode>
+      <ProductsPage>
+        <AdminPageHeader>
+        <div className="p-5 sm:p-8">
+          <ProductManager initialProducts={[...]} categories={[...]} marcas={[...]} proveedores={[...]} ...>
+            <div className="grid gap-6">
+              <DataTable>
+              <BulkUploadModal>
+              <Modal open={true} onClose={function onClose} size="xl" title="Editar pro..." description="Actualiza ..." ...>
+                <div className="fixed inse..." role="dialog" aria-modal="true" aria-label="Editar pro...">
+                  <button>
+                  <div className="relative f...">
+                    <div>
+                    <div>
+                    <div className="flex-1 ove...">
+                      <div className="grid gap-4">
+                        <div>
+                        <FormTextarea>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div className="grid gap-2...">
+                          <span>
+                          <SearchableMultiSelect values={[...]} onChange={function onChange} options={[...]} ...>
+                            <div className="relative">
+>                             <button
+>                               ref={{current:null}}
+>                               type="button"
+>                               disabled={undefined}
+>                               onClick={function toggleOpen}
+>                               className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-xl border borde..."
+>                               aria-haspopup="listbox"
+>                               aria-expanded={false}
+>                             >
+                                <span className="inline-fle...">
+                                  <span>
+>                                 <button
+>                                   type="button"
+>                                   onClick={function onClick}
+>                                   aria-label="Quitar PVC"
+>                                   className="grid size-4 shrink-0 place-items-center rounded-full transition-colors ..."
+>                                 >
+                                ...
+                        ...
+                    ...
+    ...
+ 
+[browser] <button> cannot contain a nested <button>.
+See this log for the ancestor stack trace. 
+○ Compiling /productos/[slug] ...
+ GET /productos/reves-1 200 in 9.0s (next.js: 4.5s, generate-params: 2.8s, application-code: 1693ms)
+○ Compiling /api/notifications ...
+ GET /api/notifications 200 in 6.6s (next.js: 5.5s, application-code: 1026ms)
+ GET / 200 in 2.3s (next.js: 247ms, application-code: 2.0s)
+○ Compiling /api/captcha ...
+ GET /api/captcha 200 in 15.7s (next.js: 14.8s, application-code: 898ms)
+ GET /api/captcha 200 in 15.5s (next.js: 14.7s, application-code: 898ms)
+ GET /api/exchange-rate 200 in 15.6s (next.js: 14.7s, application-code: 894ms)
+ GET /api/exchange-rate 200 in 68ms (next.js: 17ms, application-code: 52ms)
+ GET / 200 in 1005ms (next.js: 325ms, application-code: 680ms)
+ GET /api/notifications 200 in 14.4s (next.js: 12.0s, application-code: 2.3s)
+ GET /api/notifications 200 in 2.2s (next.js: 194ms, application-code: 2.1s)
+ GET / 200 in 418ms (next.js: 41ms, application-code: 376ms)
+ GET / 200 in 487ms (next.js: 17ms, application-code: 470ms)
+ GET / 200 in 2.7s (next.js: 1544ms, application-code: 1176ms)
+ GET / 200 in 304ms (next.js: 24ms, application-code: 279ms)
+ GET / 200 in 203ms (next.js: 20ms, application-code: 183ms)
+ GET / 200 in 849ms (next.js: 14ms, application-code: 835ms)
+ GET / 200 in 419ms (next.js: 17ms, application-code: 402ms)
+ GET / 200 in 164ms (next.js: 10ms, application-code: 154ms)
+○ Compiling /api/notifications ...
+ GET /api/captcha 200 in 16.9s (next.js: 16.1s, application-code: 821ms)
+ GET /api/exchange-rate 200 in 16.2s (next.js: 15.4s, application-code: 823ms)
+ GET /api/captcha 200 in 30ms (next.js: 7ms, application-code: 24ms)
+ GET /api/exchange-rate 200 in 42ms (next.js: 10ms, application-code: 32ms)
+ GET / 200 in 850ms (next.js: 309ms, application-code: 541ms)
+ GET /api/notifications 200 in 17.8s (next.js: 15.4s, application-code: 2.4s)
+ GET /api/notifications 200 in 1178ms (next.js: 34ms, application-code: 1144ms)
+ GET /api/notifications 200 in 1769ms (next.js: 38ms, application-code: 1731ms)
+ GET /api/exchange-rate 200 in 71ms (next.js: 12ms, application-code: 59ms)
+ GET /api/exchange-rate 200 in 205ms (next.js: 16ms, application-code: 190ms)
+ GET /api/notifications 200 in 726ms (next.js: 11ms, application-code: 715ms)
+ GET /productos/reves-1 200 in 3.3s (next.js: 435ms, generate-params: 327ms, application-code: 2.6s)
+ GET /productos/reves-1 200 in 4.1s (next.js: 192ms, generate-params: 268ms, application-code: 3.7s)
+ GET /productos/reves-1 200 in 3.3s (next.js: 335ms, generate-params: 0.4ms, application-code: 2.9s)
+ GET /productos/reves-1 200 in 6.8s (next.js: 117ms, generate-params: 0.2ms, application-code: 6.7s)
+ GET /productos/reves-1 200 in 5.0s (next.js: 71ms, generate-params: 253ms, application-code: 4.7s)
+ GET /productos/reves-1 200 in 1311ms (next.js: 48ms, generate-params: 51ms, application-code: 1211ms)
+ GET /productos/reves-1 200 in 8.3s (next.js: 5.1s, generate-params: 71ms, application-code: 3.2s)
+○ Compiling /api/exchange-rate ...
+ GET /api/exchange-rate 200 in 5.4s (next.js: 5.1s, application-code: 354ms)
+ GET /api/exchange-rate 200 in 86ms (next.js: 18ms, application-code: 69ms)
+○ Compiling /api/notifications ...
+ GET /productos/reves-1 200 in 1674ms (next.js: 388ms, generate-params: 49ms, application-code: 1237ms)
+ GET /api/notifications 200 in 9.6s (next.js: 6.5s, application-code: 3.1s)
+ GET /productos/reves-1 200 in 639ms (next.js: 14ms, generate-params: 0.1ms, application-code: 625ms)
+ GET /productos/reves-1 200 in 479ms (next.js: 26ms, generate-params: 27ms, application-code: 425ms)
+ GET /productos/reves-1 200 in 1147ms (next.js: 44ms, generate-params: 63ms, application-code: 1040ms)
+ GET /api/notifications 200 in 10.1s (next.js: 447ms, application-code: 9.7s)
+ GET /productos/reves-1 200 in 5.1s (next.js: 2.2s, generate-params: 114ms, application-code: 2.8s)
+ GET /api/notifications 200 in 1985ms (next.js: 532ms, application-code: 1453ms)
+ GET /api/notifications 200 in 2.0s (next.js: 239ms, application-code: 1795ms)
+ GET /productos/reves-1 200 in 11.6s (next.js: 3.1s, generate-params: 252ms, application-code: 8.2s)
+ GET /productos/reves-1 200 in 3.3s (next.js: 1621ms, generate-params: 0.1ms, application-code: 1728ms)
+○ Compiling /api/notifications ...
