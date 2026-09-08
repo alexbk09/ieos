@@ -68,6 +68,14 @@ export type Product = {
   url_afiliado_amazon?: string | null
   /** URL de afiliado genérica de la store (legado). Opcional. */
   url_afiliado_store?: string | null
+  /** Código ASIN de la store/externo. Único; NULL si no aplica. */
+  asin?: string | null
+  /** Título optimizado para SEO/Google. Fallback = name. */
+  titulo_seo?: string | null
+  /** Precio original/referencia en USD (para mostrar oferta). */
+  precio_original?: number | null
+  /** TRUE = incluir en sitemap / indexación de Google. Default FALSE. */
+  indexado_google?: boolean
   categories?: Category[]
   images?: ProductImage[]
   colors?: string[]
@@ -155,6 +163,14 @@ export type ProductInput = {
   url_afiliado_amazon?: string | null
   /** URL de afiliado genérica de la store (legado). Opcional. */
   url_afiliado_store?: string | null
+  /** Código ASIN (store/externo). Opcional. */
+  asin?: string | null
+  /** Título optimizado para SEO/Google. Opcional (fallback = name). */
+  titulo_seo?: string | null
+  /** Precio original/referencia en USD (precio tachado). Opcional. */
+  precio_original?: number | null
+  /** TRUE = incluir en sitemap / indexación de Google. */
+  indexado_google?: boolean
   // Solo para carga masiva: nombres de marca/proveedor/categoria.
   // Si el item trae nombre y no trae id, se resuelve o crea automaticamente.
   marca_nombre?: string | null
@@ -210,6 +226,12 @@ function mapProduct(row: any): Product {
     url_afiliado_ali: row.url_afiliado_ali ?? null,
     url_afiliado_amazon: row.url_afiliado_amazon ?? null,
     url_afiliado_store: row.url_afiliado_store ?? null,
+    asin: row.asin ?? null,
+    titulo_seo: row.titulo_seo ?? null,
+    precio_original: row.precio_original != null ? Number(row.precio_original) : null,
+    // Tri-estado SEO: `true` = indexar, `false` = noindex, `undefined` =
+    // la migración 0042 aún no creó la columna → indexar (comportamiento histórico).
+    indexado_google: row.indexado_google == null ? undefined : row.indexado_google === true,
     colors: row.colors ?? [],
     specifications: row.specifications ?? {},
     categories:
@@ -300,6 +322,37 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
   return { products, total, hasMore: from + products.length < total, error: null }
 }
 
+/**
+ * Obtiene un producto público por slug exacto (página /productos/[slug]).
+ * Cliente público → SSG+ISR. Reutiliza PRODUCT_SELECT + mapProduct del módulo.
+ * Solo devuelve productos visibles para mantener coherencia con el catálogo.
+ */
+export async function getPublicProductBySlug(slug: string) {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_available', true)
+    .eq('slug', slug)
+    .maybeSingle()
+  if (error) return { product: null, error }
+  return { product: data ? mapProduct(data) : null, error: null }
+}
+
+/**
+ * Obtiene todos los slugs visibles para generateStaticParams del pSEO.
+ * Así cada producto nuevo que se publique se sirve desde CDN/ISR.
+ */
+export async function getPublicProductSlugs() {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('products')
+    .select('slug')
+    .eq('is_available', true)
+  if (error) return { slugs: [] as string[], error }
+  return { slugs: (data ?? []).map((row: any) => row.slug).filter(Boolean) as string[], error: null }
+}
+
 /** Slug simple desde un texto (minúsculas, sin acentos, guiones). */
 function slugify(text: string): string {
   return (
@@ -369,6 +422,10 @@ function buildProductRow(payload: ProductInput) {
     url_afiliado_ali: payload.url_afiliado_ali?.trim() || null,
     url_afiliado_amazon: payload.url_afiliado_amazon?.trim() || null,
     url_afiliado_store: payload.url_afiliado_store?.trim() || null,
+    asin: payload.asin?.trim() || null,
+    titulo_seo: payload.titulo_seo?.trim() || null,
+    precio_original: payload.precio_original != null ? Number(payload.precio_original) : null,
+    indexado_google: payload.indexado_google === true,
   }
 }
 

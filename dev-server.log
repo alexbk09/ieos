@@ -14,3 +14,52 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
  GET /api/catalog?from=0 200 in 3.7s (next.js: 2.8s, application-code: 866ms)
  GET /api/exchange-rate 200 in 30ms (next.js: 6ms, application-code: 25ms)
  GET /catalogo 200 in 699ms (next.js: 169ms, application-code: 530ms)
+ GET /api/exchange-rate 200 in 895ms (next.js: 247ms, application-code: 648ms)
+ GET /api/catalog?from=0 200 in 838ms (next.js: 23ms, application-code: 814ms)
+ GET /catalogo 200 in 798ms (next.js: 36ms, application-code: 762ms)
+ GET /catalogo 200 in 1054ms (next.js: 15ms, application-code: 1039ms)
+ GET /catalogo 200 in 1430ms (next.js: 22ms, application-code: 1408ms)
+ GET /catalogo 200 in 407ms (next.js: 15ms, application-code: 391ms)
+[browser] Image with src "https://stjjgjiflkpmufimigbw.supabase.co/storage/v1/object/public/productos-bucket/products/08ba4a57-6410-4439-97a9-817d3887050b.webp" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /catalogo 200 in 2.8s (next.js: 55ms, application-code: 2.7s)
+ GET /catalogo 200 in 644ms (next.js: 34ms, application-code: 610ms)
+ GET /catalogo 200 in 606ms (next.js: 27ms, application-code: 579ms)
+ GET /catalogo 200 in 5.9s (next.js: 4.3s, application-code: 1642ms)
+ GET /catalogo 200 in 2.9s (next.js: 788ms, application-code: 2.1s)
+ GET /catalogo 200 in 1077ms (next.js: 50ms, application-code: 1027ms)
+ GET /catalogo 200 in 478ms (next.js: 20ms, application-code: 458ms)
+ GET /catalogo 200 in 1883ms (next.js: 23ms, application-code: 1860ms)
+ GET /catalogo 200 in 4.6s (next.js: 32ms, application-code: 4.6s)
+ GET /catalogo 200 in 814ms (next.js: 40ms, application-code: 774ms)
+ GET /catalogo 200 in 2.5s (next.js: 1298ms, application-code: 1235ms)
+ GET /api/catalog?from=0 200 in 5.9s (next.js: 2.7s, application-code: 3.2s)
+ GET /catalogo 200 in 5.0s (next.js: 1009ms, application-code: 4.0s)
+ GET /catalogo 200 in 1262ms (next.js: 41ms, application-code: 1221ms)
+ GET /catalogo 200 in 4.9s (next.js: 1488ms, application-code: 3.5s)
+ GET /api/exchange-rate 200 in 3.9s (next.js: 3.4s, application-code: 442ms)
+ GET /api/exchange-rate 200 in 37ms (next.js: 10ms, application-code: 27ms)
+ GET /api/catalog?from=0 200 in 4.4s (next.js: 2.8s, application-code: 1559ms)
+ GET /catalogo 200 in 1035ms (next.js: 335ms, application-code: 701ms)
+ GET /catalogo 200 in 1222ms (next.js: 12ms, application-code: 1210ms)
+[browser] Image with src "https://stjjgjiflkpmufimigbw.supabase.co/storage/v1/object/public/productos-bucket/products/08ba4a57-6410-4439-97a9-817d3887050b.webp" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /api/exchange-rate 200 in 57ms (next.js: 5ms, application-code: 52ms)
+ GET /api/exchange-rate 200 in 21ms (next.js: 8ms, application-code: 13ms)
+ GET /api/catalog?from=0 200 in 260ms (next.js: 6ms, application-code: 255ms)
+ GET /catalogo 200 in 240ms (next.js: 7ms, application-code: 233ms)
+ GET /catalogo 200 in 460ms (next.js: 24ms, application-code: 436ms)
+ GET /api/exchange-rate 200 in 26ms (next.js: 7ms, application-code: 19ms)
+ GET /api/exchange-rate 200 in 21ms (next.js: 5ms, application-code: 16ms)
+ GET /api/catalog?from=0 200 in 180ms (next.js: 21ms, application-code: 160ms)
+[browser] Image with src "https://stjjgjiflkpmufimigbw.supabase.co/storage/v1/object/public/productos-bucket/products/08ba4a57-6410-4439-97a9-817d3887050b.webp" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+○ Compiling / ...
+ GET / 200 in 5.9s (next.js: 4.6s, application-code: 1327ms)
+○ Compiling /api/captcha ...
+ GET /api/captcha 200 in 5.3s (next.js: 4.5s, application-code: 849ms)
+ GET /api/captcha 200 in 5.3s (next.js: 4.4s, application-code: 849ms)
+ GET /api/exchange-rate 200 in 5.3s (next.js: 4.4s, application-code: 848ms)
+ GET /api/exchange-rate 200 in 55ms (next.js: 10ms, application-code: 45ms)
+ GET / 200 in 831ms (next.js: 363ms, application-code: 468ms)
+  Reload env: .env.development.local
