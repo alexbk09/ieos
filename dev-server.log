@@ -271,3 +271,26 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
  GET / 200 in 1178ms (next.js: 637ms, application-code: 541ms)
  GET / 200 in 221ms (next.js: 22ms, application-code: 199ms)
 ○ Compiling /api/notifications ...
+ GET /api/captcha 200 in 14.7s (next.js: 14.3s, application-code: 414ms)
+ GET /api/exchange-rate 200 in 14.1s (next.js: 13.7s, application-code: 416ms)
+ GET /api/captcha 200 in 24ms (next.js: 8ms, application-code: 17ms)
+ GET /api/exchange-rate 200 in 22ms (next.js: 7ms, application-code: 15ms)
+ GET /api/notifications 200 in 15.1s (next.js: 13.2s, application-code: 1939ms)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET /admin 200 in 3.5s (next.js: 158ms, proxy.ts: 1849ms, application-code: 1486ms)
+ GET /admin 200 in 1271ms (next.js: 43ms, proxy.ts: 307ms, application-code: 921ms)
+○ Compiling /api/site-settings ...
+ GET /api/site-settings 200 in 5.6s (next.js: 4.9s, application-code: 740ms)
+ GET /api/admin/permissions 200 in 5.8s (next.js: 4.9s, application-code: 827ms)
+ GET /api/site-settings 200 in 149ms (next.js: 8ms, application-code: 141ms)
+ GET /api/admin/permissions 200 in 351ms (next.js: 5ms, application-code: 346ms)
+○ Compiling /admin/analytics-productos ...
+ GET /admin/analytics-productos 200 in 8.3s (next.js: 7.7s, proxy.ts: 119ms, application-code: 462ms)
+ GET /api/notifications 200 in 2.4s (next.js: 1812ms, application-code: 619ms)
+ GET / 200 in 467ms (next.js: 56ms, application-code: 411ms)
+ GET /api/captcha 200 in 196ms (next.js: 36ms, application-code: 161ms)
+ GET /api/exchange-rate 200 in 40ms (next.js: 14ms, application-code: 26ms)
+ GET /api/captcha 200 in 26ms (next.js: 7ms, application-code: 20ms)
+ GET /api/exchange-rate 200 in 27ms (next.js: 8ms, application-code: 19ms)
+ GET /api/notifications 200 in 478ms (next.js: 9ms, application-code: 469ms)
+ GET /api/notifications 200 in 579ms (next.js: 5ms, application-code: 573ms)
