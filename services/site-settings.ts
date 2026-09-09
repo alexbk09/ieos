@@ -124,7 +124,7 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
 const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
   company_name: 'ilumaX',
-  tagline: 'Arquitectura de luz',
+  tagline: 'Las mejores ofertas de AliExpress',
   logo_url: null,
   icon_url: null,
   whatsapp_number: '584122649707',
@@ -135,53 +135,54 @@ const DEFAULT_SETTINGS: SiteSettings = {
   map_zoom: 13,
   nav_links: [
     { href: '/', label: 'Inicio' },
-    { href: '/#studio', label: 'Studio' },
+    { href: '/catalogo', label: 'Ofertas' },
+    { href: '/#como-funciona', label: 'Cómo funciona' },
     { href: '/#contacto', label: 'Contacto' },
-    { href: '/catalogo', label: 'Catálogo completo', highlight: true },
+    { href: '/catalogo', label: 'Ver catálogo', highlight: true },
   ],
   hero_texts: {
-    eyebrow: 'Arquitectura de luz',
-    title: 'Luz que define ',
-    titleHighlight: 'espacios.',
+    eyebrow: 'Tienda de ofertas AliExpress',
+    title: 'Los mejores productos de AliExpress ',
+    titleHighlight: 'al mejor precio.',
     description:
-      'Soluciones LED y revestimientos que convierten ambientes cotidianos en experiencias memorables. Diseñamos la atmósfera, tú habitas el resultado.',
-    primaryButton: 'Explorar catálogo',
+      'Curamos y comparamos los productos más vendidos y mejor valorados de AliExpress para que compres con confianza, ahorres tiempo y consigas las mejores ofertas del día.',
+    primaryButton: 'Ver ofertas',
     primaryHref: '#catalogo',
-    secondaryButton: 'Ver todo',
+    secondaryButton: 'Explorar categorías',
     secondaryHref: '/catalogo',
-    badge: 'Colección 2025',
-    imageAlt: 'Línea Aura 12W',
-    imageCaption: 'La luz como material',
+    badge: 'Ofertas actualizadas',
+    imageAlt: 'Productos destacados de AliExpress',
+    imageCaption: 'Curaduría de ofertas',
     imagePosition: '01 / 03',
     stats: [
-      { value: '+12', label: 'años de experiencia' },
-      { value: '24/7', label: 'asesoría técnica' },
-      { value: '100%', label: 'diseño venezolano' },
+      { value: '+1.000', label: 'productos curados' },
+      { value: '24/7', label: 'ofertas actualizadas' },
+      { value: '100%', label: 'compra protegida' },
     ],
   },
   hero_images: { main: '/products/webp/linea-aura.webp' },
   studio_texts: {
-    eyebrow: 'El studio',
-    title: 'Diseñamos lo que otros solo iluminan.',
+    eyebrow: 'Cómo funciona',
+    title: 'Compra mejor en AliExpress con nuestra ayuda.',
     items: [
-      { number: '01', text: 'Curaduría de piezas con intención y larga vida útil.' },
-      { number: '02', text: 'Asesoría para traducir ideas en instalaciones reales.' },
-      { number: '03', text: 'Materiales que hacen que cada proyecto tenga identidad.' },
+      { number: '01', text: 'Explora categorías y ofertas curadas por nuestro equipo.' },
+      { number: '02', text: 'Compara precios, reseñas y valoraciones reales de compradores.' },
+      { number: '03', text: 'Compra directo en AliExpress con total seguridad y transparencia.' },
     ],
   },
   contact_texts: {
     eyebrow: 'Hablemos',
-    title: 'Tu espacio tiene algo que decir.',
+    title: '¿Necesitas ayuda para elegir?',
     description:
-      'Cuéntanos sobre tu próximo proyecto. Nuestro equipo puede ayudarte a elegir la solución correcta.',
+      'Escríbenos y te ayudamos a encontrar el producto ideal o a resolver cualquier duda sobre tu compra en AliExpress.',
     formNamePlaceholder: 'Tu nombre',
     formEmailPlaceholder: 'Correo electrónico',
-    formMessagePlaceholder: 'Cuéntanos sobre tu proyecto',
+    formMessagePlaceholder: 'Cuéntanos qué buscas',
     formButton: 'Enviar mensaje',
   },
   footer_texts: {
     copyright: '© 2025 ilumaX. Caracas, Venezuela.',
-    slogan: 'Iluminamos ideas.',
+    slogan: 'Las mejores ofertas de AliExpress.',
   },
   social_links: {
     instagram: 'https://instagram.com',
@@ -191,6 +192,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   theme: DEFAULT_THEME,
   homepage_config: DEFAULT_HOMEPAGE_CONFIG,
 }
+
 
 /**
  * Obtiene la configuración del sitio para el render público.

@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LOCAL_IMAGES_PREFIX, SEARCH_LOG_SOURCES } from '@/lib/constants'
 import { trackSearchLog } from '@/lib/analytics-client'
-import { ArrowUpRight, CheckCircle2, Globe2, LoaderCircle, MapPin, Navigation, Search, Send, Sparkles, Star } from 'lucide-react'
+import { ArrowUpRight, BadgeCheck, CheckCircle2, Globe2, LoaderCircle, Search, Send, Star } from 'lucide-react'
+
+
 import { CaptchaWidget } from '@/components/ui/captcha-widget'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
-import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
+import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
+
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
 import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
@@ -16,7 +19,8 @@ import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { AgentChat } from '@/components/agent-chat'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig } from '@/lib/homepage-config'
-import { HomepageHero, StudioSection } from '@/components/homepage-sections'
+import { HomepageHero, type SegmentData } from '@/components/homepage-sections'
+
 
 type Product = { id: string; name: string; slug: string; description: string | null; price_usd: number; stock: number; image_url: string; colors?: string[]; peso?: string | null; tamaño?: string | null; specifications?: Record<string, string>; category_id?: string | null; featured?: boolean; categories?: { id: string; name: string; slug: string; description: string | null }[]; images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[] }
 
@@ -29,7 +33,6 @@ export type StorefrontSettings = {
   contact: { eyebrow?: string; title?: string; description?: string; formNamePlaceholder?: string; formEmailPlaceholder?: string; formMessagePlaceholder?: string; formButton?: string }
   footer: { copyright?: string; slogan?: string }
   social: { instagram?: string; linkedin?: string; email?: string }
-  map: { lat: number; lng: number; zoom: number }
   homepageConfig: import('@/lib/homepage-config').HomepageConfig
 }
 
@@ -76,7 +79,6 @@ const FALLBACK_SETTINGS: StorefrontSettings = {
   },
   footer: { copyright: '© 2025 ilumaX. Caracas, Venezuela.', slogan: 'Iluminamos ideas.' },
   social: { instagram: 'https://instagram.com', linkedin: 'https://linkedin.com', email: 'mailto:hola@ilumax.ve' },
-  map: { lat: 10.4806, lng: -66.9036, zoom: 13 },
   homepageConfig: DEFAULT_HOMEPAGE_CONFIG,
 }
 
@@ -90,7 +92,8 @@ const categories = ['Todos', 'Iluminación LED', 'Revestimiento 3D', 'Perfiles y
 
 const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes('Tile') ? 'Revestimiento 3D' : 'Iluminación LED')
 
-export function Storefront({ initialProducts, settings }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings> }) {
+export function Storefront({ initialProducts, settings, categories: initialCategories }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings>; categories?: { id: string; name: string; slug: string; description?: string | null }[] }) {
+
   const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
@@ -119,17 +122,23 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
     contact: { ...FALLBACK_SETTINGS.contact, ...settings?.contact },
     footer: { ...FALLBACK_SETTINGS.footer, ...settings?.footer },
     social: { ...FALLBACK_SETTINGS.social, ...settings?.social },
-    map: { ...FALLBACK_SETTINGS.map, ...settings?.map },
     homepageConfig: normalizeHomepageConfig(settings?.homepageConfig ?? {}),
   }
 
   const brand = cfg.brand
   const hero = cfg.hero
   const heroImage = cfg.heroImage || `${LOCAL_IMAGES_PREFIX}linea-aura.webp`
-  const heroAlt = hero.imageAlt ?? `${brand.name} — iluminación de portada`
-  const heroStats = hero.stats && hero.stats.length > 0 ? hero.stats : FALLBACK_SETTINGS.hero.stats
-  const studioItems = cfg.studio.items && cfg.studio.items.length > 0 ? cfg.studio.items : FALLBACK_SETTINGS.studio.items
   const navLinks = cfg.navLinks && cfg.navLinks.length > 0 ? cfg.navLinks : []
+
+
+  // Datos que alimentan los segmentos dinámicos (category-grid / product-carousel).
+  const segmentData: SegmentData = {
+    categories: initialCategories ?? [],
+    products: products as CardProduct[],
+    rate: exchangeRate,
+    onAdd: add,
+    onViewDetails: (p) => setSelected(p as Product),
+  }
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'Todos' || categoryFor(p) === category)), [query, category, products])
 
@@ -209,11 +218,12 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
       brand={{ name: brand.name, tagline: brand.tagline, logoUrl: brand.logoUrl, iconUrl: brand.iconUrl }}
     />
     <main className="flex-1">
-      <HomepageHero config={cfg.homepageConfig} hero={hero} heroImage={heroImage} brandTagline={brand.tagline} />
+      <HomepageHero config={cfg.homepageConfig} hero={hero} heroImage={heroImage} brandTagline={brand.tagline} data={segmentData} />
 
       <section id="catalogo" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 md:flex-row md:items-end">
-          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Selección {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Encuentra tu próxima atmósfera</h2></div>
+          <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Catálogo {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Explora y compara productos</h2></div>
+
           <div className="flex flex-col gap-3 sm:flex-row">
             <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"><Search size={16} className="text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
@@ -229,19 +239,19 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
         </div>
       </section>
 
-      <StudioSection config={cfg.homepageConfig} studio={cfg.studio} />
+      {/* Contacto ligero (sin mapa) */}
 
       <section id="contacto" className="mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">{cfg.contact.eyebrow ?? 'Hablemos'}</p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{cfg.contact.title ?? 'Tu espacio tiene algo que decir.'}</h2>
+          <h2 className="mt-3 text-4xl font-semibold tracking-[-.06em]">{cfg.contact.title ?? '¿Necesitas ayuda para elegir?'}</h2>
           <p className="mt-5 max-w-md leading-7 text-muted-foreground">{cfg.contact.description}</p>
 
           <div className="mt-8 flex items-center gap-3 rounded-2xl border border-border px-4 py-3.5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand-strong"><MapPin size={17} /></span>
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand-strong"><BadgeCheck size={17} /></span>
             <div className="min-w-0">
               <p className="text-sm font-medium">{brand.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{brand.address}</p>
+              <p className="truncate text-xs text-muted-foreground">{brand.email}</p>
             </div>
           </div>
 
@@ -267,26 +277,8 @@ export function Storefront({ initialProducts, settings }: { initialProducts?: Pr
           </button>
         </form>
       </section>
-
-      <section className="mx-auto max-w-7xl px-5 pb-20 lg:px-8">
-        <div className="overflow-hidden rounded-[2rem] border border-border bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-full bg-brand/10 text-brand-strong"><MapPin size={17} /></span>
-              <div>
-                <p className="text-sm font-semibold">Encuéntranos aquí</p>
-                <p className="text-xs text-muted-foreground">{brand.address}</p>
-              </div>
-            </div>
-            <a href={`https://www.google.com/maps/dir/?api=1&destination=${cfg.map.lat},${cfg.map.lng}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground">
-              <Navigation size={14} /> Cómo llegar
-            </a>
-          </div>
-          <iframe title={`Mapa de ${brand.name}`} src={`https://www.openstreetmap.org/export/embed.html?bbox=${cfg.map.lng - 0.01}%2C${cfg.map.lat - 0.008}%2C${cfg.map.lng + 0.01}%2C${cfg.map.lat + 0.008}&layer=mapnik&marker=${cfg.map.lat}%2C${cfg.map.lng}`} className="h-[26rem] w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        </div>
-      </section>
     </main>
-    <SiteFooter footer={cfg.footer} brand={{ name: brand.name, address: brand.address }} social={cfg.social} />
+    <SiteFooter footer={cfg.footer} brand={{ name: brand.name, address: brand.email }} social={cfg.social} />
 
     {selected && (
       <ProductDetailModal

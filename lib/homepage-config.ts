@@ -1,6 +1,31 @@
 export type HeroLayout = 'text-left-image-right' | 'text-right-image-left' | 'text-center' | 'text-only'
 export type BackgroundType = 'solid' | 'image' | 'gradient'
-export type SegmentType = 'text' | 'image-text' | 'stats' | 'cta' | 'quote'
+export type SegmentType =
+  | 'text'
+  | 'image-text'
+  | 'stats'
+  | 'cta'
+  | 'quote'
+  // --- Nuevos tipos orientados a tienda de afiliados (SEO/UX) ---
+  | 'category-grid'
+  | 'product-carousel'
+  | 'trust-badges'
+  | 'how-it-works'
+  | 'faq'
+  | 'testimonials'
+  | 'newsletter'
+
+/** Ítem de FAQ (pregunta/respuesta) → habilita FAQPage JSON-LD. */
+export type FaqItem = { question: string; answer: string }
+
+/** Ítem de testimonio (prueba social). */
+export type TestimonialItem = { name: string; role?: string; text: string; rating?: number }
+
+/** Ítem de "cómo funciona" (transparencia del modelo de afiliado). */
+export type HowItWorksStep = { number: string; title: string; text: string }
+
+/** Ítem de sello de confianza (envío, garantía, pago seguro…). */
+export type TrustBadge = { icon: string; title: string; text: string }
 
 export type HomepageSegment = {
   id: string
@@ -27,6 +52,24 @@ export type HomepageSegment = {
   stats?: { value: string; label: string }[]
   quote?: string
   quoteAuthor?: string
+  // --- Campos de los nuevos tipos ---
+  /** category-grid: slugs de categorías a mostrar (pSEO → /categoria/[slug]). */
+  categorySlugs?: string[]
+  /** product-carousel: slugs de productos a destacar (fallback: destacados). */
+  productSlugs?: string[]
+  /** product-carousel: etiqueta del carrusel (ej: "Más vendidos"). */
+  carouselLabel?: string
+  /** faq: lista de preguntas/respuestas. */
+  faqItems?: FaqItem[]
+  /** testimonials: lista de testimonios. */
+  testimonials?: TestimonialItem[]
+  /** how-it-works: pasos. */
+  steps?: HowItWorksStep[]
+  /** trust-badges: sellos de confianza. */
+  badges?: TrustBadge[]
+  /** newsletter: texto del botón y placeholder. */
+  newsletterButton?: string
+  newsletterPlaceholder?: string
 }
 
 export type HomepageConfig = {
@@ -58,47 +101,184 @@ export type HomepageConfig = {
   segments: HomepageSegment[]
 }
 
+/**
+ * Seed por defecto del inicio (tienda de afiliados AliExpress).
+ * Define una portada con ritmo visual: bandas claras (blanco) alternadas con
+ * bandas oscuras (navy) para que la página no se vea gris y plana, usando
+ * pocos colores (navy + acento de marca) con estética UX/UI moderna.
+ * El admin puede editar, reordenar o eliminar cada segmento desde Configuración.
+ */
 export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
   version: 1,
   hero: {
     layout: 'text-left-image-right',
     contentAlign: 'left',
-    backgroundType: 'solid',
+    backgroundType: 'gradient',
     backgroundSolid: 'transparent',
     backgroundImage: '',
-    backgroundGradientFrom: '#020617',
-    backgroundGradientTo: '#0891b2',
+    backgroundGradientFrom: '#ffffff',
+    backgroundGradientTo: '#ecfeff',
     showBadge: true,
     showStats: true,
     showImage: true,
     overlay: true,
   },
   studio: {
-    backgroundType: 'solid',
+    backgroundType: 'gradient',
     backgroundSolid: 'transparent',
     backgroundImage: '',
-    backgroundGradientFrom: '#020617',
-    backgroundGradientTo: '#0891b2',
+    backgroundGradientFrom: '#0f172a',
+    backgroundGradientTo: '#020617',
     textColor: '',
     accentColor: '',
     mutedColor: '',
     layout: 'text-left',
   },
-  segments: [],
+  segments: [
+    {
+      id: 'seg-trust',
+      type: 'trust-badges',
+      enabled: true,
+      backgroundType: 'solid',
+      backgroundSolid: '#ffffff',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'Confianza',
+      title: 'Compra con total seguridad',
+      description: 'Curamos las mejores ofertas de AliExpress para que compres tranquilo, con envío rastreable y pago protegido.',
+      badges: [
+        { icon: 'truck', title: 'Envío rastreable', text: 'Seguimiento en tiempo real de tu pedido.' },
+        { icon: 'shield', title: 'Compra protegida', text: 'Pago seguro respaldado por AliExpress.' },
+        { icon: 'tag', title: 'Precios de oferta', text: 'Curamos los mejores descuentos del día.' },
+      ],
+    },
+    {
+      id: 'seg-categories',
+      type: 'category-grid',
+      enabled: true,
+      backgroundType: 'solid',
+      backgroundSolid: 'transparent',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'Explora por nicho',
+      title: 'Categorías destacadas',
+      description: 'Encuentra los productos más vendidos y mejor valorados de AliExpress organizados por categoría.',
+      categorySlugs: [],
+    },
+    {
+      id: 'seg-featured',
+      type: 'product-carousel',
+      enabled: true,
+      backgroundType: 'gradient',
+      backgroundSolid: 'transparent',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'Selección del día',
+      title: 'Ofertas que no puedes dejar pasar',
+      description: 'Una curaduría de los productos con mejor relación calidad-precio de AliExpress.',
+      carouselLabel: 'Más buscados',
+      productSlugs: [],
+    },
+    {
+      id: 'seg-how',
+      type: 'how-it-works',
+      enabled: true,
+      backgroundType: 'solid',
+      backgroundSolid: '#ffffff',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'Transparencia',
+      title: '¿Cómo funciona?',
+      description: 'Elige, compara y compra directo en AliExpress con total transparencia. Nosotros curamos las mejores ofertas para que ahorres tiempo y dinero.',
+      steps: [
+        { number: '01', title: 'Explora', text: 'Navega por nuestras categorías y ofertas curadas.' },
+        { number: '02', title: 'Compara', text: 'Revisa precios, reseñas y valoraciones reales de compradores.' },
+        { number: '03', title: 'Compra', text: 'Te llevamos a AliExpress para completar tu compra segura.' },
+      ],
+    },
+    {
+      id: 'seg-testimonials',
+      type: 'testimonials',
+
+      enabled: true,
+      backgroundType: 'solid',
+      backgroundSolid: '#ffffff',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'Opiniones reales',
+      title: 'Lo que dicen nuestros clientes',
+      description: 'Miles de compradores ya encontraron lo que buscaban a través de nuestras ofertas.',
+      testimonials: [
+        { name: 'María G.', role: 'Compradora verificada', text: 'Encontré exactamente lo que buscaba a un precio increíble. El envío llegó antes de lo esperado.', rating: 5 },
+        { name: 'Carlos R.', role: 'Comprador verificada', text: 'Comparé en varios sitios y aquí siempre encuentro las mejores ofertas de AliExpress.', rating: 5 },
+        { name: 'Lucía M.', role: 'Compradora verificada', text: 'Me encanta que todo esté curado. Ahorro muchísimo tiempo buscando.', rating: 4 },
+      ],
+    },
+    {
+      id: 'seg-faq',
+      type: 'faq',
+      enabled: true,
+      backgroundType: 'solid',
+      backgroundSolid: 'transparent',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'Dudas frecuentes',
+      title: 'Preguntas frecuentes',
+      description: 'Resolvemos las dudas más comunes sobre cómo comprar a través de nuestra tienda.',
+      faqItems: [
+        { question: '¿Cómo compro un producto?', answer: 'Haz clic en el producto y te llevaremos a AliExpress para completar la compra de forma segura. Nosotros no vendemos directamente: somos una tienda de afiliados.' },
+        { question: '¿Cuánto tarda el envío?', answer: 'Depende del vendedor y del destino. La mayoría de los envíos tardan entre 7 y 15 días hábiles.' },
+        { question: '¿El pago es seguro?', answer: 'Sí. La compra se realiza directamente en AliExpress, que cuenta con protección al comprador y métodos de pago seguros.' },
+        { question: '¿Pagan algo extra por usar la tienda?', answer: 'No. Tú pagas el mismo precio que en AliExpress. Nosotros recibimos una comisión del vendedor sin coste adicional para ti.' },
+      ],
+    },
+    {
+      id: 'seg-newsletter',
+      type: 'newsletter',
+      enabled: true,
+      backgroundType: 'gradient',
+      backgroundSolid: 'transparent',
+      backgroundImage: '',
+      backgroundGradientFrom: '#0f172a',
+      backgroundGradientTo: '#020617',
+      textColor: '',
+      eyebrow: 'No te pierdas nada',
+      title: 'Recibe las mejores ofertas en tu correo',
+      description: 'Suscríbete y recibe cada semana los descuentos y novedades más relevantes de AliExpress.',
+      newsletterButton: 'Suscribirme',
+      newsletterPlaceholder: 'tu@correo.com',
+    },
+  ],
 }
+
 
 export function createSegment(type: SegmentType): HomepageSegment {
   const base = {
     id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     type,
     enabled: true,
+    // Por defecto los segmentos nuevos usan una banda blanca para que no se
+    // "pierdan" sobre el fondo gris de la página y tengan presencia visual.
     backgroundType: 'solid' as BackgroundType,
-    backgroundSolid: 'transparent',
+    backgroundSolid: '#ffffff',
     backgroundImage: '',
-    backgroundGradientFrom: '#020617',
-    backgroundGradientTo: '#0891b2',
+    backgroundGradientFrom: '#0f172a',
+    backgroundGradientTo: '#020617',
     textColor: '',
   }
+
   switch (type) {
     case 'text':
       return { ...base, title: 'Título de la sección', description: 'Escribe aquí la descripción de esta sección.' }
@@ -110,6 +290,57 @@ export function createSegment(type: SegmentType): HomepageSegment {
       return { ...base, title: '¿Listo para empezar?', description: 'Cuéntanos sobre tu proyecto.', primaryButton: 'Escríbenos', primaryHref: '#contacto', secondaryButton: 'Ver catálogo', secondaryHref: '/catalogo' }
     case 'quote':
       return { ...base, quote: 'La luz correcta transforma cualquier espacio.', quoteAuthor: 'Equipo ilumaX' }
+    // --- Nuevos tipos (afiliados) ---
+    case 'category-grid':
+      return { ...base, title: 'Explora por categoría', description: 'Encuentra las mejores ofertas de AliExpress organizadas por nicho.', categorySlugs: [] }
+    case 'product-carousel':
+      return { ...base, title: 'Ofertas destacadas', carouselLabel: 'Más buscados', productSlugs: [] }
+    case 'trust-badges':
+      return {
+        ...base,
+        title: 'Compra con confianza',
+        badges: [
+          { icon: 'truck', title: 'Envío rastreable', text: 'Seguimiento en tiempo real de tu pedido.' },
+          { icon: 'shield', title: 'Compra protegida', text: 'Pago seguro respaldado por AliExpress.' },
+          { icon: 'tag', title: 'Precios de oferta', text: 'Curamos los mejores descuentos del día.' },
+        ],
+      }
+    case 'how-it-works':
+      return {
+        ...base,
+        title: '¿Cómo funciona?',
+        description: 'Elige, compara y compra directo en AliExpress con total transparencia.',
+        steps: [
+          { number: '01', title: 'Explora', text: 'Navega por nuestras categorías y ofertas curadas.' },
+          { number: '02', title: 'Compara', text: 'Revisa precios, reseñas y valoraciones reales.' },
+          { number: '03', title: 'Compra', text: 'Te llevamos a AliExpress para completar tu compra segura.' },
+        ],
+      }
+    case 'faq':
+      return {
+        ...base,
+        title: 'Preguntas frecuentes',
+        faqItems: [
+          { question: '¿Cómo compro un producto?', answer: 'Haz clic en el producto y te llevaremos a AliExpress para completar la compra de forma segura.' },
+          { question: '¿Cuánto tarda el envío?', answer: 'Depende del vendedor y destino. La mayoría de los envíos tardan entre 7 y 15 días.' },
+        ],
+      }
+    case 'testimonials':
+      return {
+        ...base,
+        title: 'Lo que dicen nuestros clientes',
+        testimonials: [
+          { name: 'María G.', role: 'Compradora verificada', text: 'Encontré exactamente lo que buscaba a un precio increíble.', rating: 5 },
+        ],
+      }
+    case 'newsletter':
+      return {
+        ...base,
+        title: 'Recibe las mejores ofertas',
+        description: 'Suscríbete y recibe en tu correo los descuentos y novedades más relevantes.',
+        newsletterButton: 'Suscribirme',
+        newsletterPlaceholder: 'tu@correo.com',
+      }
   }
 }
 
@@ -142,9 +373,15 @@ export function normalizeHomepageConfig(raw: unknown): HomepageConfig {
       mutedColor: typeof src.studio?.mutedColor === 'string' ? src.studio.mutedColor : '',
       layout: src.studio?.layout === 'text-right' ? 'text-right' : 'text-left',
     },
-    segments: Array.isArray(src.segments) ? src.segments.filter((s) => s && typeof s === 'object') : [],
+    // Si no hay segmentos guardados (config nueva o vacía), se usa el seed por
+    // defecto para que el inicio nunca quede "vacío/gris". El admin puede
+    // editar o eliminar segmentos; al guardar, su lista persiste tal cual.
+    segments: Array.isArray(src.segments) && src.segments.length > 0
+      ? src.segments.filter((s) => s && typeof s === 'object')
+      : DEFAULT_HOMEPAGE_CONFIG.segments,
   }
 }
+
 
 export function moveSegment(list: HomepageSegment[], from: number, to: number): HomepageSegment[] {
   const next = [...list]

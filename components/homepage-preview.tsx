@@ -56,9 +56,92 @@ function SegmentPreview({ segment }: { segment: HomepageSegment }) {
           {segment.quoteAuthor && <footer className="mt-1 text-[10px] text-muted-foreground">— {segment.quoteAuthor}</footer>}
         </blockquote>
       )}
+
+      {/* category-grid: chips de categorías */}
+      {segment.type === 'category-grid' && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(segment.categorySlugs ?? []).length > 0
+            ? segment.categorySlugs!.map((slug) => (
+                <span key={slug} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[10px] font-medium">{slug}<ArrowUpRight size={10} /></span>
+              ))
+            : <span className="text-[10px] text-muted-foreground">Mostrará todas las categorías activas</span>}
+        </div>
+      )}
+
+      {/* product-carousel: chips de productos */}
+      {segment.type === 'product-carousel' && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(segment.productSlugs ?? []).length > 0
+            ? segment.productSlugs!.map((slug) => (
+                <span key={slug} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[10px] font-medium">{slug}<ArrowUpRight size={10} /></span>
+              ))
+            : <span className="text-[10px] text-muted-foreground">Mostrará los productos destacados</span>}
+        </div>
+      )}
+
+      {/* trust-badges: sellos */}
+      {segment.type === 'trust-badges' && (
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {(segment.badges ?? []).map((b, i) => (
+            <div key={i} className="rounded-xl border border-border p-2 text-center">
+              <p className="text-[10px] font-semibold">{b.title || 'Sello'}</p>
+              {b.text && <p className="mt-0.5 text-[9px] leading-3 text-muted-foreground">{b.text}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* how-it-works: pasos */}
+      {segment.type === 'how-it-works' && (
+        <div className="mt-4 grid gap-2">
+          {(segment.steps ?? []).map((s, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-2">
+              <span className="font-mono text-sm font-semibold text-brand-strong">{s.number}</span>
+              <div>
+                <p className="text-[11px] font-semibold">{s.title}</p>
+                {s.text && <p className="text-[10px] text-muted-foreground">{s.text}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* faq: preguntas */}
+      {segment.type === 'faq' && (
+        <div className="mt-4 grid gap-2">
+          {(segment.faqItems ?? []).map((f, i) => (
+            <div key={i} className="rounded-xl border border-border p-2">
+              <p className="text-[11px] font-semibold">{f.question || 'Pregunta'}</p>
+              {f.answer && <p className="mt-0.5 text-[10px] text-muted-foreground">{f.answer}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* testimonials: prueba social */}
+      {segment.type === 'testimonials' && (
+        <div className="mt-4 grid gap-2">
+          {(segment.testimonials ?? []).map((t, i) => (
+            <div key={i} className="rounded-xl border border-border p-2">
+              <p className="text-[10px] text-amber-500">{'★'.repeat(Math.max(1, Math.min(5, t.rating ?? 5)))}</p>
+              <p className="mt-1 text-[10px] italic text-muted-foreground">“{t.text || 'Testimonio'}”</p>
+              <p className="mt-1 text-[10px] font-semibold">{t.name}{t.role ? ` · ${t.role}` : ''}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* newsletter */}
+      {segment.type === 'newsletter' && (
+        <div className="mt-4 flex gap-2">
+          <span className="flex-1 rounded-full border border-border px-3 py-1.5 text-[10px] text-muted-foreground">{segment.newsletterPlaceholder || 'tu@correo.com'}</span>
+          <span className="inline-flex items-center rounded-full bg-navy px-3 py-1.5 text-[10px] font-semibold text-navy-foreground">{segment.newsletterButton || 'Suscribirme'}</span>
+        </div>
+      )}
     </div>
   )
 }
+
 
 /**
  * Preview en vivo del inicio personalizado.

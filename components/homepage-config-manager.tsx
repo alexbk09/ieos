@@ -13,7 +13,16 @@ const SEGMENT_TYPES: { type: SegmentType; label: string }[] = [
   { type: 'stats', label: 'Estadísticas' },
   { type: 'cta', label: 'Llamada a la acción' },
   { type: 'quote', label: 'Frase / Cita' },
+  // --- Tipos orientados a tienda de afiliados (SEO/UX) ---
+  { type: 'category-grid', label: 'Grilla de categorías' },
+  { type: 'product-carousel', label: 'Productos destacados' },
+  { type: 'trust-badges', label: 'Sellos de confianza' },
+  { type: 'how-it-works', label: 'Cómo funciona' },
+  { type: 'faq', label: 'Preguntas frecuentes' },
+  { type: 'testimonials', label: 'Testimonios' },
+  { type: 'newsletter', label: 'Newsletter' },
 ]
+
 
 const HERO_LAYOUTS: { value: HeroLayout; label: string }[] = [
   { value: 'text-left-image-right', label: 'Texto izq · Imagen der' },
@@ -226,11 +235,116 @@ export function HomepageConfigManager({
                       </label>
                     </div>
                   )}
+
+                  {/* category-grid: slugs de categorías (pSEO) */}
+                  {segment.type === 'category-grid' && (
+                    <input
+                      value={(segment.categorySlugs ?? []).join(', ')}
+                      onChange={(e) => updateSegment(segment.id, { categorySlugs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                      placeholder="Slugs de categorías separados por coma (vacío = todas)"
+                      className="rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-ring"
+                    />
+                  )}
+
+                  {/* product-carousel: slugs de productos + etiqueta */}
+                  {segment.type === 'product-carousel' && (
+                    <div className="grid gap-2">
+                      <input
+                        value={(segment.productSlugs ?? []).join(', ')}
+                        onChange={(e) => updateSegment(segment.id, { productSlugs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                        placeholder="Slugs de productos (vacío = destacados)"
+                        className="rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-ring"
+                      />
+                      <input
+                        value={segment.carouselLabel ?? ''}
+                        onChange={(e) => updateSegment(segment.id, { carouselLabel: e.target.value })}
+                        placeholder="Etiqueta del carrusel (ej: Más vendidos)"
+                        className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                      />
+                    </div>
+                  )}
+
+                  {/* trust-badges: sellos de confianza */}
+                  {segment.type === 'trust-badges' && (
+                    <div className="grid gap-2">
+                      {(segment.badges ?? []).map((badge, bi) => (
+                        <div key={bi} className="grid gap-1 rounded-xl border border-border p-2">
+                          <div className="flex items-center gap-2">
+                            <input value={badge.icon} onChange={(e) => { const next = [...(segment.badges ?? [])]; next[bi] = { ...next[bi], icon: e.target.value }; updateSegment(segment.id, { badges: next }) }} placeholder="icono (truck/shield/tag/package/check)" className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 font-mono text-[11px] outline-none focus:border-ring" />
+                            <button onClick={() => updateSegment(segment.id, { badges: (segment.badges ?? []).filter((_, x) => x !== bi) })} className="grid size-7 place-items-center rounded-lg text-destructive hover:bg-destructive/10">✕</button>
+                          </div>
+                          <input value={badge.title} onChange={(e) => { const next = [...(segment.badges ?? [])]; next[bi] = { ...next[bi], title: e.target.value }; updateSegment(segment.id, { badges: next }) }} placeholder="Título" className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                          <input value={badge.text} onChange={(e) => { const next = [...(segment.badges ?? [])]; next[bi] = { ...next[bi], text: e.target.value }; updateSegment(segment.id, { badges: next }) }} placeholder="Texto" className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                        </div>
+                      ))}
+                      <button onClick={() => updateSegment(segment.id, { badges: [...(segment.badges ?? []), { icon: 'check', title: '', text: '' }] })} className="inline-flex h-8 items-center justify-center rounded-lg border border-dashed border-border text-xs font-medium hover:border-brand hover:text-brand">+ Agregar sello</button>
+                    </div>
+                  )}
+
+                  {/* how-it-works: pasos */}
+                  {segment.type === 'how-it-works' && (
+                    <div className="grid gap-2">
+                      {(segment.steps ?? []).map((step, si) => (
+                        <div key={si} className="grid gap-1 rounded-xl border border-border p-2">
+                          <div className="flex items-center gap-2">
+                            <input value={step.number} onChange={(e) => { const next = [...(segment.steps ?? [])]; next[si] = { ...next[si], number: e.target.value }; updateSegment(segment.id, { steps: next }) }} placeholder="01" className="w-14 rounded-lg border border-border bg-background px-2 py-1.5 text-center text-sm outline-none focus:border-ring" />
+                            <input value={step.title} onChange={(e) => { const next = [...(segment.steps ?? [])]; next[si] = { ...next[si], title: e.target.value }; updateSegment(segment.id, { steps: next }) }} placeholder="Título del paso" className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                            <button onClick={() => updateSegment(segment.id, { steps: (segment.steps ?? []).filter((_, x) => x !== si) })} className="grid size-7 place-items-center rounded-lg text-destructive hover:bg-destructive/10">✕</button>
+                          </div>
+                          <input value={step.text} onChange={(e) => { const next = [...(segment.steps ?? [])]; next[si] = { ...next[si], text: e.target.value }; updateSegment(segment.id, { steps: next }) }} placeholder="Descripción del paso" className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                        </div>
+                      ))}
+                      <button onClick={() => updateSegment(segment.id, { steps: [...(segment.steps ?? []), { number: String((segment.steps?.length ?? 0) + 1).padStart(2, '0'), title: '', text: '' }] })} className="inline-flex h-8 items-center justify-center rounded-lg border border-dashed border-border text-xs font-medium hover:border-brand hover:text-brand">+ Agregar paso</button>
+                    </div>
+                  )}
+
+                  {/* faq: preguntas frecuentes (genera FAQPage JSON-LD) */}
+                  {segment.type === 'faq' && (
+                    <div className="grid gap-2">
+                      {(segment.faqItems ?? []).map((item, fi) => (
+                        <div key={fi} className="grid gap-1 rounded-xl border border-border p-2">
+                          <div className="flex items-center gap-2">
+                            <input value={item.question} onChange={(e) => { const next = [...(segment.faqItems ?? [])]; next[fi] = { ...next[fi], question: e.target.value }; updateSegment(segment.id, { faqItems: next }) }} placeholder="Pregunta" className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                            <button onClick={() => updateSegment(segment.id, { faqItems: (segment.faqItems ?? []).filter((_, x) => x !== fi) })} className="grid size-7 place-items-center rounded-lg text-destructive hover:bg-destructive/10">✕</button>
+                          </div>
+                          <textarea value={item.answer} onChange={(e) => { const next = [...(segment.faqItems ?? [])]; next[fi] = { ...next[fi], answer: e.target.value }; updateSegment(segment.id, { faqItems: next }) }} placeholder="Respuesta" rows={2} className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                        </div>
+                      ))}
+                      <button onClick={() => updateSegment(segment.id, { faqItems: [...(segment.faqItems ?? []), { question: '', answer: '' }] })} className="inline-flex h-8 items-center justify-center rounded-lg border border-dashed border-border text-xs font-medium hover:border-brand hover:text-brand">+ Agregar pregunta</button>
+                    </div>
+                  )}
+
+                  {/* testimonials: prueba social */}
+                  {segment.type === 'testimonials' && (
+                    <div className="grid gap-2">
+                      {(segment.testimonials ?? []).map((t, ti) => (
+                        <div key={ti} className="grid gap-1 rounded-xl border border-border p-2">
+                          <div className="flex items-center gap-2">
+                            <input value={t.name} onChange={(e) => { const next = [...(segment.testimonials ?? [])]; next[ti] = { ...next[ti], name: e.target.value }; updateSegment(segment.id, { testimonials: next }) }} placeholder="Nombre" className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                            <input type="number" min={1} max={5} value={t.rating ?? 5} onChange={(e) => { const next = [...(segment.testimonials ?? [])]; next[ti] = { ...next[ti], rating: Number(e.target.value) }; updateSegment(segment.id, { testimonials: next }) }} className="w-16 rounded-lg border border-border bg-background px-2 py-1.5 text-center text-sm outline-none focus:border-ring" title="Valoración 1-5" />
+                            <button onClick={() => updateSegment(segment.id, { testimonials: (segment.testimonials ?? []).filter((_, x) => x !== ti) })} className="grid size-7 place-items-center rounded-lg text-destructive hover:bg-destructive/10">✕</button>
+                          </div>
+                          <input value={t.role ?? ''} onChange={(e) => { const next = [...(segment.testimonials ?? [])]; next[ti] = { ...next[ti], role: e.target.value }; updateSegment(segment.id, { testimonials: next }) }} placeholder="Rol (ej: Compradora verificada)" className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                          <textarea value={t.text} onChange={(e) => { const next = [...(segment.testimonials ?? [])]; next[ti] = { ...next[ti], text: e.target.value }; updateSegment(segment.id, { testimonials: next }) }} placeholder="Testimonio" rows={2} className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-ring" />
+                        </div>
+                      ))}
+                      <button onClick={() => updateSegment(segment.id, { testimonials: [...(segment.testimonials ?? []), { name: '', role: '', text: '', rating: 5 }] })} className="inline-flex h-8 items-center justify-center rounded-lg border border-dashed border-border text-xs font-medium hover:border-brand hover:text-brand">+ Agregar testimonio</button>
+                    </div>
+                  )}
+
+                  {/* newsletter: botón y placeholder */}
+                  {segment.type === 'newsletter' && (
+                    <div className="grid gap-2">
+                      <input value={segment.newsletterButton ?? ''} onChange={(e) => updateSegment(segment.id, { newsletterButton: e.target.value })} placeholder="Texto del botón" className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring" />
+                      <input value={segment.newsletterPlaceholder ?? ''} onChange={(e) => updateSegment(segment.id, { newsletterPlaceholder: e.target.value })} placeholder="Placeholder del correo" className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring" />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </section>
+
       </div>
 
       {/* Columna derecha: preview */}
