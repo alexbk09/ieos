@@ -101,6 +101,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Default FALSE para no lanzar productos masivos sin revisión SEO.
   const indexable = product.indexado_google !== false
 
+  const absoluteImage = image ? toAbsoluteUrl(image, absoluteUrl('/').slice(0, -1)) : undefined
+
   return {
     title: seoTitle,
     description,
@@ -111,12 +113,23 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: seoTitle,
       description,
       url: productUrl,
+      // Nota: Next.js valida OpenGraph.type en runtime y SOLO acepta 'website'.
+      // El og:type="product" (estándar OG) se emite como <meta> manual en el
+      // JSX de la página (ver abajo), no vía esta API.
       type: 'website',
       siteName: brandName,
-      ...(image ? { images: [{ url: toAbsoluteUrl(image, absoluteUrl('/').slice(0, -1)) }] } : {}),
+      ...(absoluteImage ? { images: [{ url: absoluteImage }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: seoTitle,
+      description,
+      ...(absoluteImage ? { images: [absoluteImage] } : {}),
     },
   }
 }
+
+
 
 /**
  * Página server de producto.
@@ -164,6 +177,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
+      {/* og:type="product" (estándar Open Graph). Next.js no lo permite vía
+          la API de metadata (solo 'website'), así que se emite como <meta>
+          manual en servidor para que Facebook/Google lean el tipo correcto. */}
+      <meta property="og:type" content="product" />
+
       {/* Inyección NATIVA en servidor: React 19 coloca <script> JSON-LD
           dentro del <head> del HTML crudo (SEO + Google Rich Results). */}
       <script
@@ -172,6 +190,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       />
 
       <ProductDetailPageView
+
         product={detailProduct}
         navLinks={settings.nav_links}
         brand={{

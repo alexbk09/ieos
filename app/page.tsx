@@ -1,12 +1,36 @@
+import type { Metadata } from 'next'
 import { Storefront, type StorefrontSettings } from '@/components/storefront'
 import { getFeaturedProducts } from '@/services/catalog'
 import { getSiteSettings } from '@/services/site-settings'
+import { buildPageMetadata } from '@/lib/seo'
 
 /** ISR: la portada se sirve desde CDN y se revalida cada 5 min. */
 export const revalidate = 300
 
+/**
+ * Metadata SEO de la portada (Fase 1).
+ * Antes la home heredaba el <title> genérico del layout raíz. Ahora emite
+ * title/description/canonical/OG/twitter propios con la marca real.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const { settings } = await getSiteSettings()
+  const name = settings.company_name || 'ilumaX'
+  const tagline = settings.tagline || 'Arquitectura de luz'
+  const description =
+    settings.hero_texts?.description ??
+    `Soluciones LED y revestimientos que convierten espacios en experiencias memorables.`
+
+  return buildPageMetadata({
+    title: `${name} — ${tagline}`,
+    description,
+    path: '/',
+    siteName: name,
+  })
+}
+
 /** Página de inicio con ISR. La tasa del dólar se obtiene en cliente (useExchangeRate) sin bloquear el render. */
 export default async function Home() {
+
   const [{ products }, { settings }] = await Promise.all([
     getFeaturedProducts(),
     getSiteSettings(),

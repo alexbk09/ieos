@@ -137,11 +137,24 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
   const isWeight = product.pricing_type === 'weight'
   const threshold = product.low_stock_threshold || 20
   const stockValue = isWeight ? formatWeight(product.stock_grams) : `${product.stock} ${product.unit_label || 'u'}`
-  // Stock bajo: en peso se compara con el mínimo de compra (x10) igual que la card existente.
-  const lowStock = isWeight
-    ? (product.min_order_grams > 0 && product.stock_grams < product.min_order_grams * 10)
-    : product.stock < threshold
-  const stockBadge = isWeight ? `${stockValue} disponibles` : `${stockValue} en stock`
+  // Catálogo de afiliados puro: no se gestiona inventario real. Para productos
+  // con enlace de afiliado se comunica disponibilidad + envío estimado en vez
+  // de un stock falso que rompería la confianza y el "content mismatch" SEO.
+  const isAffiliate = Boolean(product.url_afiliado_ali || product.url_afiliado_amazon || product.url_afiliado_store)
+  // Stock bajo: solo aplica a productos propios (sin afiliado). En afiliados
+  // siempre se muestra verde ("Disponible") porque no hay inventario real.
+  const lowStock = isAffiliate
+    ? false
+    : isWeight
+      ? (product.min_order_grams > 0 && product.stock_grams < product.min_order_grams * 10)
+      : product.stock < threshold
+  const stockBadge = isAffiliate
+    ? 'Disponible · Envío 7-15 días'
+    : isWeight
+      ? `${stockValue} disponibles`
+      : `${stockValue} en stock`
+
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -157,9 +170,12 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
             {product.categories[0] && (
               <>
                 <li aria-hidden="true">/</li>
-                <li><a href="/catalogo" className="transition-colors hover:text-brand-strong">{product.categories[0].name}</a></li>
+                {/* La categoría enlaza a su página indexable /categoria/[slug]
+                    (pSEO) en lugar de /catalogo, reforzando el enlazado interno. */}
+                <li><a href={`/categoria/${product.categories[0].slug}`} className="transition-colors hover:text-brand-strong">{product.categories[0].name}</a></li>
               </>
             )}
+
             <li aria-hidden="true">/</li>
             <li className="max-w-48 truncate text-brand-strong">{product.name}</li>
           </ol>

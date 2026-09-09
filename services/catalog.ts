@@ -688,6 +688,70 @@ export async function getCategoriesActivas() {
   return supabase.from('categories').select('id,name,slug').eq('activa', true).order('name')
 }
 
+/**
+ * Obtiene una categoría activa por su slug exacto (página /categoria/[slug]).
+ * Cliente público → SSG+ISR. Devuelve null si no existe o está inactiva.
+ */
+export async function getCategoryBySlug(slug: string) {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id,name,slug,description')
+    .eq('activa', true)
+    .eq('slug', slug)
+    .maybeSingle()
+  if (error) return { category: null, error }
+  return { category: data as Category | null, error: null }
+}
+
+/**
+ * Obtiene los slugs de todas las categorías activas para generateStaticParams
+ * de las páginas de categoría indexables (/categoria/[slug]).
+ */
+export async function getCategorySlugs() {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('categories')
+    .select('slug')
+    .eq('activa', true)
+  if (error) return { slugs: [] as string[], error }
+  return { slugs: (data ?? []).map((row: any) => row.slug).filter(Boolean) as string[], error: null }
+}
+
+/**
+ * Devuelve una página de productos que pertenecen a una categoría por slug.
+ * Cliente público → SSG+ISR. Reutiliza PRODUCT_SELECT + mapProduct.
+ * Pensado para la página indexable /categoria/[slug] con paginación.
+ */
+export async function getProductsByCategorySlug(slug: string, from = 0) {
+  const supabase = createPublicClient()
+
+  // 1) Resolver la categoría activa por slug.
+  const { data: cat } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('activa', true)
+    .eq('slug', slug)
+    .maybeSingle()
+  if (!cat) return { products: [], total: 0, hasMore: false, error: null }
+
+  // 2) Traer los productos visibles de esa categoría (N:N vía product_categories).
+  const { data, error, count } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT, { count: 'exact' })
+    .eq('is_available', true)
+    .in('id', await getProductIdsByCategories([cat.id]))
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .range(from, from + CATALOG_PAGE_SIZE - 1)
+  if (error) return { products: [], total: 0, hasMore: false, error }
+
+  const products = (data ?? []).map(mapProduct)
+  const total = count ?? 0
+  return { products, total, hasMore: from + products.length < total, error: null }
+}
+
+
 /** Crea una nueva categoría. */
 export async function createCategory(payload: CategoryInput) {
   const supabase = await createServerClient()

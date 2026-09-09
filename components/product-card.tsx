@@ -43,7 +43,17 @@ export type CardProduct = {
   weight_grams?: number | null
   categories?: { id: string; name: string; slug: string; description: string | null }[]
   images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[]
+  /** URL de afiliado de AliExpress (con tag de seguimiento). Opcional. */
+  url_afiliado_ali?: string | null
+  /** URL de afiliado de Amazon (con tag de seguimiento). Opcional. */
+  url_afiliado_amazon?: string | null
+  /** URL de afiliado genérica de la store (legado). Opcional. */
+  url_afiliado_store?: string | null
+  /** Marca resuelta por la relación FK (para alt descriptivo de imagen). */
+  marca?: { id: string; nombre: string; activa: boolean } | null
 }
+
+
 
 /** Devuelve las imágenes por color: { nombreColor: url } y la lista de colores con imagen. */
 export function colorImagesFor(product: CardProduct) {
@@ -57,6 +67,26 @@ export function colorImagesFor(product: CardProduct) {
 /** Devuelve la categoría visible de un producto. */
 export const categoryFor = (p: CardProduct) => p.categories?.[0]?.name ?? 'General'
 
+/** TRUE si el producto es de afiliado (tiene URL de marketplace externo). */
+export function isAffiliateProduct(product: CardProduct): boolean {
+  return Boolean(product.url_afiliado_ali || product.url_afiliado_amazon || product.url_afiliado_store)
+}
+
+/**
+ * Alt descriptivo de la imagen principal (SEO de imágenes).
+ * Patrón: "{nombre} — {categoría} | {marca}" cuando hay datos; si no, el nombre.
+ */
+export function productImageAlt(product: CardProduct): string {
+  const category = categoryFor(product)
+  const marca = product.marca?.nombre
+  const base = product.name
+  if (category && category !== 'General') {
+    return marca ? `${base} — ${category} | ${marca}` : `${base} — ${category}`
+  }
+  return marca ? `${base} | ${marca}` : base
+}
+
+
 /** Formatea el precio de un producto por peso: "$X.XX /g · $Y /kg". */
 function priceLabel(product: CardProduct) {
   const isWeight = product.pricing_type === 'weight'
@@ -69,16 +99,24 @@ function priceLabel(product: CardProduct) {
   return moneyUsd(product.price_usd)
 }
 
-/** Devuelve el stock visible de un producto (gramos o unidades). */
-function stockLabel(product: CardProduct) {
+/**
+ * Etiqueta de disponibilidad visible en la card.
+ * Catálogo de afiliados puro: NO se muestra stock falso (no se gestiona
+ * inventario). En su lugar se comunica disponibilidad + envío estimado,
+ * que es lo que de verdad decide la compra en dropshipping.
+ */
+function availabilityLabel(product: CardProduct): string {
+  if (isAffiliateProduct(product)) return 'Disponible · Envío 7-15 días'
+  // Producto propio (sin afiliado): se conserva el stock real si existe.
   const isWeight = product.pricing_type === 'weight'
   if (isWeight) return `${formatWeight(product.stock_grams ?? 0)} disponibles`
   const unit = product.unit_label || 'u'
   return `${product.stock} ${unit} en stock`
 }
 
-/** Es stock bajo (unidad: umbral configurable o LOW_STOCK_ALERT; peso: < 10 mínimos). */
+/** Es stock bajo (solo aplica a productos propios sin afiliado). */
 function isLowStock(product: CardProduct) {
+  if (isAffiliateProduct(product)) return false
   if (product.pricing_type === 'weight') {
     const min = Number(product.min_order_grams) || 0
     return min > 0 && Number(product.stock_grams) < min * 10
@@ -86,6 +124,7 @@ function isLowStock(product: CardProduct) {
   const threshold = product.low_stock_threshold ?? LOW_STOCK_ALERT
   return product.stock < threshold
 }
+
 
 /**
  * Card de producto reutilizable.
@@ -109,27 +148,48 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
     trackProductEvent(product.id, PRODUCT_EVENT_TYPES.CARD_CLICK)
   }
 
+  // URL canónica de la página de producto (crawlable por Google).
+  const productUrl = `/productos/${product.slug}`
+
   return (
     <article className="group overflow-hidden rounded-3xl border border-border bg-card">
-      <button onClick={handleOpenDetails} aria-label={`Ver detalles de ${product.name}`} className="relative block w-full overflow-hidden bg-muted">
+      {/* La imagen es un enlace crawlable a la página real del producto.
+          El modal de "vista rápida" se mantiene como acción secundaria en el
+          botón "+" y en "Ver detalles", pero el enlace principal (imagen +
+          título) navega a /productos/[slug] para que Google pueda indexar. */}
+      <a href={productUrl} aria-label={`Ver ${product.name}`} className="relative block w-full overflow-hidden bg-muted">
         {image ? (
-          <Image src={image} alt={product.name} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
+          <Image src={image} alt={productImageAlt(product)} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
           <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">Sin imagen</div>
         )}
-        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{stockLabel(product)}</span>
+        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{availabilityLabel(product)}</span>
         {Number(product.bulk_discount_percent ?? 0) > 0 && (
           <span className="absolute right-4 top-4 rounded-full bg-emerald-500/90 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
             -{product.bulk_discount_percent}% mayoreo
           </span>
         )}
-      </button>
+      </a>
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-brand-strong">{categoryFor(product)}</p>
-            <h3 className="mt-1 font-medium">{product.name}</h3>
+            {/* La categoría enlaza a su página indexable /categoria/[slug]
+                (pSEO). Si el producto no trae slug de categoría, se muestra
+                como texto plano para no generar enlaces rotos. */}
+            {product.categories?.[0]?.slug ? (
+              <a href={`/categoria/${product.categories[0].slug}`} className="text-xs text-brand-strong transition-colors hover:underline">
+                {categoryFor(product)}
+              </a>
+            ) : (
+              <p className="text-xs text-brand-strong">{categoryFor(product)}</p>
+            )}
+            {/* Título como <a> crawlable (SEO): Google sigue este enlace a la
+                página de producto. El <h3> se mantiene para jerarquía. */}
+            <h3 className="mt-1 font-medium">
+              <a href={productUrl} className="transition-colors hover:text-brand-strong">{product.name}</a>
+            </h3>
           </div>
+
           <button
             onClick={() => {
               // Con colores se abre el modal (el detalle también es card_click).
@@ -194,9 +254,14 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
             <p className="font-semibold">{priceLabel(product)}</p>
             <p className="text-xs text-muted-foreground">{formatBolivars(product.price_usd, rate)}</p>
           </div>
-          <button onClick={handleOpenDetails} className="text-xs text-muted-foreground underline underline-offset-4">Ver detalles</button>
+          {/* "Ver detalles" navega a la página real (crawlable) en lugar de
+              abrir solo el modal, reforzando el enlazado interno hacia el
+              producto indexable. */}
+          <a href={productUrl} className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-brand-strong">Ver detalles</a>
         </div>
       </div>
     </article>
   )
 }
+
+
