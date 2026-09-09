@@ -32,8 +32,12 @@ export type AliProductoBuscado = {
   ali_product_id: string
   /** Título tal cual devuelve la API (sin traducir). */
   titulo_fabrica: string
+  /** Marca del producto si la API la expone (ej: "Xiaomi"). Null si no viene. */
+  marca: string | null
   /** URL oficial del producto (para scrapear detalle). */
   url_producto: string
+  /** URL de la imagen principal del producto (CDN de AliExpress). */
+  imagen_principal: string | null
   /** Precio base inferior visible en USD (string crudo de Ali). */
   precio_min_venta: number | null
   /** Precio base superior (rango) en USD o null si no hay rango. */
@@ -42,6 +46,12 @@ export type AliProductoBuscado = {
   comision_porcentaje: number | null
   /** Volumen de ventas reportado (si viene). */
   ventas_recientes: number | null
+  /**
+   * Enlace de afiliado YA generado por la API de búsqueda (s.click.aliexpress.com).
+   * La API `product.query` devuelve el promotion_link listo por producto, así
+   * que NO hace falta llamar a `link.generate` para estos productos.
+   */
+  promotion_link: string | null
 }
 
 export type AliEnlaceAfiliado = {
@@ -73,7 +83,7 @@ function validarCredenciales(): string | null {
  * 2) Arma "app_key..." con valores concatenados sin separador (formato Ali).
  * 3) Calcula HMAC-SHA256 con el app secret.
  */
-function generarFirma(paramsOrdenados: Record<string, string>): string {
+function generarFirma(paramsOrdenados: Record<string, string | number>): string {
   const cadenaFirma = Object.keys(paramsOrdenados)
     .sort()
     .map((clave) => `${clave}${paramsOrdenados[clave]}`)
@@ -82,48 +92,55 @@ function generarFirma(paramsOrdenados: Record<string, string>): string {
 }
 
 /**
- * Ejecuta una petición genérica POST al API REST de AliExpress Open
- * Platform con los parámetros firmados correctamente.
+ * Ejecuta una petición GET firmada a una BUSINESS API de AliExpress Open
+ * Platform. Según la documentación oficial, las business APIs (afiliado)
+ * se llaman así:
  *
- * Contrato real de AliExpress Open Platform (open.aliexpress.com):
+ *   https://api-sg.aliexpress.com/sync?method={api_path}&{query}
+ *
+ *  - El método viaja en el query como parámetro "method".
  *  - Parámetros de sistema: app_key, timestamp (yyyy-MM-dd HH:mm:ss),
- *    sign_method=sha256, sign, format=json, v=2.0, api=<método>.
- *  - La firma se calcula sobre TODOS los parámetros (sistema + negocio)
- *    ordenados alfabéticamente y concatenados como "clavevalor".
- *  - El resultado se envía como application/x-www-form-urlencoded.
+ *    sign_method=sha256, sign, format=json, v=2.0.
+ *  - La firma se calcula sobre TODOS los parámetros (sistema + negocio,
+ *    incluido "method") ordenados alfabéticamente y concatenados "clavevalor".
+ *  - Todo se envía en la query string de la URL (GET).
  */
 async function llamarApiAliExpress(
   metodo: string,
-  parametrosSinSistema: Record<string, string>,
+  parametrosSinSistema: Record<string, string | number>,
 ) {
   const errorCredenciales = validarCredenciales()
   if (errorCredenciales) return { success: false as const, error: errorCredenciales }
 
-  // Timestamp en el formato exacto que exige AliExpress: yyyy-MM-dd HH:mm:ss.
+  // Timestamp en el formato clásico que exige la business API /sync:
+  // yyyy-MM-dd HH:mm:ss (ej: 2024-01-01 12:00:00).
   const ahora = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   const timestamp = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`
 
-  const paramsBase: Record<string, string> = {
+  const paramsBase: Record<string, string | number> = {
     app_key: ALI_APP_KEY,
     timestamp,
     sign_method: 'sha256',
-    // En la plataforma nueva el método viaja en el parámetro "api".
-    api: metodo,
+    // El método es parte de la firma y viaja en el query.
+    method: metodo,
     format: 'json',
     v: '2.0',
-    simplify: 'true',
     ...parametrosSinSistema,
   }
 
   const firma = generarFirma(paramsBase)
-  const body = new URLSearchParams({ ...paramsBase, sign: firma })
+  // URLSearchParams exige valores string: convertimos cada valor a texto.
+  const paramsComoTexto: Record<string, string> = Object.fromEntries(
+    Object.entries(paramsBase).map(([clave, valor]) => [clave, String(valor)]),
+  )
+  const query = new URLSearchParams({ ...paramsComoTexto, sign: firma })
+  const urlCompleta = `${ALIEXPRESS_OPEN_API_ENDPOINT}?${query.toString()}`
 
   try {
-    const respuesta = await fetch(ALIEXPRESS_OPEN_API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
+    const respuesta = await fetch(urlCompleta, {
+      method: 'GET',
+      headers: { accept: 'application/json' },
       cache: 'no-store',
     })
 
@@ -132,10 +149,18 @@ async function llamarApiAliExpress(
     }
 
     const datos = (await respuesta.json()) as any
-    // La API envuelve la respuesta en un objeto con error_response cuando falla.
+    // Formato de error ANTIGUO: la API envuelve el fallo en error_response.
     if (datos?.error_response) {
       const msg = datos.error_response.msg || datos.error_response.sub_msg || 'Error desconocido de AliExpress.'
       console.error('[aliApi] error_response:', JSON.stringify(datos.error_response))
+      return { success: false as const, error: `AliExpress API: ${msg}` }
+    }
+    // Formato de error NUEVO (open.aliexpress.com): responde HTTP 200 con un
+    // cuerpo { type, code, message, request_id, _trace_id_ } en vez de datos.
+    // Si no hay "code" de éxito (200) y viene "message", es un error real.
+    if (datos && typeof datos === 'object' && datos.code !== undefined && datos.code !== 200 && datos.code !== '200') {
+      const msg = datos.message || datos.msg || `Código de error ${datos.code}.`
+      console.error('[aliApi] error nuevo formato:', JSON.stringify(datos))
       return { success: false as const, error: `AliExpress API: ${msg}` }
     }
 
@@ -166,8 +191,12 @@ export async function buscarProductosMasVendidos(
     page_no: String(Math.max(page, 1)),
     page_size: '20',
     sort,
-    // Moneda/country por defecto para la comisión.
-    target_currency: 'USD',
+    // Moneda en la que la API devuelve los precios. El usuario quiere que los
+    // productos de AliExpress muestren el precio en EUROS (igual que ve en su
+    // navegador), así que pedimos los precios directamente en EUR a la API.
+    // Asi el valor numerico que guardamos coincide con el 9,29€ que muestra
+    // AliExpress, sin depender de conversiones manuales USD->EUR.
+    target_currency: 'EUR',
     target_language: ALI_LOCALE,
     tracking_id: ALI_TRACKING_ID,
   })
@@ -187,11 +216,20 @@ export async function buscarProductosMasVendidos(
     return {
       ali_product_id: String(p?.product_id ?? p?.productId ?? ''),
       titulo_fabrica: String(p?.product_title ?? p?.productTitle ?? ''),
+      // Marca del producto si la API la expone (campo `brand`). AliExpress la
+      // incluye en la respuesta de búsqueda para productos de marca conocida.
+      // Si no viene, el pipeline cae a la marca detectada por el scraper.
+      marca: String(p?.brand ?? '') || null,
       url_producto: String(p?.product_detail_url ?? p?.productDetailUrl ?? ''),
+      // Imagen principal del producto (CDN). Sirve de fallback cuando el
+      // scraper no logra extraer la galería (AliExpress bloquea proxies).
+      imagen_principal: String(p?.product_main_image_url ?? p?.image_url ?? '') || null,
       precio_min_venta: precioTarget != null ? Number(precioTarget) : null,
       precio_max_venta: precioTargetAlto != null ? Number(precioTargetAlto) : null,
       comision_porcentaje: Number(p?.commission_rate ?? p?.commissionRate ?? 0) || null,
       ventas_recientes: p?.sale_price ? Number(p.sale_price) : null,
+      // La API de búsqueda ya devuelve el promotion_link listo por producto.
+      promotion_link: String(p?.promotion_link ?? '') || null,
     }
   })
 
@@ -247,31 +285,78 @@ export async function generarEnlaceAfiliado(urlProducto: string) {
   if (!url) return { success: false as const, error: 'La URL del producto es obligatoria.' }
 
   const resultado = await llamarApiAliExpress(ALI_LINK_METHOD, {
-    // La URL que se convertirá a afiliado. Ali requiere el protocolo completo.
-    source: url,
+    // La API `link.generate` exige el parámetro `source_values`: un array JSON
+    // de URLs de producto a convertir en enlace de afiliado.
+    source_values: JSON.stringify([url]),
     tracking_id: ALI_TRACKING_ID,
+    // Tipo de enlace promocional obligatorio (enum numérico de AliExpress):
+    //   0 = enlace promocional largo con tracking (promotionLink)
+    //   1 = enlace corto (shortLink)
+    // Se envía como número (AliExpress lo exige numérico); la capa de firma
+    // y query lo convierte a texto internamente.
+    promotion_link_type: 0,
   })
 
   if (!resultado.success) return resultado
 
-  const respuestaNivelUno = resultado.data?.aliexpress_affiliate_link_generate_response
-  const urls = respuestaNivelUno?.result?.promotion_links?.promotion_link ?? []
+  // AliExpress envuelve el resultado en `aliexpress_affiliate_link_generate_response`
+  // y reporta el estado en `resp_result.resp_code`/`resp_result.resp_msg`
+  // (200 = éxito). Si resp_code no es 200, es un error de negocio real que
+  // debemos mostrar tal cual (ej: 405 "The result is empty").
+  const envelope = resultado.data?.aliexpress_affiliate_link_generate_response
+  const resultadoNegocio = envelope?.resp_result ?? envelope
+  const codigoRespuesta = resultadoNegocio?.resp_code ?? envelope?.code
+  if (codigoRespuesta !== undefined && Number(codigoRespuesta) !== 200) {
+    const msgNegocio =
+      resultadoNegocio?.resp_msg ?? envelope?.message ?? `Código ${codigoRespuesta}`
+    console.error('[aliApi] link.generate error negocio:', JSON.stringify(envelope))
+    return { success: false as const, error: `AliExpress API: ${msgNegocio}` }
+  }
 
-  const lista = Array.isArray(urls) ? urls : [urls]
-  const primerEnlace = lista.find((l: any) => (l?.promotion_link ?? '').includes('http'))
+  // AliExpress cambia el "envelope" de la respuesta según la versión del API.
+  // En lugar de depender de una ruta fija, buscamos recursivamente el primer
+  // objeto que contenga un `promotion_link` (URL de afiliado larga).
+  const enlaceHallado = extraerEnlacePromocional(resultado.data)
 
-  if (!primerEnlace) {
+  if (!enlaceHallado) {
+    // Log de diagnóstico para depurar la estructura real de la respuesta.
+    console.error('[aliApi] Respuesta link.generate sin enlace. Cruda:', JSON.stringify(resultado.data)?.slice(0, 2000))
     return { success: false as const, error: 'AliExpress no devolvió un enlace promocional.' }
   }
 
   return {
     success: true as const,
     data: {
-      enlace_largo: String(primerEnlace.promotion_link ?? ''),
-      enlace_corto: String(primerEnlace.promotion_short_link ?? '') || null,
+      enlace_largo: String(enlaceHallado.promotion_link ?? ''),
+      enlace_corto: String(enlaceHallado.promotion_short_link ?? '') || null,
       tracking_id: ALI_TRACKING_ID,
     } as AliEnlaceAfiliado,
   }
+}
+
+/**
+ * Recorre recursivamente la respuesta de `link.generate` buscando el primer
+ * objeto con un `promotion_link` válido (URL http). AliExpress anida el
+ * resultado en rutas distintas según la versión, así que se inspecciona todo.
+ */
+function extraerEnlacePromocional(nodo: any, profundidad = 0): any | null {
+  if (!nodo || typeof nodo !== 'object' || profundidad > 8) return null
+  if (Array.isArray(nodo)) {
+    for (const item of nodo) {
+      const hallado = extraerEnlacePromocional(item, profundidad + 1)
+      if (hallado) return hallado
+    }
+    return null
+  }
+  // Si este objeto ya es un enlace promocional con URL http, lo devolvemos.
+  if (typeof nodo.promotion_link === 'string' && nodo.promotion_link.includes('http')) {
+    return nodo
+  }
+  for (const valor of Object.values(nodo)) {
+    const hallado = extraerEnlacePromocional(valor, profundidad + 1)
+    if (hallado) return hallado
+  }
+  return null
 }
 
 /** Función de diagnóstico simple para UI: dice si las claves están configuradas. */

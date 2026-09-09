@@ -210,3 +210,113 @@ html { scroll-behavior: smooth; }
   .print-area thead { display: table-header-group; }
   .print-area tfoot { display: table-footer-group; }
 }
+
+/* ============================================================
+   Descripción enriquecida (RichDescription).
+   Estilos tipográficos para el HTML semántico que genera el
+   pipeline SEO (DeepSeek): h2/h3, párrafos, listas, enlaces,
+   tablas, citas y código. Se aplica dentro de .rich-description
+   para que la descripción del producto se vea bien formateada
+   (no como texto plano con etiquetas visibles).
+   ============================================================ */
+.rich-description {
+  color: var(--muted-foreground);
+}
+.rich-description > *:first-child { margin-top: 0; }
+.rich-description > *:last-child { margin-bottom: 0; }
+
+.rich-description h1,
+.rich-description h2,
+.rich-description h3,
+.rich-description h4,
+.rich-description h5,
+.rich-description h6 {
+  color: var(--foreground);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 1.5em 0 0.5em;
+}
+.rich-description h1 { font-size: 1.5rem; }
+.rich-description h2 { font-size: 1.25rem; }
+.rich-description h3 { font-size: 1.1rem; }
+.rich-description h4,
+.rich-description h5,
+.rich-description h6 { font-size: 1rem; }
+
+.rich-description p { margin: 0.75em 0; }
+
+.rich-description ul,
+.rich-description ol {
+  margin: 0.75em 0;
+  padding-left: 1.4em;
+}
+.rich-description ul { list-style: disc; }
+.rich-description ol { list-style: decimal; }
+.rich-description li { margin: 0.3em 0; }
+.rich-description li::marker { color: var(--brand-strong); }
+
+.rich-description strong,
+.rich-description b { color: var(--foreground); font-weight: 600; }
+
+.rich-description a {
+  color: var(--brand-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-description a:hover { color: var(--brand); }
+
+.rich-description blockquote {
+  margin: 1em 0;
+  border-left: 3px solid var(--brand);
+  padding: 0.25em 0 0.25em 1em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.rich-description code {
+  background: var(--muted);
+  border-radius: 0.375rem;
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+}
+.rich-description pre {
+  background: var(--muted);
+  border-radius: 0.75rem;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.rich-description pre code { background: transparent; padding: 0; }
+
+.rich-description hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+
+.rich-description table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9em;
+}
+.rich-description th,
+.rich-description td {
+  border: 1px solid var(--border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+.rich-description th {
+  background: var(--muted);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.rich-description img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 0.75em 0;
+}

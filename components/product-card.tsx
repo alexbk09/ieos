@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Plus } from 'lucide-react'
+import { plainTextFromHtml } from '@/components/rich-description'
 import { LOW_STOCK_ALERT, PRODUCT_EVENT_TYPES } from '@/lib/constants'
 import { trackProductEvent } from '@/lib/analytics-client'
 import { formatBolivars, moneyUsd } from '@/lib/currency'
@@ -144,7 +145,9 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
             <Plus size={17} />
           </button>
         </div>
-        {product.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>}
+        {/* Resumen de la descripción: se limpia el HTML a texto plano para que
+            la card no muestre etiquetas crudas (h2, p…) y quede un preview limpio. */}
+        {product.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{plainTextFromHtml(product.description)}</p>}
 
         {/* Colores disponibles con miniaturas (solo si existen) */}
         {product.colors && product.colors.length > 0 && (

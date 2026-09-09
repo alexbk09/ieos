@@ -4,6 +4,7 @@ import { ImagePlus, Plus, ShieldCheck, Truck, ExternalLink } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
+import { RichDescription } from '@/components/rich-description'
 import { CartDrawer } from '@/components/cart-drawer'
 import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart, type CartProduct } from '@/hooks/use-cart'
@@ -227,10 +228,9 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
               {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· tasa {formatRate(exchangeRate)}</span>
             </p>
 
-            {/* Descripción: se pinta como texto (React escapa HTML) → cero XSS */}
-            {product.description && (
-              <p className="mt-6 whitespace-pre-line text-sm leading-7 text-muted-foreground md:text-base">{product.description}</p>
-            )}
+            {/* Descripción: se renderiza como HTML semántico (h2, p, ul…) con
+                estilos tipográficos y sanitización anti-XSS (RichDescription). */}
+            {product.description && <RichDescription html={product.description} className="mt-6" />}
 
             {/* Selector de color: muta la imagen principal */}
             {product.colors.length > 0 && (

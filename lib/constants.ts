@@ -156,8 +156,12 @@ export const SCRAPER_MAX_IMAGES_PER_COLOR = 8
 
 // ---------- AliExpress Open Platform (API oficial afiliados — Fase 2.2) ----------
 
-/** Endpoint regional de la API abierta de AliExpress (sureste asiático). */
-export const ALIEXPRESS_OPEN_API_ENDPOINT = 'https://api-sg.aliexpress.com/rest'
+/**
+ * Endpoint para APIs de NEGOCIO de AliExpress Open Platform.
+ * Según la documentación oficial, las business APIs (como las de afiliado)
+ * se llaman vía GET a /sync?method={api_path}&{query}.
+ */
+export const ALIEXPRESS_OPEN_API_ENDPOINT = 'https://api-sg.aliexpress.com/sync'
 
 /** Método oficial para buscar productos afiliados por keyword, ordenados por volumen o comisión. */
 export const ALI_SEARCH_METHOD = 'aliexpress.affiliate.product.query'

@@ -19,8 +19,11 @@ export function ProductCarousel({ images, alt, className = '' }: { images: Carou
   const showControls = list.length > 1
 
   return (
-    <div className={`group relative overflow-hidden ${className}`}>
-      <Image src={current.url} alt={current.alt_text || alt} width={800} height={600} loading="lazy" className="size-full object-cover" />
+    <div className={`group relative overflow-hidden bg-slate-50 dark:bg-slate-900 ${className}`}>
+      {/* object-contain: muestra la imagen COMPLETA sin recortarla (object-cover
+          recortaba y agrandaba las fotos de AliExpress, perdiendo calidad).
+          max-h limita el alto para que no se vea gigante en el modal. */}
+      <Image src={current.url} alt={current.alt_text || alt} width={800} height={600} loading="lazy" className="mx-auto size-full max-h-[70vh] object-contain" />
       {showControls && (
         <>
           <button aria-label="Anterior" onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + list.length) % list.length) }} className="absolute left-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/80 text-blue-950 opacity-0 transition group-hover:opacity-100 hover:bg-white"><ChevronLeft size={16} /></button>

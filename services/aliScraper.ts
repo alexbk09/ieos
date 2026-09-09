@@ -40,6 +40,8 @@ export type AliScraperPrecio = {
 export type AliScraperProductoData = {
   ali_product_id: string | null
   titulo_original: string | null
+  /** Marca del producto (ej: "Xiaomi", "Anker"). Null si no se detecta. */
+  marca: string | null
   precio_base: AliScraperPrecio | null
   metadatos_fisicos: Record<string, string>
   galeria_imagenes: AliScraperImagenColor[]
@@ -79,6 +81,85 @@ function urlAbsolutaHttps(valor: unknown): string | null {
   if (limpia.startsWith('http://')) return limpia
   if (limpia.startsWith('https://')) return limpia
   return null
+}
+
+/**
+ * Detecta si una URL de imagen de AliExpress corresponde a una variante
+ * DIFUMINADA o con MARCA DE AGUA (watermark), que AliExpress genera como
+ * "preview" borroso antes de cargar la imagen real o como copia protegida.
+ * Estas variantes NO deben guardarse ni mostrarse porque son redundantes
+ * (existe la misma imagen limpia) y se ven mal en el catálogo.
+ *
+ * Patrones detectados (según el CDN alicdn.com / aliexpress-media.com):
+ *  - Marcadores explícitos en el nombre: "_blur", "_watermark", "blur",
+ *    "watermark", "_preview", "_placeholder".
+ *  - Miniaturas de preview borroso por tamaño: "_350x350", "_220x220",
+ *    "_100x100", "_50x50" (AliExpress usa estas como thumb borrosas).
+ */
+function esImagenDifuminadaOMarcaDeAgua(url: string): boolean {
+  const nombre = url.toLowerCase()
+  return (
+    /_blur|_watermark|_preview|_placeholder|blur|watermark/i.test(nombre) ||
+    /_(?:50|100|220|350)x(?:50|100|220|350)\.(?:jpg|jpeg|png|webp)/i.test(nombre)
+  )
+}
+
+/**
+ * Devuelve la "identidad base" de una imagen AliExpress: la URL sin los
+ * sufijos de tamaño/calidad que AliExpress añade para servir la misma foto
+ * en varias resoluciones (ej: ".../HB123.jpg_350x350.jpg" y
+ * ".../HB123.jpg_640x640.jpg" son la MISMA imagen). Al normalizar ambas a
+ * su base común podemos detectar duplicados y quedarnos con la versión limpia.
+ *
+ * Ejemplos:
+ *   ".../kf/HBabc.jpg_350x350.jpg"  -> ".../kf/HBabc.jpg"
+ *   ".../kf/HBabc.jpg_640x640.jpg"  -> ".../kf/HBabc.jpg"
+ *   ".../kf/HBabc.jpg"              -> ".../kf/HBabc.jpg"  (sin cambios)
+ */
+function normalizarIdentidadImagen(url: string): string {
+  // Quita el sufijo "_WxH.ext" que AliExpress añade tras la extensión real.
+  // Ej: "HBabc.jpg_350x350.jpg" -> "HBabc.jpg". Se repite por si hay varios.
+  let base = url
+  for (let i = 0; i < 3; i += 1) {
+    const nueva = base.replace(/_(?:\d{2,4})x(?:\d{2,4})\.(?:jpg|jpeg|png|webp)$/i, '')
+    if (nueva === base) break
+    base = nueva
+  }
+  // Quita marcadores de blur/watermark para que la versión limpia y la
+  // difuminada de la misma foto compartan identidad.
+  base = base.replace(/_(?:blur|watermark|preview|placeholder)/gi, '')
+  return base
+}
+
+/**
+ * Filtra y deduplica una lista de URLs de imágenes AliExpress:
+ *  - Descarta las variantes difuminadas/watermark cuando existe la versión
+ *    limpia de la misma foto (misma identidad base).
+ *  - Si SOLO existe la variante difuminada (raro), la conserva para no perder
+ *    la imagen por completo.
+ *  - Elimina duplicados exactos y conserva el orden original.
+ */
+function filtrarImagenesLimpias(urls: string[]): string[] {
+  const limpias: string[] = []
+  const identidadesLimpias = new Set<string>()
+  const identidadesDifuminadas = new Set<string>()
+
+  // Primera pasada: registrar qué identidades tienen versión limpia.
+  for (const url of urls) {
+    if (esImagenDifuminadaOMarcaDeAgua(url)) identidadesDifuminadas.add(normalizarIdentidadImagen(url))
+    else identidadesLimpias.add(normalizarIdentidadImagen(url))
+  }
+
+  // Segunda pasada: conservar solo limpias, o difuminadas sin versión limpia.
+  for (const url of urls) {
+    if (esImagenDifuminadaOMarcaDeAgua(url)) {
+      // Solo se conserva la difuminada si NO existe su versión limpia.
+      if (!identidadesLimpias.has(normalizarIdentidadImagen(url))) limpias.push(url)
+    } else {
+      limpias.push(url)
+    }
+  }
+  return limpias
 }
 
 /** Quita espacios multiples de un titulo. */
@@ -128,12 +209,20 @@ function tryParsearJson(texto: string | null | undefined): unknown {
 /**
  * Busca window.runParams en los <script>s. Ahí AliExpress hidrata el
  * producto completo: titulo, precios, especificaciones, imagenes y SKUs.
+ * NOTA (2026): AliExpress ya NO hidrata el producto en `window.runParams`
+ * (queda vacío {}). El estado real vive en `window._d_c_.DCData` (imagenes)
+ * y en llamadas XHR posteriores. Por eso esta funcion tambien intenta
+ * capturar DCData como fuente de imagenes.
  */
 function extraerRunParams($: ReturnType<typeof load>): unknown {
   const textos: string[] = []
   $('script').each((_, elemento) => {
     const contenido = $(elemento).text() || $(elemento).html() || ''
-    if (contenido.includes('window.runParams') || contenido.includes('_init_data_')) {
+    if (
+      contenido.includes('window.runParams') ||
+      contenido.includes('_init_data_') ||
+      contenido.includes('_d_c_.DCData')
+    ) {
       textos.push(contenido)
     }
   })
@@ -145,7 +234,16 @@ function extraerRunParams($: ReturnType<typeof load>): unknown {
       const desdeIgual = texto.indexOf('=', indice)
       if (0 <= desdeIgual) {
         const parseado = tryParsearJson(primerObjetoJson(texto.slice(desdeIgual + 1)))
-        if (esObjeto(parseado)) return parseado
+        if (esObjeto(parseado) && Object.keys(parseado).length > 0) return parseado
+      }
+    }
+    // DCData trae la galeria de imagenes del producto (imagePathList).
+    const indiceDC = texto.indexOf('window._d_c_.DCData')
+    if (0 <= indiceDC) {
+      const desdeIgual = texto.indexOf('=', indiceDC)
+      if (0 <= desdeIgual) {
+        const parseado = tryParsearJson(primerObjetoJson(texto.slice(desdeIgual + 1)))
+        if (esObjeto(parseado) && Object.keys(parseado).length > 0) return parseado
       }
     }
     const indiceProducto = texto.indexOf('"productId"')
@@ -158,15 +256,38 @@ function extraerRunParams($: ReturnType<typeof load>): unknown {
   return null
 }
 
-/** Parsea un texto de precio crudo (US $0.75 ~ US $1.20) a numeros. */
+/**
+ * Parsea un texto de precio crudo a numeros, soportando los formatos que
+ * AliExpress muestra segun la moneda/locale del visitante:
+ *   - USD:  "US $0.75 ~ US $1.20" o "$1.09"
+ *   - EUR:  "9,29€" (decimal con coma, simbolo € al final)
+ *   - MXN/COP: "$1,234.56" (miles con coma, decimal con punto)
+ * Detecta la moneda por el simbolo y normaliza el separador decimal.
+ */
 function parsearPrecioTexto(texto: string): AliScraperPrecio | null {
   if (!texto) return null
-  const matchMoneda = texto.match(/\$\s?\d|US\s?D/i)
-  if (!matchMoneda) return null
+  const esEuro = /€/.test(texto)
+  const esDolar = /\$\s?\d|US\s?D/i.test(texto)
+  if (!esEuro && !esDolar) return null
+  const moneda = esEuro ? 'EUR' : 'USD'
+
+  // Normaliza el separador decimal: en formato europeo "9,29" la coma es
+  // decimal; en formato anglosajon "1,234.56" la coma es separador de miles.
+  // Estrategia segura: si hay coma seguida de 1-2 digitos y NO hay punto
+  // decimal despues, la coma es decimal -> se reemplaza por punto.
   const numeros: number[] = []
-  const coincidencias = texto.matchAll(/(\d+(?:[.,]\d{1,2})?)/g)
+  const coincidencias = texto.matchAll(/(\d[\d.,]*)/g)
   for (const m of coincidencias) {
-    const numero = parseFloat(m[1].replace(',', '.'))
+    let crudo = m[1]
+    // Si el numero usa coma como decimal (ej: 9,29) y no tiene punto, la
+    // convertimos a punto. Si usa punto como decimal (ej: 1.09), queda igual.
+    if (crudo.includes(',') && !crudo.includes('.')) {
+      crudo = crudo.replace(',', '.')
+    } else if (crudo.includes(',') && crudo.includes('.')) {
+      // Formato "1,234.56": la coma es miles -> se elimina.
+      crudo = crudo.replace(/,/g, '')
+    }
+    const numero = parseFloat(crudo)
     if (Number.isFinite(numero) && 0 < numero) numeros.push(numero)
   }
   if (numeros.length === 0) return null
@@ -177,7 +298,7 @@ function parsearPrecioTexto(texto: string): AliScraperPrecio | null {
   return {
     minimo,
     maximo: hayRango && !esMismoValor ? maximoCandidato : null,
-    moneda: 'USD',
+    moneda,
     texto_original: texto.replace(/\s+/g, ' ').trim(),
   }
 }
@@ -187,7 +308,7 @@ function recolectarPrecios(nodo: unknown, salida: string[] = [], prof = 0): stri
   if (!nodo) return salida
   if (prof > 8) return salida
   if (typeof nodo === 'string') {
-    if (/\$\s?\d|US\s?D/i.test(nodo)) salida.push(nodo.trim())
+    if (/\$\s?\d|US\s?D|€/i.test(nodo)) salida.push(nodo.trim())
     return salida
   }
   if (esArreglo(nodo)) {
@@ -206,7 +327,10 @@ function recolectarImagenes(nodo: unknown, salida: string[] = [], prof = 0): str
   if (prof > 10) return salida
   if (typeof nodo === 'string') {
     const url = urlAbsolutaHttps(nodo)
-    if (url && url.includes('alicdn.com') && !salida.includes(url)) salida.push(url)
+    // AliExpress usa dos CDN: alicdn.com (clasico) y aliexpress-media.com (nuevo).
+    if (url && (url.includes('alicdn.com') || url.includes('aliexpress-media.com')) && !salida.includes(url)) {
+      salida.push(url)
+    }
     return salida
   }
   if (esArreglo(nodo)) {
@@ -219,7 +343,16 @@ function recolectarImagenes(nodo: unknown, salida: string[] = [], prof = 0): str
   return salida
 }
 
-/** Construye la galeria con variantes color/SKU desde window.runParams. */
+/**
+ * Filtra una lista de URLs de imágenes AliExpress descartando las variantes
+ * difuminadas/watermark que duplican una versión limpia de la misma foto.
+ * Se usa como paso final de saneamiento en la galería (JSON y DOM).
+ */
+function limpiarListaImagenes(urls: string[]): string[] {
+  return filtrarImagenesLimpias(urls)
+}
+
+/** Construye la galeria con variantes color/SKU desde window.runParams o DCData. */
 function extraerGaleriaRunParams(runParams: unknown): AliScraperImagenColor[] {
   const resultado: AliScraperImagenColor[] = []
   if (!esObjeto(runParams)) return resultado
@@ -249,9 +382,14 @@ function extraerGaleriaRunParams(runParams: unknown): AliScraperImagenColor[] {
   visitar(datos)
 
   // Si no hay variantes con imagen, usa imagenes generales del CDN.
+  // DCData (estructura nueva 2026) trae la galeria en imagePathList a nivel
+  // raiz del objeto, no bajo `data`. Por eso tambien recorremos el objeto
+  // completo (runParams) como fuente de imagenes.
   if (resultado.length === 0) {
-    const generales = recolectarImagenes(datos).slice(0, SCRAPER_MAX_IMAGES_PER_COLOR)
-    for (const url of generales) resultado.push({ color: null, url })
+    const generales = limpiarListaImagenes(recolectarImagenes(datos)).slice(0, SCRAPER_MAX_IMAGES_PER_COLOR)
+    const generalesRaiz = limpiarListaImagenes(recolectarImagenes(runParams)).slice(0, SCRAPER_MAX_IMAGES_PER_COLOR)
+    const fuente = generales.length > 0 ? generales : generalesRaiz
+    for (const url of fuente) resultado.push({ color: null, url })
   }
   return resultado.slice(0, SCRAPER_MAX_IMAGES_PER_COLOR * 4)
 }
@@ -344,6 +482,81 @@ function extraerTituloRunParams(runParams: unknown): string | null {
   return null
 }
 
+/**
+ * Limpia y valida un nombre de marca detectado.
+ * Descarta valores genéricos/no útiles (AliExpress, tiendas, "No brand",
+ * "Sin marca", "Generic", etc.) que no aportan al filtro por marca.
+ */
+function limpiarMarca(valor: unknown): string | null {
+  if (typeof valor !== 'string') return null
+  const limpia = valor.replace(/\s+/g, ' ').trim()
+  if (!limpia) return null
+  // Longitud razonable (evita ruido) y descarta genéricos.
+  if (limpia.length > 60) return null
+  const genericos = /^(aliexpress|no\s?brand|sin\s?marca|generic|unbranded|unknown|store|tienda|official|original|factory|drop\s?shipping|wholesale|aliexpress\s?store)$/i
+  if (genericos.test(limpia)) return null
+  return limpia
+}
+
+/**
+ * Extrae la marca del producto desde el JSON hidratado (runParams/DCData).
+ * AliExpress la expone en varias rutas según la versión:
+ *   - data.productInfoComponent.content.brandName
+ *   - data.productInfoComponent.content.brand
+ *   - data.brandComponent.content (objeto con brandName)
+ *   - data.storeComponent.content.storeName (tienda, NO es marca real)
+ * También recorre las especificaciones buscando la clave "Brand Name"/"Marca".
+ */
+function extraerMarcaRunParams(runParams: unknown): string | null {
+  if (!esObjeto(runParams)) return null
+
+  // 1) Rutas oficiales de marca.
+  const rutasDirectas = [
+    ['data', 'productInfoComponent', 'content', 'brandName'],
+    ['data', 'productInfoComponent', 'content', 'brand'],
+    ['data', 'brandComponent', 'content', 'brandName'],
+    ['data', 'brandComponent', 'content', 'brand'],
+    ['data', 'brandName'],
+    ['brandName'],
+  ]
+  for (const ruta of rutasDirectas) {
+    const marca = limpiarMarca(obtenerRuta(runParams, ruta))
+    if (marca) return marca
+  }
+
+  // 2) La marca suele aparecer como especificación "Brand Name"/"Marca".
+  const metadatos = extraerMetadatosRunParams(runParams)
+  for (const clave of Object.keys(metadatos)) {
+    if (/brand|marca/i.test(clave)) {
+      const marca = limpiarMarca(metadatos[clave])
+      if (marca) return marca
+    }
+  }
+
+  // 3) Deep search: primer valor bajo una clave que contenga "brand".
+  const visitar = (nodo: unknown, prof = 0): string | null => {
+    if (!nodo || prof > 6) return null
+    if (esArreglo(nodo)) {
+      for (const item of nodo) {
+        const hallado = visitar(item, prof + 1)
+        if (hallado) return hallado
+      }
+      return null
+    }
+    if (!esObjeto(nodo)) return null
+    for (const [clave, valor] of Object.entries(nodo)) {
+      if (/brand/i.test(clave)) {
+        const marca = limpiarMarca(valor)
+        if (marca) return marca
+      }
+      const hallado = visitar(valor, prof + 1)
+      if (hallado) return hallado
+    }
+    return null
+  }
+  return visitar(obtenerRuta(runParams, ['data']))
+}
+
 /** ID de producto desde URL canónica, runParams o regex en HTML. */
 function extraerProductId(url: string, html: string, runParams: unknown, $: ReturnType<typeof load>): string | null {
   const canonica = $('link[rel="canonical"]').attr('href') || url
@@ -376,17 +589,36 @@ function extraerProductId(url: string, html: string, runParams: unknown, $: Retu
 
 /** Fallback por selectores CSS semanticos del DOM renderizado. */
 function parsearDesdeDom($: ReturnType<typeof load>): Partial<AliScraperProductoData> {
-  const titulo =
-    limpiarTitulo($('h1').first().text()) ||
-    limpiarTitulo($('[itemprop="name"]').first().text()) ||
+  // El <h1> de AliExpress suele ser genérico ("Aliexpress"), mientras que el
+  // meta og:title trae el título REAL del producto. Por eso priorizamos
+  // og:title y og:description ANTES que el h1, y limpiamos el sufijo
+  // " - AliExpress" que AliExpress añade al final del og:title.
+  const tituloCrudo =
     limpiarTitulo($('meta[property="og:title"]').attr('content')) ||
+    limpiarTitulo($('[itemprop="name"]').first().text()) ||
+    limpiarTitulo($('h1').first().text()) ||
     null
+  const titulo = tituloCrudo ? tituloCrudo.replace(/\s*-\s*AliExpress.*$/i, '').trim() : null
 
-  const textoPrecio =
+  // PRECIO (AliExpress 2026): el precio ACTUAL que ve el usuario vive en un
+  // elemento con clase "price-default--current--*" (puede ser <span> o <div>,
+  // ej: <span class="price-default--current--F8OlYIo">9,29€</span>), y el
+  // precio ORIGINAL tachado vive en "price-default--original--*". Por eso el
+  // selector es AGNOSTICO de etiqueta ([class*=...]) para capturar ambos.
+  // Los selectores antiguos (product-price-value, price--currentPriceText)
+  // ya NO existen en el DOM actual, por eso el scraper no capturaba precio.
+  // Se concatenan ambos para que parsearPrecioTexto devuelva min=actual y
+  // max=original (asi el catalogo muestra el precio real con su descuento).
+  const textoPrecioActual =
+    $('[class*="price-default--current"]').first().text() ||
     $('span[itemprop="price"]').first().attr('content') ||
-    $('span[class*="product-price-value"]').first().text() ||
-    $('span[class*="price--currentPriceText"]').first().text() ||
     ''
+  const textoPrecioOriginal =
+    $('[class*="price-default--original"]').first().text() || ''
+  const textoPrecio = [textoPrecioActual, textoPrecioOriginal]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
   const precio = parsearPrecioTexto(textoPrecio)
 
   const metadatos: Record<string, string> = {}
@@ -396,18 +628,40 @@ function parsearDesdeDom($: ReturnType<typeof load>): Partial<AliScraperProducto
     if (nombreFila && valorFila && !(nombreFila in metadatos)) metadatos[nombreFila] = valorFila
   })
 
+  // MARCA desde el DOM: meta tags de producto (og:brand / product:brand) o el
+  // elemento itemprop="brand". Si no aparece, se busca en las especificaciones
+  // ya extraidas bajo la clave "Brand Name"/"Marca".
+  const marcaDom =
+    limpiarMarca($('meta[property="og:brand"]').attr('content')) ||
+    limpiarMarca($('meta[property="product:brand"]').attr('content')) ||
+    limpiarMarca($('[itemprop="brand"]').first().attr('content')) ||
+    limpiarMarca($('[itemprop="brand"]').first().text()) ||
+    null
+  const marcaDesdeSpecs = (() => {
+    for (const clave of Object.keys(metadatos)) {
+      if (/brand|marca/i.test(clave)) {
+        const marca = limpiarMarca(metadatos[clave])
+        if (marca) return marca
+      }
+    }
+    return null
+  })()
+
   const imagenes: string[] = []
   $('img').each((_, img) => {
     const fuente = $(img).attr('src') || $(img).attr('data-src') || $(img).attr('data-lazy-src') || ''
     const url = urlAbsolutaHttps(fuente)
     if (url && url.includes('alicdn.com/kf') && !imagenes.includes(url)) imagenes.push(url)
   })
-  const galeria: AliScraperImagenColor[] = imagenes
+  // Descarta las variantes difuminadas/watermark que duplican la versión
+  // limpia de la misma foto (AliExpress sirve ambas en el DOM).
+  const galeria: AliScraperImagenColor[] = limpiarListaImagenes(imagenes)
     .slice(0, SCRAPER_MAX_IMAGES_PER_COLOR)
     .map((urlDeImagen) => ({ color: null, url: urlDeImagen }))
 
   return {
     titulo_original: titulo,
+    marca: marcaDom || marcaDesdeSpecs,
     precio_base: precio,
     metadatos_fisicos: metadatos,
     galeria_imagenes: galeria,
@@ -445,7 +699,9 @@ function construirUrlProxy(proveedor: ScraperProxy, urlAliExpress: string): stri
     return `${SCRAPERAPI_ENDPOINT}?api_key=${encodeURIComponent(SCRAPER_API_KEY)}&url=${encodeURIComponent(urlAliExpress)}&render=true&country_code=us&keep_headers=true`
   }
   if (!ZENROWS_API_KEY) throw new Error('Falta ZENROWS_API_KEY en el .env del servidor.')
-  return `${ZENROWS_ENDPOINT}?apikey=${encodeURIComponent(ZENROWS_API_KEY)}&url=${encodeURIComponent(urlAliExpress)}&js_render=true&premium=false`
+  // ZenRows rechaza el parámetro `premium` (error REQS004). Solo se envían
+  // parámetros válidos: apikey, url y js_render=true (renderizado JS).
+  return `${ZENROWS_ENDPOINT}?apikey=${encodeURIComponent(ZENROWS_API_KEY)}&url=${encodeURIComponent(urlAliExpress)}&js_render=true`
 }
 
 // ZenRows tiene plan gratuito permanente; es el proveedor principal.
@@ -510,6 +766,7 @@ export async function scrapearProductoAliExpress(urlProduct: string) {
     const runParams = extraerRunParams($)
     const delJson: Partial<AliScraperProductoData> = {
       titulo_original: extraerTituloRunParams(runParams),
+      marca: extraerMarcaRunParams(runParams),
       precio_base: extraerPrecioRunParams(runParams),
       metadatos_fisicos: extraerMetadatosRunParams(runParams),
       galeria_imagenes: extraerGaleriaRunParams(runParams),
@@ -519,6 +776,8 @@ export async function scrapearProductoAliExpress(urlProduct: string) {
     const dataFinal: AliScraperProductoData = {
       ali_product_id: extraerProductId(urlValida, html, runParams, $),
       titulo_original: delJson.titulo_original || delDom.titulo_original || null,
+      // Marca: prioriza el JSON hidratado (runParams) y cae al DOM si falta.
+      marca: delJson.marca || delDom.marca || null,
       precio_base: delJson.precio_base || delDom.precio_base || null,
       metadatos_fisicos: {
         ...(delDom.metadatos_fisicos || {}),

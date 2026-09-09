@@ -4,6 +4,7 @@ import {
   existeProductoAliExpress,
   insertAutomatedProduct,
   obtenerCategoriaAliExpress,
+  obtenerMarcaAliExpress,
 } from '@/services/aliProducts'
 import { generateSeoContent } from '@/services/seo-content'
 import type { ProductInput } from '@/services/catalog'
@@ -53,6 +54,8 @@ function construirProductInput(params: {
   specs: Record<string, string>
   imagenes: { color: string | null; url: string }[]
   categoriaId: string
+  /** ID de la marca resuelta (FK products.marca_id). Null = sin marca. */
+  marcaId?: string | null
 }): ProductInput {
   const colores = [...new Set(params.imagenes.map((i) => i.color).filter(Boolean) as string[])]
   const imagenesGenerales = params.imagenes.filter((i) => !i.color).map((i) => i.url)
@@ -69,6 +72,7 @@ function construirProductInput(params: {
     stock: 50,
     costo_inicial: (Number(params.precioMinimo) || 0) * 0.5,
     category_ids: [params.categoriaId],
+    marca_id: params.marcaId ?? null,
     images: imagenesGenerales,
     colorImages: imagenesConColor,
     colors: colores,
@@ -88,35 +92,97 @@ async function procesarUnProducto(params: {
   aliProductId: string
   tituloFabrica: string
   categoriaId: string
+  /** Precio minimo ya devuelto por la API oficial (fuente autoritativa). */
+  precioApiMin?: number | null
+  /** Precio maximo (rango) devuelto por la API oficial. */
+  precioApiMax?: number | null
+  /** Imagen principal devuelta por la API (fallback si el scraper no da galería). */
+  imagenPrincipal?: string | null
+  /**
+   * Enlace de afiliado YA generado por la API de búsqueda (s.click.aliexpress.com).
+   * La API `product.query` lo devuelve listo por producto, así que NO hace falta
+   * llamar a `link.generate` (que en esta cuenta responde 405 "result is empty").
+   */
+  promotionLink?: string | null
+  /** Marca detectada por la API oficial (fuente autoritativa si viene). */
+  marcaApi?: string | null
 }): Promise<{ data?: { slug?: string; id?: string }; error?: string }> {
   try {
     // 1) Extraccion fria via scraper (sin IA): titulo, precio, specs e imagenes.
+    // Si el scraper falla (CAPTCHA/cambio de estructura) NO abortamos el
+    // producto: degradamos con el titulo y precio que ya trae la API oficial.
     const scrape = await scrapearProductoAliExpress(params.urlProducto)
-    if (!scrape.success || !scrape.data) {
-      return { error: scrape.error ?? 'Error al scrapear el detalle.' }
+    const dataScraper = scrape.success && scrape.data ? scrape.data : null
+
+    // MARCA: la API oficial (product.query) es la fuente AUTORITATIVA cuando
+    // trae el campo brand; si no, usamos la marca que detectó el scraper en el
+    // HTML (runParams/DOM). Se resuelve/crea en la tabla `marcas` para que el
+    // producto quede filtrable por marca en el catálogo público.
+    const marcaNombre = params.marcaApi || dataScraper?.marca || null
+    const marcaResuelta = await obtenerMarcaAliExpress(marcaNombre)
+    // Si resolver la marca falla (red/DB), NO abortamos el producto: se guarda
+    // sin marca (marca_id null) y se registra el fallo en consola.
+    if (!marcaResuelta.success) {
+      console.error('[aliPipeline] No se pudo resolver la marca "' + (marcaNombre ?? '') + '":', marcaResuelta.error)
     }
-    const dataScraper = scrape.data
-    const precioMin = dataScraper.precio_base?.minimo ?? 0
-    const precioMax = dataScraper.precio_base?.maximo ?? null
+    const marcaId = marcaResuelta.success ? marcaResuelta.marcaId : null
+
+    // El precio de la API oficial (product.query) es la fuente AUTORITATIVA y
+    // SIEMPRE disponible. El scraper NO se usa para el precio porque el plan
+    // gratis de ZenRows devuelve la pagina ANTES de que AliExpress cargue el
+    // precio (via XHR), asi que el scraper casi nunca logra extraerlo y el
+    // resultado es inconsistente. La API devuelve el precio en EUR (porque
+    // pedimos target_currency='EUR'), que es el valor que el usuario quiere
+    // ver en su tienda. Solo si la API no trae precio (producto raro) usamos
+    // el del scraper como ultimo recurso para no perder el producto.
+    const precioMin = params.precioApiMin ?? dataScraper?.precio_base?.minimo ?? 0
+    const precioMax = params.precioApiMax ?? dataScraper?.precio_base?.maximo ?? null
     if (!precioMin || precioMin <= 0) {
-      return { error: 'El producto scrapeado no tiene precio.' }
+      return { error: 'El producto no tiene precio (ni API ni scraper).' }
     }
 
+    // Titulo: la API oficial (product.query) es la fuente AUTORITATIVA y real
+    // del producto. El scraper puede devolver un titulo generico ("Aliexpress")
+    // o fallar, asi que SOLO usamos el del scraper si la API no trae titulo.
+    const tituloFinal = params.tituloFabrica || dataScraper?.titulo_original || ''
+    const specsFinal = dataScraper?.metadatos_fisicos ?? {}
+    // Galeria: si el scraper no logro extraer imagenes (AliExpress bloquea
+    // proxies), usamos la imagen principal que ya trae la API oficial.
+    const imagenesScraper = dataScraper?.galeria_imagenes ?? []
+    const imagenesFinal =
+      imagenesScraper.length > 0
+        ? imagenesScraper
+        : params.imagenPrincipal
+          ? [{ color: null, url: params.imagenPrincipal }]
+          : []
+
     // 2) Enlace de afiliado oficial con tracking ID.
-    const enlace = await generarEnlaceAfiliado(params.urlProducto)
-    if (!enlace.success || !enlace.data) {
-      return { error: enlace.error ?? 'No se pudo generar enlace afiliado.' }
+    // La API `product.query` ya devuelve el promotion_link listo por producto
+    // (s.click.aliexpress.com). Lo usamos DIRECTAMENTE para no depender de
+    // `link.generate`, que en esta cuenta responde 405 "result is empty".
+    // Solo si el producto NO trae promotion_link (ej: URL scrapeada a mano)
+    // intentamos generarlo con `link.generate` como respaldo.
+    let enlaceLargo = params.promotionLink || ''
+    if (!enlaceLargo) {
+      const enlace = await generarEnlaceAfiliado(params.urlProducto)
+      if (!enlace.success || !enlace.data) {
+        return { error: enlace.error ?? 'No se pudo generar enlace afiliado.' }
+      }
+      enlaceLargo = enlace.data.enlace_largo || enlace.data.enlace_corto || ''
+    }
+    if (!enlaceLargo) {
+      return { error: 'No se obtuvo un enlace de afiliado para este producto.' }
     }
 
     // 3) Cerebro SEO: DeepSeek traduce el titulo y genera HTML + FAQ.
     const seo = await generateSeoContent({
-      nombre: dataScraper.titulo_original ?? params.tituloFabrica,
+      nombre: tituloFinal,
       crudo: JSON.stringify({
-        titulo_fabrica: dataScraper.titulo_original ?? params.tituloFabrica,
-        precio: dataScraper.precio_base?.texto_original ?? null,
-        specs: dataScraper.metadatos_fisicos ?? {},
+        titulo_fabrica: tituloFinal,
+        precio: dataScraper?.precio_base?.texto_original ?? null,
+        specs: specsFinal,
       }),
-      specs: dataScraper.metadatos_fisicos,
+      specs: specsFinal,
     })
     if (!seo.success || !seo.data) {
       return { error: seo.error ?? 'DeepSeek no devolvio SEO.' }
@@ -129,11 +195,13 @@ async function procesarUnProducto(params: {
       descripcionHtml: seo.data.descripcion_html,
       precioMinimo: precioMin,
       precioMaximo: precioMax,
-      enlaceAfiliado: enlace.data.enlace_largo || enlace.data.enlace_corto || params.urlProducto,
+      enlaceAfiliado: enlaceLargo || params.urlProducto,
       aliProductId: params.aliProductId,
-      specs: dataScraper.metadatos_fisicos,
-      imagenes: dataScraper.galeria_imagenes,
+      specs: specsFinal,
+      imagenes: imagenesFinal,
       categoriaId: params.categoriaId,
+      // Marca resuelta (FK products.marca_id). Null si no se detectó ninguna.
+      marcaId,
     })
 
     // 5) Persistencia final en Supabase.
@@ -184,8 +252,10 @@ export async function ejecutarPipelineAutomatizacion(
     const disponibles = descubrimiento.data.slice(0, ALI_PIPELINE_MAX_PRODUCTS)
     notificar({ etapa: 'filtrado', mensaje: disponibles.length + ' candidatos encontrados. Verificando duplicados...' })
 
-    // 2) Resolver categoria para los productos nuevos.
-    const categoria = await obtenerCategoriaAliExpress()
+    // 2) Resolver categoria del nicho (derivada de la keyword) para los
+    // productos nuevos. Asi cada lote queda en una categoria real y filtrable
+    // en el catalogo publico (relacion N:N via product_categories).
+    const categoria = await obtenerCategoriaAliExpress(palabra)
     if (!categoria.success || !categoria.categoriaId) {
       notificar({ etapa: 'error', mensaje: 'No se pudo resolver la categoria.' })
       return { success: false as const, error: categoria.error ?? 'Sin categoria.' }
@@ -225,6 +295,16 @@ export async function ejecutarPipelineAutomatizacion(
         aliProductId: itemProducto.ali_product_id,
         tituloFabrica: itemProducto.titulo_fabrica,
         categoriaId: categoria.categoriaId,
+        // El precio de la API oficial es la fuente autoritativa; el scraper
+        // solo complementa specs/imagenes/colores. Asi nunca falla por precio.
+        precioApiMin: itemProducto.precio_min_venta,
+        precioApiMax: itemProducto.precio_max_venta,
+        // Imagen principal de la API como fallback si el scraper no da galeria.
+        imagenPrincipal: itemProducto.imagen_principal,
+        // Enlace de afiliado YA generado por la API de búsqueda (evita link.generate).
+        promotionLink: itemProducto.promotion_link,
+        // Marca detectada por la API oficial (fuente autoritativa si viene).
+        marcaApi: itemProducto.marca,
       })
 
       if (resultado.error) {

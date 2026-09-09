@@ -115,19 +115,49 @@ export async function existeProductoAliExpress(aliProductId: string) {
 }
 
 /**
- * Crea (o reutiliza) la categoría genérica "Importados AliExpress".
- * El pipeline necesita una categoría obligatoria para insertar.
- * Si ya existe, la devuelve; si no, la crea con su slug.
+ * Convierte una keyword semilla en un nombre de categoría legible.
+ * Ej: "tira led rgb" -> "Tira Led RGB". Mantiene acrónimos comunes en mayúscula.
  */
-export async function obtenerCategoriaAliExpress() {
+function nombreCategoriaDesdeKeyword(keyword: string): string {
+  const palabras = keyword.trim().split(/\s+/).filter(Boolean)
+  if (palabras.length === 0) return 'Importados AliExpress'
+  const ACRONIMOS = new Set(['rgb', 'led', 'usb', 'hdmi', 'wifi', 'diy', '3d', '4k', '8k', 'ip', 'tv'])
+  return palabras
+    .map((palabra) => {
+      const limpia = palabra.replace(/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ]/g, '')
+      if (!limpia) return ''
+      const clave = limpia.toLowerCase()
+      if (ACRONIMOS.has(clave)) return clave.toUpperCase()
+      return limpia.charAt(0).toUpperCase() + limpia.slice(1)
+    })
+    .filter(Boolean)
+    .join(' ')
+}
+
+/**
+ * Crea (o reutiliza) la categoría del nicho derivada de la keyword semilla.
+ * Así cada producto automatizado queda en una categoría real y filtrable
+ * (ej: "tira led rgb" -> categoría "Tira Led RGB"), en lugar de amontonar
+ * todo en una genérica. Si no hay keyword, usa "Importados AliExpress".
+ *
+ * El producto se relaciona luego por la tabla N:N `product_categories`
+ * (igual que las marcas por FK), de modo que el filtro del catálogo público
+ * por categoría lo encuentra.
+ */
+export async function obtenerCategoriaAliExpress(keyword?: string) {
   try {
     const supabase = await createServerClient()
-    const slug = 'importados-aliexpress'
+    const nombre = nombreCategoriaDesdeKeyword(keyword ?? '')
+    const slug = slugify(nombre)
     const { data: existente } = await supabase.from('categories').select('id').eq('slug', slug).maybeSingle()
     if (existente?.id) return { success: true as const, categoriaId: existente.id }
     const { data: creada, error: errorCreacion } = await supabase
       .from('categories')
-      .insert({ name: 'Importados AliExpress', slug, description: 'Productos descubiertos y optimizados por el pipeline automatizado.' })
+      .insert({
+        name: nombre,
+        slug,
+        description: `Productos del nicho "${keyword ?? 'AliExpress'}" descubiertos y optimizados por el pipeline automatizado.`,
+      })
       .select('id')
       .single()
     if (errorCreacion || !creada) return { success: false as const, error: errorCreacion?.message ?? 'No se pudo crear categoria.' }
@@ -135,6 +165,45 @@ export async function obtenerCategoriaAliExpress() {
   } catch (err: any) {
     console.error('[aliProducts] obtenerCategoriaAliExpress:', err?.message)
     return { success: false as const, error: err?.message ?? 'Error obteniendo categoria.' }
+  }
+}
+
+/**
+ * Resuelve (o crea) la marca detectada en el scraper/API y devuelve su id.
+ * Así cada producto automatizado queda vinculado a una marca real y filtrable
+ * en el catálogo público (FK `products.marca_id` -> `marcas.id`), en lugar de
+ * guardarse con marca NULL. Si el nombre es genérico o vacío, devuelve null
+ * (el producto se guarda sin marca, sin romper el flujo).
+ *
+ * @param nombreMarca Nombre de marca detectado (ej: "Xiaomi", "Anker").
+ * @returns { success, marcaId | null } — marcaId null si no hay marca útil.
+ */
+export async function obtenerMarcaAliExpress(nombreMarca?: string | null) {
+  try {
+    const nombre = (nombreMarca ?? '').trim()
+    if (!nombre) return { success: true as const, marcaId: null }
+    const supabase = await createServerClient()
+    // Buscar por nombre exacto (case-insensitive) para reutilizar la marca.
+    const { data: existente } = await supabase
+      .from('marcas')
+      .select('id')
+      .ilike('nombre', nombre)
+      .maybeSingle()
+    if (existente?.id) return { success: true as const, marcaId: existente.id }
+    // Crear la marca nueva (activa por defecto para que aparezca en filtros).
+    const { data: creada, error: errorCreacion } = await supabase
+      .from('marcas')
+      .insert({ nombre, activa: true })
+      .select('id')
+      .single()
+    if (errorCreacion || !creada) {
+      console.error('[aliProducts] obtenerMarcaAliExpress crear:', errorCreacion?.message)
+      return { success: false as const, error: errorCreacion?.message ?? 'No se pudo crear la marca.' }
+    }
+    return { success: true as const, marcaId: creada.id }
+  } catch (err: any) {
+    console.error('[aliProducts] obtenerMarcaAliExpress:', err?.message)
+    return { success: false as const, error: err?.message ?? 'Error resolviendo marca.' }
   }
 }
 
