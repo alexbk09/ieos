@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, BookOpen, Building2, ClipboardList, CreditCard, FileText, FolderTree, Landmark, LineChart, LogOut, MapPin, Menu, Package, Percent, Receipt, Settings2, ShieldCheck, Tag, Truck, UserRound, Users, Wallet, Warehouse, X } from 'lucide-react'
+import { BarChart3, BookOpen, Bot, Building2, ClipboardList, CreditCard, FileText, FolderTree, Landmark, LineChart, LogOut, MapPin, Menu, Package, Percent, Receipt, Search, Settings2, ShieldCheck, Tag, Truck, UserRound, Users, Wallet, Warehouse, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -11,6 +11,7 @@ import { UserMenu } from '@/components/user-menu'
 import { NotificationsBell } from '@/components/notifications-bell'
 import { resetBodyScroll } from '@/lib/scroll-lock'
 import { getInitials } from '@/lib/utils'
+import { ALI_PIPELINE_MODULE_SLUG, SCRAPER_ALIEXPRESS_MODULE_SLUG } from '@/lib/constants'
 
 /** Item individual del menú de navegación del panel. */
 type NavItem = { href: string; label: string; icon: LucideIcon; moduleSlug?: string }
@@ -49,6 +50,8 @@ const navGroups: NavGroup[] = [
       { href: '/admin/marcas', label: 'Marcas', icon: Tag, moduleSlug: 'marcas' },
       { href: '/admin/proveedores', label: 'Proveedores', icon: Building2, moduleSlug: 'proveedores' },
       { href: '/admin/analytics-productos', label: 'Analítica de Productos', icon: LineChart, moduleSlug: 'analytics_productos' },
+      { href: '/admin/scraper-aliexpress', label: 'Scraper AliExpress', icon: Search, moduleSlug: SCRAPER_ALIEXPRESS_MODULE_SLUG },
+      { href: '/admin/ali-pipeline', label: 'Pipeline AliExpress', icon: Bot, moduleSlug: ALI_PIPELINE_MODULE_SLUG },
     ],
   },
   {

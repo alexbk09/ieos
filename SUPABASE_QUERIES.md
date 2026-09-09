@@ -654,3 +654,13 @@ La app mapea estos valores a variables CSS (`--brand`, `--navy`, etc.) expuestas
 - La autenticación y la creación de usuarios se gestiona con Supabase Auth.
 - Si cambias el nombre del bucket, también debes cambiar la ruta de carga en [app/api/admin/upload/route.ts](app/api/admin/upload/route.ts).
 - Revisa que las variables de entorno apunten al mismo proyecto de Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SERVICE_ROLE_KEY`.
+
+## 22) Módulo Scraper AliExpress
+
+La creación del módulo `scraper_aliexpress` (RBAC), la tabla `scraper_logs` (monitoreo admin) y sus políticas RLS se gestionan **exclusivamente como migración SQL** en:
+
+```
+supabase/migrations/0045_scraper_aliexpress.sql
+```
+
+> IMPORTANTE: Este proyecto maneja los cambios de esquema **solo por migraciones** (`npm run supabase:setup`), no por SQL manual duplicado en este archivo.

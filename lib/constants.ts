@@ -127,3 +127,46 @@ export const SHIPPING_VOLUMETRIC_FACTOR = 5000
 
 /** Tarifa por defecto para envíos dentro del estado (USD por kg). */
 export const DEFAULT_SHIPPING_RATE_PER_KG = 2
+
+// ---------- Scraper AliExpress (Fase 2.1 — Extracción tradicional) ----------
+
+/** Slug del módulo admin "Scraper AliExpress" para permisos RBAC. */
+export const SCRAPER_ALIEXPRESS_MODULE_SLUG = 'scraper_aliexpress'
+
+/** Slug del módulo admin "Pipeline AliExpress" (automatización integral) para permisos RBAC. */
+export const ALI_PIPELINE_MODULE_SLUG = 'ali_pipeline'
+
+/** Endpoint de la API de ScraperAPI (renderizado JS remoto). */
+export const SCRAPERAPI_ENDPOINT = 'https://api.scraperapi.com'
+
+/** Endpoint de la API de ZenRows (fallback si no hay ScraperAPI). */
+export const ZENROWS_ENDPOINT = 'https://api.zenrows.com/v1'
+
+/** Tiempo máximo de espera de la respuesta del proxy de scraping (ms). */
+export const SCRAPER_DEFAULT_TIMEOUT_MS = 60_000
+
+/** Retry automático del proxy si responde 429/5xx (1 reintento). */
+export const SCRAPER_MAX_RETRIES = 1
+
+/** Expresión: IDs de producto AliExpress (números largos ≥ 5 dígitos). */
+export const ALIEXPRESS_PRODUCT_ID_REGEX = /\d{5,}/
+
+/** Número máximo de imágenes por variante de color/ownerItemId devueltas. */
+export const SCRAPER_MAX_IMAGES_PER_COLOR = 8
+
+// ---------- AliExpress Open Platform (API oficial afiliados — Fase 2.2) ----------
+
+/** Endpoint regional de la API abierta de AliExpress (sureste asiático). */
+export const ALIEXPRESS_OPEN_API_ENDPOINT = 'https://api-sg.aliexpress.com/rest'
+
+/** Método oficial para buscar productos afiliados por keyword, ordenados por volumen o comisión. */
+export const ALI_SEARCH_METHOD = 'aliexpress.affiliate.product.query'
+
+/** Método oficial para convertir URLs normales en enlaces afiliados con tracking ID. */
+export const ALI_LINK_METHOD = 'aliexpress.affiliate.link.generate'
+
+/** Máximo de productos a procesar por ejecución del pipeline (defensivo). */
+export const ALI_PIPELINE_MAX_PRODUCTS = 10
+
+/** Cantidad por defecto de productos a optimizar por lote. */
+export const ALI_OPTIMIZE_PER_BATCH = 5

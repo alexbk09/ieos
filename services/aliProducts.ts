@@ -93,6 +93,51 @@ export async function getProductBySlug(slug: string) {
   }
 }
 
+/**
+ * Verifica si un ID de producto AliExpress ya existe en el catálogo.
+ * Usa la columna `asin` como clave única (varchar(50)) para no duplicar
+ * productos ni gastar créditos del proxy/DeepSeek en re-procesos.
+ */
+export async function existeProductoAliExpress(aliProductId: string) {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('products')
+      .select('id')
+      .eq('asin', String(aliProductId).trim())
+      .maybeSingle()
+    if (error) return { success: false as const, error: error.message }
+    return { success: true as const, existe: Boolean(data), productoId: data?.id ?? null }
+  } catch (err: any) {
+    console.error('[aliProducts] existeProductoAliExpress:', err?.message)
+    return { success: false as const, error: err?.message ?? 'Error verificando duplicado.' }
+  }
+}
+
+/**
+ * Crea (o reutiliza) la categoría genérica "Importados AliExpress".
+ * El pipeline necesita una categoría obligatoria para insertar.
+ * Si ya existe, la devuelve; si no, la crea con su slug.
+ */
+export async function obtenerCategoriaAliExpress() {
+  try {
+    const supabase = await createServerClient()
+    const slug = 'importados-aliexpress'
+    const { data: existente } = await supabase.from('categories').select('id').eq('slug', slug).maybeSingle()
+    if (existente?.id) return { success: true as const, categoriaId: existente.id }
+    const { data: creada, error: errorCreacion } = await supabase
+      .from('categories')
+      .insert({ name: 'Importados AliExpress', slug, description: 'Productos descubiertos y optimizados por el pipeline automatizado.' })
+      .select('id')
+      .single()
+    if (errorCreacion || !creada) return { success: false as const, error: errorCreacion?.message ?? 'No se pudo crear categoria.' }
+    return { success: true as const, categoriaId: creada.id }
+  } catch (err: any) {
+    console.error('[aliProducts] obtenerCategoriaAliExpress:', err?.message)
+    return { success: false as const, error: err?.message ?? 'Error obteniendo categoria.' }
+  }
+}
+
 /** Slugs indexables + lastmod para /sitemap.xml (proyección ligera). */
 export async function getSitemapProducts() {
   try {
