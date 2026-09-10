@@ -82,15 +82,29 @@ en tiempo real:
 | Paso | Acción | Servicio |
 |------|--------|----------|
 | 1 | **Descubrir** los top por keyword (VOLUME_DESC) | `aliApi.buscarProductosMasVendidos` |
-| 2 | **Filtrar** duplicados (¿ya existe el `ali_product_id`?) | `aliProducts.existeProductoAliExpress` |
-| 3 | **Extraer** detalle físico + imágenes por color | `aliScraper.scrapearProductoAliExpress` |
-| 4 | **Generar** enlace de afiliado oficial con tracking | `aliApi.generarEnlaceAfiliado` |
-| 5 | **SEO** con DeepSeek (traduce título, HTML semántico + FAQ) | `seo-content.generateSeoContent` |
-| 6 | **Guardar** en Supabase con variantes listas para React | `aliProducts.insertAutomatedProduct` |
+| 2 | **Resolver** la categoría del nicho + **generar el HUB** (guía + FAQ) si falta | `aliProducts.obtenerCategoriaAliExpress` + `seo-hub.generateHubContent` |
+| 3 | **Filtrar** duplicados (¿ya existe el `ali_product_id`?) | `aliProducts.existeProductoAliExpress` |
+| 4 | **Extraer** detalle físico + imágenes por color | `aliScraper.scrapearProductoAliExpress` |
+| 5 | **Generar** enlace de afiliado oficial con tracking | `aliApi.generarEnlaceAfiliado` |
+| 6 | **SEO único** con DeepSeek (título optimizado + HTML H2/H3 + FAQ + keywords) con control anti-duplicado | `seo-content.generateSeoContent` + `seoDedupe.existeTituloSimilar` |
+| 7 | **Guardar** en Supabase (incluye `seo_faq` y `seo_keywords`) y **revalidar el sitemap** al instante | `aliProducts.insertAutomatedProduct` → `catalog.createProduct` |
 
 **Defensivo:** procesa máximo 5 productos nuevos por ejecución para no agotar
 créditos del proxy ni de DeepSeek. Cada producto se procesa en un `try-catch`
 independiente: si uno falla, el resto continúa.
+
+### 4.1 SEO estructurado y sitemap (migración 0047)
+
+- **Contenido único (anti-duplicado):** `seo-content` exige títulos de 40–60
+  caracteres, prohíbe frases genéricas ("compra segura", "mejor precio"…) y
+  valida que la descripción tenga las secciones H2 obligatorias y ningún `<h1>`.
+  Si el modelo no cumple, reintenta UNA vez autocorrigiéndose.
+- **FAQ + keywords estructuradas:** se guardan en `products.seo_faq` y
+  `products.seo_keywords`, y alimentan el schema `FAQPage` de la ficha.
+- **Hub de categoría:** `seo-hub` genera (una vez por nicho) el título largo,
+  la guía de compra y la FAQ del hub en `categories.seo_*`.
+- **Sitemap al instante:** `lib/sitemap-revalidate.ts` revalida `/sitemap.xml`
+  y las rutas afectadas tras cada alta/edición/baja, sin esperar el ISR de 1 h.
 
 ---
 

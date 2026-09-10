@@ -7,6 +7,10 @@ import {
   obtenerMarcaAliExpress,
 } from '@/services/aliProducts'
 import { generateSeoContent } from '@/services/seo-content'
+import { existeTituloSimilar } from '@/services/seoDedupe'
+import { generateHubContent } from '@/services/seo-hub'
+import { getCategorySeo, updateCategorySeo, slugify } from '@/services/catalog'
+import type { SeoFaqItem } from '@/lib/seo-types'
 import type { ProductInput } from '@/services/catalog'
 import { ALI_PIPELINE_MAX_PRODUCTS } from '@/lib/constants'
 
@@ -56,6 +60,10 @@ function construirProductInput(params: {
   categoriaId: string
   /** ID de la marca resuelta (FK products.marca_id). Null = sin marca. */
   marcaId?: string | null
+  /** FAQ estructurada generada por la IA (schema FAQPage). */
+  seoFaq: SeoFaqItem[]
+  /** Palabras clave long-tail objetivo. */
+  seoKeywords: string[]
 }): ProductInput {
   const colores = [...new Set(params.imagenes.map((i) => i.color).filter(Boolean) as string[])]
   const imagenesGenerales = params.imagenes.filter((i) => !i.color).map((i) => i.url)
@@ -84,6 +92,9 @@ function construirProductInput(params: {
     is_available: true,
     peso: params.specs['Peso del producto'] ?? params.specs['Peso'] ?? null,
     tamaño: params.specs['Tamaño'] ?? params.specs['Dimensiones'] ?? null,
+    // Contenido SEO estructurado generado por DeepSeek (0047).
+    seo_faq: params.seoFaq,
+    seo_keywords: params.seoKeywords,
   }
 }
 
@@ -106,6 +117,8 @@ async function procesarUnProducto(params: {
   promotionLink?: string | null
   /** Marca detectada por la API oficial (fuente autoritativa si viene). */
   marcaApi?: string | null
+  /** Keyword del nicho (orienta el título SEO y el anti-duplicado). */
+  keyword?: string
 }): Promise<{ data?: { slug?: string; id?: string }; error?: string }> {
   try {
     // 1) Extraccion fria via scraper (sin IA): titulo, precio, specs e imagenes.
@@ -174,15 +187,22 @@ async function procesarUnProducto(params: {
       return { error: 'No se obtuvo un enlace de afiliado para este producto.' }
     }
 
-    // 3) Cerebro SEO: DeepSeek traduce el titulo y genera HTML + FAQ.
+    // 3) Cerebro SEO: DeepSeek traduce el titulo y genera HTML + FAQ + keywords.
+    // Anti-duplicado: si ya hay un producto con título similar, se le pasan al
+    // modelo para forzar un título diferenciado (evita contenido duplicado).
+    const similares = await existeTituloSimilar(tituloFinal)
+    const evitarTitulos = similares.success && similares.tituloSimilar ? [similares.tituloSimilar] : []
     const seo = await generateSeoContent({
       nombre: tituloFinal,
+      marca: marcaNombre ?? undefined,
+      keyword: params.keyword,
       crudo: JSON.stringify({
         titulo_fabrica: tituloFinal,
         precio: dataScraper?.precio_base?.texto_original ?? null,
         specs: specsFinal,
       }),
       specs: specsFinal,
+      evitarTitulos,
     })
     if (!seo.success || !seo.data) {
       return { error: seo.error ?? 'DeepSeek no devolvio SEO.' }
@@ -202,6 +222,9 @@ async function procesarUnProducto(params: {
       categoriaId: params.categoriaId,
       // Marca resuelta (FK products.marca_id). Null si no se detectó ninguna.
       marcaId,
+      // Contenido SEO estructurado (schema FAQPage + enlazado interno).
+      seoFaq: seo.data.faq,
+      seoKeywords: seo.data.keywords,
     })
 
     // 5) Persistencia final en Supabase.
@@ -261,6 +284,34 @@ export async function ejecutarPipelineAutomatizacion(
       return { success: false as const, error: categoria.error ?? 'Sin categoria.' }
     }
 
+    // 2.1) Contenido del HUB de la categoria (pSEO): se genera UNA vez por
+    // nicho si aún no tiene intro editorial. Convierte el listado plano en
+    // una "categoria de nicho" con guía de compra y FAQ (retiene + rankea).
+    try {
+      const seoHubActual = await getCategorySeo(categoria.categoriaId)
+      if (!seoHubActual.data?.seo_intro) {
+        notificar({ etapa: 'procesando_seo', mensaje: 'Generando contenido de la categoria (hub)...' })
+        const hub = await generateHubContent(categoria.nombre ?? palabra)
+        if (hub.success) {
+          await updateCategorySeo(
+            categoria.categoriaId,
+            {
+              seo_title: hub.data.seo_title,
+              seo_intro: hub.data.seo_intro,
+              seo_faq: hub.data.seo_faq,
+            },
+            // Revalida la landing del hub + sitemap al instante.
+            { slug: slugify(categoria.nombre ?? palabra) },
+          )
+        } else {
+          console.error('[aliPipeline] hub SEO:', hub.error)
+        }
+      }
+    } catch (err: any) {
+      // Un fallo del hub NO debe abortar la carga de productos.
+      console.error('[aliPipeline] hub SEO inesperado:', err?.message)
+    }
+
     // Filtrar duplicados en Supabase.
     const pendientes: typeof disponibles = []
     for (const item of disponibles) {
@@ -305,6 +356,8 @@ export async function ejecutarPipelineAutomatizacion(
         promotionLink: itemProducto.promotion_link,
         // Marca detectada por la API oficial (fuente autoritativa si viene).
         marcaApi: itemProducto.marca,
+        // Keyword del nicho (orienta título SEO + anti-duplicado).
+        keyword: palabra,
       })
 
       if (resultado.error) {

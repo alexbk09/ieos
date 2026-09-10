@@ -5,6 +5,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { RichDescription } from '@/components/rich-description'
+import { RelatedProducts } from '@/components/related-products'
+import type { CardProduct } from '@/components/product-card'
 import { CartDrawer } from '@/components/cart-drawer'
 import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart, type CartProduct } from '@/hooks/use-cart'
@@ -56,6 +58,8 @@ export type DetailProduct = {
 
 type DetailProductProps = {
   product: DetailProduct
+  /** Productos relacionados de la misma categoría (enlazado interno SEO). */
+  related: CardProduct[]
   navLinks: HeaderNavLink[]
   brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null }
   footer: { copyright?: string; slogan?: string }
@@ -93,7 +97,7 @@ function DetailChip({ label, value }: { label: string; value: string }) {
  * NO contiene llamadas a Supabase: todo llega serializado desde el
  * Server Component (regla /services de la arquitectura).
  */
-export function ProductDetailPageView({ product, navLinks, brand, footer, social, brandAddress }: DetailProductProps) {
+export function ProductDetailPageView({ product, related, navLinks, brand, footer, social, brandAddress }: DetailProductProps) {
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
@@ -283,9 +287,10 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
               </div>
             )}
 
-            {/* Ficha técnica (peso / tamaño / peso unitario) */}
+            {/* Ficha técnica (peso / tamaño / peso unitario).
+                Se usa <h2> real para la jerarquía de encabezados que Google lee. */}
             <div className="mt-7">
-              <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</p>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</h2>
               <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
                 {product.peso && <DetailChip label="Peso" value={product.peso} />}
                 {product.tamaño && <DetailChip label="Tamaño" value={product.tamaño} />}
@@ -293,10 +298,10 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
               </div>
             </div>
 
-            {/* Especificaciones JSONB en pares clave-valor */}
+            {/* Especificaciones JSONB en pares clave-valor (<h2> semántico). */}
             {Object.keys(product.specifications ?? {}).length > 0 && (
               <div className="mt-6">
-                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</p>
+                <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</h2>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {Object.entries(product.specifications ?? {}).map(([key, value]) => (
                     <DetailChip key={key} label={key} value={value} />
@@ -304,6 +309,30 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
                 </div>
               </div>
             )}
+
+            {/* Opiniones: enlace a las valoraciones REALES del marketplace.
+                NO se inventan reseñas ni aggregateRating (política de Google). */}
+            <section className="mt-7">
+              <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Opiniones</h2>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {affiliateUrl ? (
+                  <>
+                    Consulta las valoraciones y opiniones reales de compradores en{' '}
+                    <a
+                      href={affiliateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-strong underline underline-offset-2"
+                    >
+                      {market.label}
+                    </a>
+                    .
+                  </>
+                ) : (
+                  'Muy pronto habilitaremos las opiniones de nuestros clientes.'
+                )}
+              </p>
+            </section>
 
             {/* CTA afiliado transparente */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -345,6 +374,11 @@ export function ProductDetailPageView({ product, navLinks, brand, footer, social
                 : `Envíos a toda Venezuela vía ${brand.name}.`}
             </p>
           </div>
+        </div>
+
+        {/* Enlazado interno (SEO): productos de la misma categoría. */}
+        <div className="mx-auto max-w-7xl">
+          <RelatedProducts products={related} rate={exchangeRate} onAdd={add} />
         </div>
       </main>
 

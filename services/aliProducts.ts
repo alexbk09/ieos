@@ -150,7 +150,7 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
     const nombre = nombreCategoriaDesdeKeyword(keyword ?? '')
     const slug = slugify(nombre)
     const { data: existente } = await supabase.from('categories').select('id').eq('slug', slug).maybeSingle()
-    if (existente?.id) return { success: true as const, categoriaId: existente.id }
+    if (existente?.id) return { success: true as const, categoriaId: existente.id, nombre }
     const { data: creada, error: errorCreacion } = await supabase
       .from('categories')
       .insert({
@@ -161,7 +161,7 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
       .select('id')
       .single()
     if (errorCreacion || !creada) return { success: false as const, error: errorCreacion?.message ?? 'No se pudo crear categoria.' }
-    return { success: true as const, categoriaId: creada.id }
+    return { success: true as const, categoriaId: creada.id, nombre }
   } catch (err: any) {
     console.error('[aliProducts] obtenerCategoriaAliExpress:', err?.message)
     return { success: false as const, error: err?.message ?? 'Error obteniendo categoria.' }

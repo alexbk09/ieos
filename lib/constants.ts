@@ -144,6 +144,9 @@ export const SCRAPER_ALIEXPRESS_MODULE_SLUG = 'scraper_aliexpress'
 /** Slug del módulo admin "Pipeline AliExpress" (automatización integral) para permisos RBAC. */
 export const ALI_PIPELINE_MODULE_SLUG = 'ali_pipeline'
 
+/** Slug del módulo admin "SEO de Categorías" (hubs pSEO) para permisos RBAC. */
+export const CATEGORY_SEO_MODULE_SLUG = 'categorias_seo'
+
 /** Endpoint de la API de ScraperAPI (renderizado JS remoto). */
 export const SCRAPERAPI_ENDPOINT = 'https://api.scraperapi.com'
 
@@ -182,6 +185,72 @@ export const ALI_PIPELINE_MAX_PRODUCTS = 10
 
 /** Cantidad por defecto de productos a optimizar por lote. */
 export const ALI_OPTIMIZE_PER_BATCH = 5
+
+// ---------- Motor de contenido SEO (DeepSeek) ----------
+// Centraliza la configuración del cerebro de contenido para no quemar
+// números ni frases en el servicio (regla de oro: cero magic numbers).
+
+/** Temperatura del LLM: mayor valor = más variación (menos plantillas repetidas). */
+export const SEO_TEMPERATURE = 0.65
+
+/** Máximo de tokens de salida del generador SEO (título + HTML + FAQ). */
+export const SEO_MAX_TOKENS = 1400
+
+/** Longitud recomendada del título SEO (Google trunca por encima de 60). */
+export const SEO_TITLE_MIN_LENGTH = 40
+export const SEO_TITLE_MAX_LENGTH = 60
+
+/** Rango de palabras clave objetivo por producto. */
+export const SEO_MIN_KEYWORDS = 3
+export const SEO_MAX_KEYWORDS = 12
+
+/** Rango de preguntas frecuentes generadas por producto. */
+export const SEO_MIN_FAQ = 2
+export const SEO_MAX_FAQ = 6
+
+/** Longitud mínima de la descripción HTML generada. */
+export const SEO_MIN_DESCRIPTION_CHARS = 200
+
+/**
+ * Frases genéricas de AliExpress prohibidas (contenido duplicado).
+ * El validador rechaza cualquier título/descripción que las contenga.
+ */
+export const SEO_BANNED_PHRASES = [
+  'compra segura',
+  'envio global',
+  'envío global',
+  'mejor precio',
+  'oferta del dia',
+  'alta calidad',
+  'envio rapido',
+  'envío rápido',
+] as const
+
+/** Secciones H2 obligatorias en la descripción (jerarquía SEO de la ficha). */
+export const SEO_REQUIRED_SECTIONS = ['Características principales', 'Preguntas Frecuentes'] as const
+
+/** Sección H2 opcional (solo cuando el producto trae datos físicos). */
+export const SEO_OPTIONAL_SPECS_SECTION = 'Especificaciones físicas'
+
+/** Número máximo de productos relacionados mostrados en la ficha (enlazado interno). */
+export const RELATED_PRODUCTS_LIMIT = 4
+
+/** Número de palabras iniciales que forman la "firma" anti-duplicado de un título. */
+export const SEO_TITLE_SIGNATURE_WORDS = 4
+
+// ---------- Merchant / Rich Results (schema JSON-LD) ----------
+
+/** País de operación de la tienda (ISO 3166-1 alpha-2) para ShippingDetails. */
+export const STORE_COUNTRY_CODE = 'VE'
+
+/** Días mínimos/máximos de entrega estimada para productos de afiliado (Merchant). */
+export const AFFILIATE_SHIPPING_MIN_DAYS = 7
+export const AFFILIATE_SHIPPING_MAX_DAYS = 15
+
+/** Días para devolución del producto (Merchant Return Policy). */
+export const MERCHANT_RETURN_DAYS = 30
+
+
 
 // ---------- Sitemap / SEO ----------
 

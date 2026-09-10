@@ -88,12 +88,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!category) return { title: 'Categoría no encontrada' }
 
   const name = settings.company_name || 'ilumaX'
-  const cleanDescription = category.description
-    ? clampText(htmlToPlainText(category.description), 300)
+  // H1/título largo del hub (pSEO) con fallback al nombre de categoría.
+  const hubTitle = category.seo_title?.trim() || `${category.name} — Catálogo`
+  // Descripción: prioriza la intro editorial del hub; luego la descripción.
+  const fuenteDescripcion = category.seo_intro ?? category.description
+  const cleanDescription = fuenteDescripcion
+    ? clampText(htmlToPlainText(fuenteDescripcion), 300)
     : `Compra ${category.name} en ${name}: productos seleccionados con envío internacional y compra segura.`
 
   return buildPageMetadata({
-    title: `${category.name} — Catálogo | ${name}`,
+    title: `${hubTitle} | ${name}`,
     description: cleanDescription,
     path: `/categoria/${category.slug}`,
     siteName: name,
@@ -138,6 +142,20 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           url: `${origin}/productos/${p.slug}`,
         })),
       },
+      // FAQPage del nicho: refleja la FAQ visible del hub (Google exige que el
+      // marcado coincida con el contenido de la página). Se omite si no hay FAQ.
+      ...(category.seo_faq && category.seo_faq.length > 0
+        ? [
+            {
+              '@type': 'FAQPage',
+              mainEntity: category.seo_faq.map((f) => ({
+                '@type': 'Question',
+                name: f.pregunta,
+                acceptedAnswer: { '@type': 'Answer', text: htmlToPlainText(f.respuesta) },
+              })),
+            },
+          ]
+        : []),
     ],
   }
 
@@ -147,7 +165,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <CategoryPageView
-        category={{ name: category.name, slug: category.slug, description: category.description }}
+        category={{
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          seo_title: category.seo_title ?? null,
+          seo_intro: category.seo_intro ?? null,
+          seo_faq: category.seo_faq ?? null,
+        }}
         products={(products ?? []).map(toCardProduct)}
         navLinks={settings.nav_links}
         brand={{

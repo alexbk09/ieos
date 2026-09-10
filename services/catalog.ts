@@ -1,6 +1,8 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
-import { CATALOG_PAGE_SIZE, FEATURED_PRODUCTS_LIMIT } from '@/lib/constants'
+import { CATALOG_PAGE_SIZE, FEATURED_PRODUCTS_LIMIT, RELATED_PRODUCTS_LIMIT } from '@/lib/constants'
+import type { SeoFaqItem } from '@/lib/seo-types'
+import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 
 /**
  * Servicio de catálogo.
@@ -76,6 +78,10 @@ export type Product = {
   precio_original?: number | null
   /** TRUE = incluir en sitemap / indexación de Google. Default FALSE. */
   indexado_google?: boolean
+  /** FAQ estructurada del producto (migración 0047) → schema FAQPage. */
+  seo_faq?: SeoFaqItem[] | null
+  /** Palabras clave long-tail objetivo (migración 0047). */
+  seo_keywords?: string[] | null
   categories?: Category[]
   images?: ProductImage[]
   colors?: string[]
@@ -94,6 +100,12 @@ export type Category = {
   activa: boolean
   created_at: string
   updated_at: string
+  /** Título H1 largo del hub (migración 0047). Fallback = name. */
+  seo_title?: string | null
+  /** HTML editorial del hub: Guía de compra, Cómo elegir, Consejos. */
+  seo_intro?: string | null
+  /** FAQ del nicho (migración 0047) → schema FAQPage de la categoría. */
+  seo_faq?: SeoFaqItem[] | null
 }
 
 export type CategoryInput = {
@@ -171,6 +183,10 @@ export type ProductInput = {
   precio_original?: number | null
   /** TRUE = incluir en sitemap / indexación de Google. */
   indexado_google?: boolean
+  /** FAQ estructurada del producto (migración 0047) → schema FAQPage. */
+  seo_faq?: SeoFaqItem[] | null
+  /** Palabras clave long-tail objetivo (migración 0047). */
+  seo_keywords?: string[] | null
   // Solo para carga masiva: nombres de marca/proveedor/categoria.
   // Si el item trae nombre y no trae id, se resuelve o crea automaticamente.
   marca_nombre?: string | null
@@ -232,6 +248,9 @@ export function mapProduct(row: any): Product {
     // Tri-estado SEO: `true` = indexar, `false` = noindex, `undefined` =
     // la migración 0042 aún no creó la columna → indexar (comportamiento histórico).
     indexado_google: row.indexado_google == null ? undefined : row.indexado_google === true,
+    // FAQ/keywords SEO (migración 0047): normaliza a array si viene null.
+    seo_faq: Array.isArray(row.seo_faq) ? (row.seo_faq as SeoFaqItem[]) : null,
+    seo_keywords: Array.isArray(row.seo_keywords) ? (row.seo_keywords as string[]) : null,
     colors: row.colors ?? [],
     specifications: row.specifications ?? {},
     categories:
@@ -426,6 +445,10 @@ function buildProductRow(payload: ProductInput) {
     titulo_seo: payload.titulo_seo?.trim() || null,
     precio_original: payload.precio_original != null ? Number(payload.precio_original) : null,
     indexado_google: payload.indexado_google === true,
+    // seo_faq/seo_keywords solo se escriben si vienen definidos: así el CRUD
+    // manual (que no los envía) no borra el contenido generado por la IA.
+    ...(payload.seo_faq !== undefined ? { seo_faq: payload.seo_faq } : {}),
+    ...(payload.seo_keywords !== undefined ? { seo_keywords: payload.seo_keywords } : {}),
   }
 }
 
@@ -433,7 +456,7 @@ function buildProductRow(payload: ProductInput) {
  * Crea un producto con sus categorías (N:N), imágenes múltiples,
  * marca y proveedor. Requiere sesión de admin — usa cliente servidor.
  */
-export async function createProduct(payload: ProductInput) {
+export async function createProduct(payload: ProductInput, options: { revalidar?: boolean } = {}) {
   const supabase = await createServerClient()
 
   const categoryIds = payload.category_ids?.filter(Boolean) ?? []
@@ -465,6 +488,8 @@ export async function createProduct(payload: ProductInput) {
   }
 
   const { data: full } = await supabase.from('products').select(PRODUCT_SELECT).eq('id', data.id).single()
+  // Sitemap al día al instante (salvo en carga masiva, que revalida una vez).
+  if (options.revalidar !== false) revalidarSitemap({ productoSlug: payload.slug })
   return { data: mapProduct(full ?? data) }
 }
 
@@ -507,13 +532,18 @@ export async function updateProduct(id: string, payload: ProductInput) {
   }
 
   const { data: full } = await supabase.from('products').select(PRODUCT_SELECT).eq('id', id).single()
+  // La url/última modificación cambió: sitemap y ficha al instante.
+  revalidarSitemap({ productoSlug: payload.slug })
   return { data: mapProduct(full ?? data) }
 }
 
 /** Elimina un producto (las relaciones N:N e imágenes se borran en cascada). */
 export async function deleteProduct(id: string) {
   const supabase = await createServerClient()
-  return supabase.from('products').delete().eq('id', id)
+  const result = await supabase.from('products').delete().eq('id', id)
+  // Al borrar, la URL deja de existir: se revalida el sitemap para retirarla.
+  if (!result.error) revalidarSitemap()
+  return result
 }
 
 // ---------- Resolución automática de marcas, proveedores y categorías ----------
@@ -648,13 +678,16 @@ export async function createProductsBulk(items: ProductInput[]) {
     for (let i = 0; i < enriched.length; i++) {
       const payload = enriched[i]
       if (!payload) continue
-      const result = await createProduct(payload)
+      const result = await createProduct(payload, { revalidar: false })
       if (result.error) {
         errors.push({ row: i + 2, error: result.error.message })
       } else if (result.data) {
         successful.push(result.data)
       }
     }
+
+    // Una sola revalidación de sitemap para TODO el lote (eficiencia).
+    if (successful.length > 0) revalidarSitemap()
   } catch (error: any) {
     // Fallo de resolución previene toda la carga
     for (let i = 0; i < items.length; i++) {
@@ -696,12 +729,33 @@ export async function getCategoryBySlug(slug: string) {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('categories')
-    .select('id,name,slug,description')
+    .select('id,name,slug,description,seo_title,seo_intro,seo_faq')
     .eq('activa', true)
     .eq('slug', slug)
     .maybeSingle()
   if (error) return { category: null, error }
   return { category: data as Category | null, error: null }
+}
+
+/**
+ * Lee el contenido SEO de un hub de categoría (seo_title/seo_intro/seo_faq).
+ * Lo usa el pipeline para decidir si aún no tiene intro editorial y hay que
+ * generarla. Cliente público → lectura barata.
+ */
+export async function getCategorySeo(categoryId: string) {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id,seo_title,seo_intro,seo_faq')
+    .eq('id', categoryId)
+    .maybeSingle()
+  if (error) return { data: null, error }
+  return {
+    data: data as
+      | { id: string; seo_title: string | null; seo_intro: string | null; seo_faq: SeoFaqItem[] | null }
+      | null,
+    error: null,
+  }
 }
 
 /**
@@ -774,7 +828,40 @@ export async function getProductsByCategorySlug(slug: string, from = 0) {
 }
 
 
-/** Crea una nueva categoría. */
+/**
+ * Obtiene productos relacionados para el módulo de enlazado interno de la
+ * ficha de producto. Devuelve como máximo `RELATED_PRODUCTS_LIMIT` productos
+ * visibles de las MISMAS categorías, excluyendo el producto actual.
+ * Cliente público → SSG+ISR (el HTML viaja a Google desde el servidor).
+ */
+export async function getRelatedProducts(input: {
+  productId: string
+  categoryIds: string[]
+  limit?: number
+}) {
+  const limit = Math.min(
+    Math.max(Number(input.limit) || RELATED_PRODUCTS_LIMIT, 1),
+    RELATED_PRODUCTS_LIMIT,
+  )
+  const supabase = createPublicClient()
+  const categoryIds = (input.categoryIds ?? []).filter(Boolean)
+  if (categoryIds.length === 0) return { products: [] as Product[], error: null }
+
+  // IDs de los productos de esas categorías, sin el producto actual.
+  const ids = (await getProductIdsByCategories(categoryIds)).filter((id) => id !== input.productId)
+  if (ids.length === 0) return { products: [] as Product[], error: null }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_available', true)
+    .in('id', ids)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) return { products: [] as Product[], error }
+  return { products: (data ?? []).map(mapProduct), error: null }
+}
 export async function createCategory(payload: CategoryInput) {
   const supabase = await createServerClient()
   return supabase.from('categories').insert(payload).select('*').single()
@@ -795,4 +882,25 @@ export async function updateCategory(id: string, payload: CategoryInput) {
 export async function deleteCategory(id: string) {
   const supabase = await createServerClient()
   return supabase.from('categories').delete().eq('id', id)
+}
+
+/**
+ * Actualiza el contenido SEO editorial de un hub de categoría
+ * (seo_title / seo_intro / seo_faq). Requiere admin — cliente servidor.
+ * Se separa del CRUD básico para no exponer estos campos en el editor simple.
+ */
+export async function updateCategorySeo(
+  id: string,
+  payload: { seo_title?: string | null; seo_intro?: string | null; seo_faq?: SeoFaqItem[] | null },
+  options: { slug?: string } = {},
+) {
+  const supabase = await createServerClient()
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (payload.seo_title !== undefined) row.seo_title = payload.seo_title
+  if (payload.seo_intro !== undefined) row.seo_intro = payload.seo_intro
+  if (payload.seo_faq !== undefined) row.seo_faq = payload.seo_faq
+  const result = await supabase.from('categories').update(row).eq('id', id).select('*').single()
+  // La landing del hub cambió: se revalida su página y el sitemap al instante.
+  if (!result.error) revalidarSitemap({ categoriaSlug: options.slug })
+  return result
 }

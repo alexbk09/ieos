@@ -19,6 +19,13 @@
 // JSONB. Este helper es agnóstico: solo recibe un producto plano.
 // ============================================================
 
+import {
+  STORE_COUNTRY_CODE,
+  AFFILIATE_SHIPPING_MIN_DAYS,
+  AFFILIATE_SHIPPING_MAX_DAYS,
+  MERCHANT_RETURN_DAYS,
+} from '@/lib/constants'
+
 // ---------- Tipos del producto mínimo para el schema ----------
 export type SchemaProduct = {
   id: string
@@ -286,6 +293,28 @@ export function buildOffersNode(
     itemCondition: SCHEMA_URL.NewCondition,
     seller: { '@type': 'Organization', name: sellerName || 'AliExpress' },
     priceValidUntil,
+    // Merchant / Rich Results: envío estimado y política de devolución.
+    // Se declaran datos REALES de operación (no se inventan precios de envío).
+    shippingDetails: {
+      '@type': 'OfferShippingDetails',
+      shippingDestination: { '@type': 'DefinedRegion', addressCountry: STORE_COUNTRY_CODE },
+      deliveryTime: {
+        '@type': 'ShippingDeliveryTime',
+        handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
+        transitTime: {
+          '@type': 'QuantitativeValue',
+          minValue: AFFILIATE_SHIPPING_MIN_DAYS,
+          maxValue: AFFILIATE_SHIPPING_MAX_DAYS,
+          unitCode: 'DAY',
+        },
+      },
+    },
+    hasMerchantReturnPolicy: {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: STORE_COUNTRY_CODE,
+      returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+      merchantReturnDays: MERCHANT_RETURN_DAYS,
+    },
   }
 
   if (originalPrice > basePrice) {
@@ -417,3 +446,13 @@ export function buildProductSchema(input: {
 
   return schema
 }
+
+// ---------- Breadcrumb y FAQ (Rich Results extra) ----------
+// La construcción pura vive en lib/seo-rules.mjs (testeable con node --test).
+// Se re-exporta aquí para que las páginas importen todo el schema desde un
+// único módulo (@/lib/schema/product-schema).
+
+/** Un nivel de la miga de pan estructurada. */
+export type BreadcrumbItem = { name: string; url: string }
+
+export { buildBreadcrumbSchema, buildFaqSchema } from '@/lib/seo-rules'

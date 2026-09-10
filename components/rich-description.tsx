@@ -20,7 +20,7 @@
  */
 const ETIQUETAS_PERMITIDAS = new Set([
   'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'mark', 'small', 'sub', 'sup',
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'h2', 'h3', 'h4', 'h5', 'h6',
   'ul', 'ol', 'li',
   'a', 'blockquote', 'code', 'pre',
   'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
@@ -56,6 +56,17 @@ function sanitizarHtml(html: string): string {
       if (hijo.nodeType === Node.ELEMENT_NODE) {
         const el = hijo as Element
         const etiqueta = el.tagName.toLowerCase()
+
+        // Jerarquía SEO: la página ya tiene un único <h1> (nombre del
+        // producto), así que cualquier <h1> que genere la IA se DEMOTA a
+        // <h2> para no romper la estructura de encabezados ante Google.
+        if (etiqueta === 'h1') {
+          const h2 = document.createElement('h2')
+          for (const child of Array.from(el.childNodes)) h2.appendChild(child)
+          el.replaceWith(h2)
+          limpiarNodo(h2)
+          continue
+        }
 
         // Elimina etiquetas peligrosas o no permitidas.
         if (!ETIQUETAS_PERMITIDAS.has(etiqueta)) {
