@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react'
 import { plainTextFromHtml } from '@/components/rich-description'
 import { LOW_STOCK_ALERT, PRODUCT_EVENT_TYPES } from '@/lib/constants'
 import { trackProductEvent } from '@/lib/analytics-client'
-import { formatBolivars, moneyUsd } from '@/lib/currency'
+import { formatBolivars, moneyEur, moneyUsd } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 
 /** Tipo mínimo de producto que recibe la card. */
@@ -252,7 +252,11 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           <div>
             {/* Precio según tipo (por unidad o por gramo/kilo) */}
             <p className="font-semibold">{priceLabel(product)}</p>
-            <p className="text-xs text-muted-foreground">{formatBolivars(product.price_usd, rate)}</p>
+            {/* Doble referencia de moneda: Bs (tasa oficial) + EUR real del
+                precio importado, para que el cliente compare de un vistazo. */}
+            <p className="text-xs text-muted-foreground">
+              {formatBolivars(product.price_usd, rate)} · {moneyEur(product.price_usd)}
+            </p>
           </div>
           {/* "Ver detalles" navega a la página real (crawlable) en lugar de
               abrir solo el modal, reforzando el enlazado interno hacia el

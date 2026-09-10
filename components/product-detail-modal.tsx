@@ -6,7 +6,7 @@ import { ProductCarousel } from '@/components/product-carousel'
 import { RichDescription } from '@/components/rich-description'
 import { categoryFor, colorImagesFor, type CardProduct } from '@/components/product-card'
 import { trackProductView } from '@/lib/analytics-client'
-import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
+import { formatBolivars, moneyEur, moneyUsd, formatRate } from '@/lib/currency'
 import { toGrams, formatWeight } from '@/lib/price-calculator'
 
 /**
@@ -292,7 +292,8 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
               <div>
                 {/* Precio por línea (peso calculado o cantidad × unitario) */}
                 <p className="text-3xl font-semibold">{moneyUsd(displayPrice)}</p>
-                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
+                {/* Precio en Bs (tasa oficial) + EUR real del producto importado. */}
+                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} · {moneyEur(displayPrice)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
                 {isWeight && (
                   <p className="mt-1 text-xs text-slate-400">
                     {formatWeight(grams)} · {moneyUsd(perGramPrice)}/g

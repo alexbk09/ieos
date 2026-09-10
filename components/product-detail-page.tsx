@@ -14,7 +14,7 @@ import { useCart, type CartProduct } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
-import { moneyUsd, formatBolivars, formatRate } from '@/lib/currency'
+import { moneyUsd, moneyEur, formatBolivars, formatRate } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
 
 // ---------- Tipos serializables (Server Component → Client) ----------
@@ -247,8 +247,9 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                 {stockBadge}
               </span>
             </div>
+            {/* Bs (tasa oficial) + EUR real del producto importado de AliExpress. */}
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· tasa {formatRate(exchangeRate)}</span>
+              {formatBolivars(product.price_usd, exchangeRate)} · {moneyEur(product.price_usd)} <span className="text-xs opacity-70">· tasa {formatRate(exchangeRate)}</span>
             </p>
 
             {/* Descripción: se renderiza como HTML semántico (h2, p, ul…) con

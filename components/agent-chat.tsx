@@ -18,6 +18,8 @@ type UIMessageLike = {
 }
 import { Bot, LoaderCircle, Send, ShoppingBag, Sparkles, X } from 'lucide-react'
 import { emitAddToCart } from '@/lib/cart-bridge'
+import { moneyEur } from '@/lib/currency'
+
 
 const SUGGESTIONS = [
   'Busca un panel LED',
@@ -219,7 +221,7 @@ export function AgentChat() {
                                       )}
                                       <div className="min-w-0 flex-1">
                                         <p className="truncate text-xs font-semibold">{prod.name}</p>
-                                        <p className="text-xs text-muted-foreground">${Number(prod.price_usd).toFixed(2)} USD</p>
+                                        <p className="text-xs text-muted-foreground">${Number(prod.price_usd).toFixed(2)} USD · {moneyEur(Number(prod.price_usd))}</p>
                                         <p className="text-[10px] text-muted-foreground">Stock: {prod.stock}</p>
                                       </div>
                                     </div>
