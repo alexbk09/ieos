@@ -10,7 +10,9 @@
     "test": "node --test tests/*.test.mjs",
     "supabase:setup": "node supabase/run.mjs",
     "supabase:seed": "node supabase/run.mjs --only-seed",
-    "supabase:verify": "node supabase/run.mjs --verify"
+    "supabase:verify": "node supabase/run.mjs --verify",
+    "i18n:backfill": "node scripts/backfill-category-i18n.mjs",
+    "i18n:backfill:dry": "node scripts/backfill-category-i18n.mjs --dry-run"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^0.2.16",

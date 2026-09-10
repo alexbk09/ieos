@@ -4,17 +4,34 @@ import { getFeaturedProducts, getCategoryNav } from '@/services/catalog'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/seo-url'
+import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { normalizeHomepageConfig } from '@/lib/homepage-config'
 
 /** ISR: la portada se sirve desde CDN y se revalida cada 5 min. */
 export const revalidate = 300
 
 /**
- * Metadata SEO de la portada (Fase 1).
- * Antes la home heredaba el <title> genérico del layout raíz. Ahora emite
- * title/description/canonical/OG/twitter propios con la marca real.
+ * Rutas de la portada para cada idioma PUBLICADO.
+ * Criterio "as-needed": el idioma por defecto (es) va SIN prefijo (las URLs
+ * actuales del sitio NO cambian); el resto va con prefijo (/fr).
  */
-export async function generateMetadata(): Promise<Metadata> {
+function portadaPathsByLocale(): Record<string, string> {
+  return Object.fromEntries(
+    publishedLocales().map((locale) => [locale, buildLocalizedPath('/', locale, { prefixDefaultLocale: false })]),
+  )
+}
+
+/** Genera el HTML estático de la portada por cada idioma publicado. */
+export function generateStaticParams() {
+  return publishedLocales().map((locale) => ({ locale }))
+}
+
+/**
+ * Metadata SEO de la portada: title/description/canonical/OG + hreflang
+ * (alternates.languages) por cada idioma publicado.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params
   const { settings } = await getSiteSettings()
   const name = settings.company_name || 'ilumaX'
   const tagline = settings.tagline || 'Arquitectura de luz'
@@ -25,8 +42,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata({
     title: `${name} — ${tagline}`,
     description,
-    path: '/',
+    path: buildLocalizedPath('/', locale, { prefixDefaultLocale: false }),
     siteName: name,
+    alternatesByLocale: portadaPathsByLocale(),
   })
 }
 
@@ -35,12 +53,14 @@ export async function generateMetadata(): Promise<Metadata> {
  * Inyecta JSON-LD (Organization, WebSite+SearchAction, ItemList y FAQPage si el admin configuró FAQs)
  * para que Google entienda la estructura de la tienda de afiliados.
  */
-export default async function Home() {
+export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
   const [{ products }, { settings }, { items: activeCategories }] = await Promise.all([
     getFeaturedProducts(),
     getSiteSettings(),
     // Solo categorías CON productos: evita que el cliente caiga en páginas vacías.
-    getCategoryNav(100),
+    // Se pasa el idioma para servir el nombre del nicho traducido (con fallback).
+    getCategoryNav(100, locale),
   ])
 
   // Normaliza image_url (Supabase devuelve null) y garantiza que colors/specifications existan.
@@ -100,7 +120,7 @@ export default async function Home() {
           '@type': 'ListItem',
           position: i + 1,
           name: p.name,
-          url: absoluteUrl(`/productos/${p.slug}`),
+          url: absoluteUrl(buildLocalizedPath(`/productos/${p.slug}`, locale, { prefixDefaultLocale: false })),
         })),
       }
     : null

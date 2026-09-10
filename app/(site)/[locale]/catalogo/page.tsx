@@ -4,17 +4,22 @@ import { getCatalogPage, getCategoryNav } from '@/services/catalog'
 import { getMarcasActivas } from '@/services/marcas'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
+import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 
 /** ISR: el catálogo se sirve desde CDN y se revalida cada 5 min. */
 export const revalidate = 300
 
+/** Genera el HTML estático del catálogo por cada idioma publicado. */
+export function generateStaticParams() {
+  return publishedLocales().map((locale) => ({ locale }))
+}
+
 /**
- * Metadata SEO del catálogo (Fase 1).
- * Antes esta página no exportaba generateMetadata y Google veía el
- * <title> genérico del layout raíz. Ahora emite title/description/
- * canonical/OG/twitter propios para rankear por keywords de catálogo.
+ * Metadata SEO del catálogo: title/description/canonical/OG propios + hreflang
+ * (alternates.languages) por cada idioma publicado.
  */
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params
   const { settings } = await getSiteSettings()
   const name = settings.company_name || 'ilumaX'
   const tagline = settings.tagline || 'Arquitectura de luz'
@@ -22,22 +27,28 @@ export async function generateMetadata(): Promise<Metadata> {
     settings.hero_texts?.description ??
     `Explora el catálogo completo de ${name}: productos seleccionados con envío internacional y compra segura.`
 
+  const alternatesByLocale = Object.fromEntries(
+    publishedLocales().map((l) => [l, buildLocalizedPath('/catalogo', l, { prefixDefaultLocale: false })]),
+  )
+
   return buildPageMetadata({
     title: `Catálogo de productos — ${name} | ${tagline}`,
     description,
-    path: '/catalogo',
+    path: buildLocalizedPath('/catalogo', locale, { prefixDefaultLocale: false }),
     siteName: name,
+    alternatesByLocale,
   })
 }
 
 /** Página pública: Catálogo completo con filtros e infinite scroll. La tasa se obtiene en cliente. */
-export default async function CatalogPage() {
+export default async function CatalogPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
 
   const [{ products, total }, { items: categoriesData }, { data: marcas }, { settings }] =
     await Promise.all([
       getCatalogPage({}, 0),
       // Solo categorías CON productos: filtrar por una categoría vacía da 0 resultados.
-      getCategoryNav(100),
+      getCategoryNav(100, locale),
       getMarcasActivas(),
       getSiteSettings(),
     ])

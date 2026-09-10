@@ -1,6 +1,5 @@
 import { Analytics } from '@vercel/analytics/next'
-import type { Metadata, Viewport } from 'next'
-import './globals.css'
+import '@/app/globals.css'
 import { ToastProvider } from '@/components/toast-provider'
 import { AppProviders } from '@/components/app-providers'
 import { NavigationProgress } from '@/components/navigation-progress'
@@ -8,30 +7,18 @@ import { WhatsAppButton } from '@/components/whatsapp-button'
 import { ScrollReset } from '@/components/scroll-reset'
 import { getSiteSettings } from '@/services/site-settings'
 import { themeStyleTagContent } from '@/lib/theme'
-import { GOOGLE_SITE_VERIFICATION } from '@/lib/constants'
 
-/** ISR: el layout raíz se revalida cada 5 min (metadata dinámica). */
-export const revalidate = 300
-
-// ---------- Metadata dinámica ----------
-export async function generateMetadata(): Promise<Metadata> {
-  const { settings } = await getSiteSettings()
-  const name = settings.company_name || 'ilumaX'
-  const tagline = settings.tagline || 'Arquitectura de luz'
-
-  return {
-    title: `${name} — ${tagline}`,
-    description: settings.hero_texts?.description ?? 'Soluciones LED y revestimientos que convierten espacios en experiencias memorables.',
-    generator: name,
-    // Verificación de Google Search Console (método meta tag).
-    verification: { google: GOOGLE_SITE_VERIFICATION },
-    icons: settings.icon_url
-      ? { icon: settings.icon_url, apple: settings.icon_url }
-      : undefined,
-  }
-}
-
-export const viewport: Viewport = { colorScheme: 'light dark', themeColor: '#020617' }
+/**
+ * Shell raíz COMPARTIDO por los root layouts del proyecto.
+ * ------------------------------------------------------------------
+ * POR QUÉ existe: Next.js permite varios "root layouts" (uno por route group)
+ * cuando NO hay app/layout.tsx. Eso es lo que nos deja declarar un <html lang>
+ * correcto por idioma (imposible desde un layout anidado) sin hacer dinámicas
+ * las páginas (seguimos con SSG+ISR).
+ *
+ * Este componente centraliza el chrome común (proveedores, tema, scripts,
+ * toasts, analítica) para no duplicarlo en cada root layout.
+ */
 
 /** Script inline que aplica el tema guardado ANTES de la hidratación (evita parpadeo). */
 const darkModeInit = `
@@ -45,23 +32,29 @@ const darkModeInit = `
   })();
 `
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export async function RootShell({
+  lang,
+  dir = 'ltr',
+  children,
+}: {
+  /** Código de idioma para el atributo <html lang> (señal SEO de idioma). */
+  lang: string
+  /** Dirección de lectura (preparado para idiomas RTL futuros). */
+  dir?: 'ltr' | 'rtl'
+  children: React.ReactNode
+}) {
   // Lee la configuración pública del sitio (cacheada con ISR).
-  // El tema se serializa como <style> en el head: cero parpadeo al cargar
-  // y personalización multiempresa sin recompilar.
   const { settings } = await getSiteSettings()
   const themeCss = themeStyleTagContent(settings.theme)
 
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang={lang} dir={dir} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: darkModeInit }} />
         <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       </head>
       <body className="antialiased">
-        <AppProviders>
-          {children}
-        </AppProviders>
+        <AppProviders>{children}</AppProviders>
         <NavigationProgress />
         <ScrollReset />
         <ToastProvider />

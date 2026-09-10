@@ -3,6 +3,19 @@
  * Evita "magic numbers" y strings quemados en componentes y servicios.
  */
 
+// Configuración de idiomas: la FUENTE ÚNICA (locales soportados, idioma por
+// defecto y idioma raíz/puente) vive en lib/i18n-config.mjs, que es lógica
+// pura reutilizable por los tests de Node y los scripts .mjs (que no pueden
+// importar TypeScript). Aquí se re-expone para que el resto de la app siga
+// teniendo un único punto de configuración.
+export {
+  SUPPORTED_LOCALES,
+  DEFAULT_LOCALE,
+  SOURCE_LOCALE,
+  HREFLANG_X_DEFAULT,
+  PUBLISHED_LOCALES,
+} from '@/lib/i18n-config'
+
 /** Tasa de cambio fija USD → Bs. para mostrar precios en bolívares. */
 export const EXCHANGE_RATE = 36.5
 
@@ -277,3 +290,37 @@ export const SITEMAP_MAX_URLS = 50_000
  * principal (el mismo tope del schema JSON-LD) sin inflar el archivo.
  */
 export const SITEMAP_MAX_IMAGES_PER_URL = 8
+
+// ---------- Internacionalización (i18n) ----------
+// La FUENTE ÚNICA de locales (lista soportada, idioma por defecto y raíz/puente)
+// vive en lib/i18n-config.mjs y se re-expone al inicio de este archivo. Aquí solo
+// van los parámetros de negocio que NO son lógica pura: cookie, motor de
+// traducción y el slug del módulo RBAC de traducciones.
+
+/** Nombre de la cookie donde se persiste la preferencia de idioma del usuario. */
+export const LOCALE_COOKIE_NAME = 'NEXT_LOCALE'
+
+/** Caducidad de la cookie de idioma (1 año, en segundos). */
+export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
+/**
+ * Temperatura del LLM de traducción. Baja a propósito: aquí buscamos traducciones
+ * FIELES y consistentes (no creatividad), a diferencia del redactor SEO que sí
+ * necesita variación para no repetir plantillas.
+ */
+export const TRANSLATION_TEMPERATURE = 0.2
+
+/** Máximo de tokens de salida del traductor de contenido (nombre + descripción + SEO). */
+export const TRANSLATION_MAX_TOKENS = 1600
+
+/** Nº máximo de entidades a traducir por lote (controla el coste de tokens). */
+export const TRANSLATION_BATCH_SIZE = 10
+
+/** Slug del módulo "Idiomas de Categorías" (traducciones) para permisos RBAC. */
+export const CATEGORY_I18N_MODULE_SLUG = 'categorias_idiomas'
+
+/** Endpoint del modelo de traducción (DeepSeek, API compatible con OpenAI). */
+export const TRANSLATION_API_URL = 'https://api.deepseek.com/v1/chat/completions'
+
+/** Modelo de chat usado para traducir contenido. */
+export const TRANSLATION_MODEL = 'deepseek-chat'

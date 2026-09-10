@@ -10,6 +10,8 @@ import { generateSeoContent } from '@/services/seo-content'
 import { existeTituloSimilar } from '@/services/seoDedupe'
 import { generateHubContent } from '@/services/seo-hub'
 import { getCategorySeo, updateCategorySeo, slugify } from '@/services/catalog'
+// Traducción del nicho (idiomas soportados) hacia categories.*_i18n.
+import { traducirCategoria } from '@/services/i18n-translate'
 import type { SeoFaqItem } from '@/lib/seo-types'
 import type { ProductInput } from '@/services/catalog'
 import { ALI_PIPELINE_MAX_PRODUCTS } from '@/lib/constants'
@@ -26,6 +28,7 @@ export type EtapaPipeline =
   | 'extrayendo'
   | 'generando_enlace'
   | 'procesando_seo'
+  | 'traduciendo'
   | 'guardando'
   | 'completado'
   | 'error'
@@ -310,6 +313,27 @@ export async function ejecutarPipelineAutomatizacion(
     } catch (err: any) {
       // Un fallo del hub NO debe abortar la carga de productos.
       console.error('[aliPipeline] hub SEO inesperado:', err?.message)
+    }
+
+    // 2.2) Traducciones del nicho (i18n): completa los idiomas que falten para
+    // que la landing exista en todos los idiomas soportados. Es idempotente y
+    // de coste cero si ya está traducido. Un fallo aquí NO aborta el pipeline
+    // (la categoría queda en su idioma raíz y el backfill puede reintentar).
+    try {
+      notificar({ etapa: 'traduciendo', mensaje: 'Traduciendo el nicho a los idiomas soportados...' })
+      const traduccion = await traducirCategoria(categoria.categoriaId)
+      if (traduccion.success) {
+        if (traduccion.data.traducidos.length > 0) {
+          notificar({
+            etapa: 'traduciendo',
+            mensaje: 'Nicho traducido: ' + traduccion.data.traducidos.join(', ') + '.',
+          })
+        }
+      } else {
+        console.error('[aliPipeline] i18n:', traduccion.error)
+      }
+    } catch (err: any) {
+      console.error('[aliPipeline] i18n inesperado:', err?.message)
     }
 
     // Filtrar duplicados en Supabase.

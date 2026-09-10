@@ -6,6 +6,8 @@ import { ProductDetailPageView, type DetailProduct } from '@/components/product-
 import type { CardProduct } from '@/components/product-card'
 import { buildProductSchema, buildBreadcrumbSchema, buildFaqSchema, htmlToPlainText, clampText, toAbsoluteUrl } from '@/lib/schema/product-schema'
 import { absoluteUrl } from '@/lib/seo-url'
+import { buildLanguageAlternates } from '@/lib/seo'
+import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n-config'
 
 /**
  * Página pública de detalle de producto: /productos/[slug].
@@ -27,10 +29,17 @@ import { absoluteUrl } from '@/lib/seo-url'
 /** ISR: la página se revalida cada 5 minutos como el resto de la tienda. */
 export const revalidate = 300
 
-/** Genera el HTML estático de todos los slugs visibles en build time. */
+/**
+ * Genera el HTML estático de cada producto visible por cada idioma PUBLICADO.
+ * (El slug del producto aún no se localiza; el prefijo de idioma sí.)
+ */
 export async function generateStaticParams() {
   const { slugs } = await getPublicProductSlugs()
-  return slugs.map((slug) => ({ slug }))
+  const params: { locale: string; slug: string }[] = []
+  for (const locale of publishedLocales()) {
+    for (const slug of slugs) params.push({ locale, slug })
+  }
+  return params
 }
 
 /** Serializa el producto tipado del servicio a la forma mínima del cliente. */
@@ -121,8 +130,8 @@ function toCardProduct(product: Product): CardProduct {
 }
 
 /** Metadatos SEO dinámicos (title, description, OG, canonical, robots). */
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params
   const [{ product }, { settings }] = await Promise.all([getPublicProductBySlug(slug), getSiteSettings()])
 
   if (!product) {
@@ -137,7 +146,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ? cleanDescription
     : `${product.name} — disponible en ${brandName}. Compra segura a través de nuestro enlace de afiliado.`
 
-  const productUrl = absoluteUrl(`/productos/${product.slug}`)
+  const productUrl = absoluteUrl(buildLocalizedPath(`/productos/${product.slug}`, locale, { prefixDefaultLocale: false }))
+  // hreflang: el slug del producto aún no se localiza, pero sí el prefijo de idioma.
+  const alternatesByLocale = Object.fromEntries(
+    publishedLocales().map((l) => [
+      l,
+      buildLocalizedPath(`/productos/${product.slug}`, l, { prefixDefaultLocale: false }),
+    ]),
+  )
   const image = product.images?.[0]?.url ?? product.image_url
   const categoryName = product.categories?.[0]?.name
   // indexado_google (migración 0042) controla la indexación real:
@@ -149,7 +165,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: seoTitle,
     description,
-    alternates: { canonical: productUrl },
+    alternates: { canonical: productUrl, languages: buildLanguageAlternates(alternatesByLocale) },
     robots: indexable ? 'index, follow' : 'noindex, nofollow',
     category: categoryName ?? undefined,
     openGraph: {
@@ -180,8 +196,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  * (nunca supabase.from en componentes) y serializa el schema JSON-LD
  * en el <head> ANTES de enviar el HTML al navegador.
  */
-export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
+export default async function ProductDetailPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
+  const { locale, slug } = await params
   const [{ product }, { settings }] = await Promise.all([getPublicProductBySlug(slug), getSiteSettings()])
 
   // 404 real (status 404) si no existe o no está visible en el catálogo.
@@ -189,7 +205,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   const detailProduct = toDetailProduct(product)
   const origin = absoluteUrl('/').replace(/\/+$/, '')
-  const productUrl = absoluteUrl(`/productos/${product.slug}`)
+  const productUrl = absoluteUrl(buildLocalizedPath(`/productos/${product.slug}`, locale, { prefixDefaultLocale: false }))
+  // Origen con prefijo de idioma para el JSON-LD (Product/Offer/Organization).
+  const schemaOrigin = locale === DEFAULT_LOCALE ? origin : `${origin}/${locale}`
 
   // Enlazado interno (SEO): productos relacionados + navegación cross-categoría.
   // Todo se resuelve en servidor → HTML crawlable por Google.
@@ -198,7 +216,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       productId: product.id,
       categoryIds: (product.categories ?? []).map((c) => c.id),
     }),
-    getCategoryNav(),
+    getCategoryNav(undefined, locale),
   ])
   const related = (relatedResult.products ?? []).map(toCardProduct)
 
@@ -227,17 +245,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       marca: product.marca ?? null,
       images: product.images ?? [],
     },
-    origin,
-    organization: { name: settings.company_name || 'ilumaX', url: origin },
+    origin: schemaOrigin,
+    organization: { name: settings.company_name || 'ilumaX', url: schemaOrigin },
   })
 
   // BreadcrumbList: ruta jerárquica (Rich Results de Google).
   const primaryCategory = product.categories?.[0]
   const breadcrumbLd = buildBreadcrumbSchema([
-    { name: 'Inicio', url: origin },
-    { name: 'Catálogo', url: origin + '/catalogo' },
+    { name: 'Inicio', url: schemaOrigin },
+    { name: 'Catálogo', url: absoluteUrl(buildLocalizedPath('/catalogo', locale, { prefixDefaultLocale: false })) },
     ...(primaryCategory
-      ? [{ name: primaryCategory.name, url: origin + '/categoria/' + primaryCategory.slug }]
+      ? [{
+          name: primaryCategory.name,
+          url: absoluteUrl(buildLocalizedPath('/categoria/' + primaryCategory.slug, locale, { prefixDefaultLocale: false })),
+        }]
       : []),
     { name: product.name, url: productUrl },
   ])

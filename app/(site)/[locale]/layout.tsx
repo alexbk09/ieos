@@ -1,0 +1,44 @@
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { RootShell } from '@/components/root-shell'
+import { ROOT_VIEWPORT, buildRootMetadata } from '@/lib/root-metadata'
+import { publishedLocales } from '@/lib/i18n-config'
+
+/**
+ * Root layout del SITIO PÚBLICO (route group `(site)`).
+ * ------------------------------------------------------------------
+ * Declara <html lang={locale}> con el idioma REAL de la página: es la señal que
+ * usa Google para entender el idioma del documento (complementa a hreflang).
+ * Solo puede declararse el <html> desde un ROOT layout, por eso el sitio público
+ * vive en su propio route group (sin app/layout.tsx global).
+ *
+ * SSG + ISR: el contenido se sirve estático desde CDN y se revalida cada 5 min.
+ */
+export const revalidate = 300
+
+export const viewport = ROOT_VIEWPORT
+
+/** Fuerza un 404 para idiomas NO publicados (evita exponer versiones a medias). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  if (!publishedLocales().includes(locale)) return {}
+  return buildRootMetadata()
+}
+
+export default async function SiteLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  // Blindaje: solo los idiomas PUBLICADOS son accesibles (evita doorway pages).
+  if (!publishedLocales().includes(locale)) notFound()
+
+  return <RootShell lang={locale}>{children}</RootShell>
+}

@@ -1,0 +1,39 @@
+/**
+ * Declaración de tipos para lib/i18n-content.mjs.
+ * Resolución de contenido traducido (columnas *_i18n JSONB) con fallback.
+ */
+
+/** Opciones de resolución de traducciones (fuente: lib/constants.ts). */
+export type LocalizedResolveOptions = {
+  /** Idioma raíz / puente (nunca visible salvo como último fallback). */
+  sourceLocale?: string
+  /** Idioma por defecto del sitio. */
+  defaultLocale?: string
+}
+
+/** Opciones de generación de slug localizado (incluye las de resolución + slugify). */
+export type LocalizedSlugOptions = LocalizedResolveOptions & {
+  fallbackPrefix?: string
+  stamp?: number
+}
+
+/** Resuelve un texto traducido con cadena de fallback (pedido → default → raíz). */
+export function resolveLocalizedValue(
+  i18n: Record<string, string> | null | undefined,
+  locale: string,
+  options?: LocalizedResolveOptions,
+): string
+
+/** Resuelve una lista traducida con la misma cadena de fallback. */
+export function resolveLocalizedList<T = unknown>(
+  i18n: Record<string, T[]> | null | undefined,
+  locale: string,
+  options?: LocalizedResolveOptions,
+): T[]
+
+/** Genera el slug localizado a partir del nombre traducido del idioma pedido. */
+export function buildLocalizedSlug(
+  namesI18n: Record<string, string> | null | undefined,
+  locale: string,
+  options?: LocalizedSlugOptions,
+): string

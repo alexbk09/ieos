@@ -1,6 +1,6 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
-import { CATALOG_PAGE_SIZE, SITEMAP_MAX_IMAGES_PER_URL } from '@/lib/constants'
+import { CATALOG_PAGE_SIZE, SITEMAP_MAX_IMAGES_PER_URL, SOURCE_LOCALE } from '@/lib/constants'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 import { PRODUCT_SELECT, mapProduct, slugify } from '@/services/catalog'
 import type { Product, ProductInput } from '@/services/catalog'
@@ -150,14 +150,29 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
     const supabase = await createServerClient()
     const nombre = nombreCategoriaDesdeKeyword(keyword ?? '')
     const slug = slugify(nombre)
-    const { data: existente } = await supabase.from('categories').select('id').eq('slug', slug).maybeSingle()
-    if (existente?.id) return { success: true as const, categoriaId: existente.id, nombre }
+    const { data: existente } = await supabase.from('categories').select('id,name_i18n').eq('slug', slug).maybeSingle()
+    if (existente?.id) {
+      // La categoría ya existe: se asegura su traducción base (idioma raíz) para
+      // nichos creados antes de la migración 0049. Idempotente: solo si falta.
+      const names = (existente.name_i18n ?? {}) as Record<string, string>
+      if (!names[SOURCE_LOCALE]) {
+        await supabase
+          .from('categories')
+          .update({ name_i18n: { ...names, [SOURCE_LOCALE]: nombre } })
+          .eq('id', existente.id)
+      }
+      return { success: true as const, categoriaId: existente.id, nombre }
+    }
     const { data: creada, error: errorCreacion } = await supabase
       .from('categories')
       .insert({
         name: nombre,
         slug,
         description: `Productos del nicho "${keyword ?? 'AliExpress'}" descubiertos y optimizados por el pipeline automatizado.`,
+        // Traducción base (idioma raíz): el nicho nace internacionalizable.
+        // El resto de idiomas los completa traducirCategoria() en el pipeline.
+        name_i18n: { [SOURCE_LOCALE]: nombre },
+        slug_i18n: { [SOURCE_LOCALE]: slug },
       })
       .select('id')
       .single()

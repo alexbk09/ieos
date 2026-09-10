@@ -42,6 +42,7 @@ type EtapaPipeline =
   | 'extrayendo'
   | 'generando_enlace'
   | 'procesando_seo'
+  | 'traduciendo'
   | 'guardando'
   | 'completado'
   | 'error'
@@ -82,6 +83,7 @@ const ETIQUETA_ETAPA: Record<EtapaPipeline, string> = {
   extrayendo: 'Extrayendo detalle',
   generando_enlace: 'Generando enlace',
   procesando_seo: 'Procesando SEO',
+  traduciendo: 'Traduciendo el nicho',
   guardando: 'Guardando en Supabase',
   completado: 'Completado',
   error: 'Error',

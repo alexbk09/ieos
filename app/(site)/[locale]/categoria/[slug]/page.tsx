@@ -12,6 +12,7 @@ import {
 } from '@/services/catalog'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/seo-url'
+import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
 
 /**
@@ -33,10 +34,25 @@ import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
 /** ISR: se revalida cada 5 min como el resto de la tienda. */
 export const revalidate = 300
 
-/** Genera el HTML estático de todas las categorías activas en build time. */
+/**
+ * Genera el HTML estático de cada categoría activa por cada idioma PUBLICADO,
+ * usando el slug LOCALIZADO de ese idioma (URL en el idioma del público).
+ * Incluye también los slugs BASE para que las URLs antiguas sigan vivas.
+ */
 export async function generateStaticParams() {
-  const { slugs } = await getCategorySlugs()
-  return slugs.map((slug) => ({ slug }))
+  const { items } = await getCategorySlugs()
+  const params: { locale: string; slug: string }[] = []
+  const vistos = new Set<string>()
+  for (const locale of publishedLocales()) {
+    for (const item of items) {
+      const slug = item.slug_i18n?.[locale] ?? item.slug
+      const clave = `${locale}:${slug}`
+      if (vistos.has(clave)) continue
+      vistos.add(clave)
+      params.push({ locale, slug })
+    }
+  }
+  return params
 }
 
 /** Serializa un producto del servicio a la forma mínima de la card. */
@@ -81,10 +97,10 @@ function toCardProduct(product: Product): CardProduct {
   }
 }
 
-/** Metadatos SEO dinámicos de la categoría (title, description, OG, canonical). */
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params
-  const [{ category }, { settings }] = await Promise.all([getCategoryBySlug(slug), getSiteSettings()])
+/** Metadatos SEO dinámicos de la categoría (title, description, OG, canonical, hreflang). */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params
+  const [{ category }, { settings }] = await Promise.all([getCategoryBySlug(slug, locale), getSiteSettings()])
 
   if (!category) return { title: 'Categoría no encontrada' }
 
@@ -97,22 +113,37 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ? clampText(htmlToPlainText(fuenteDescripcion), 300)
     : `Compra ${category.name} en ${name}: productos seleccionados con envío internacional y compra segura.`
 
+  // Canónica con el slug LOCALIZADO del idioma (SEO por idioma).
+  const canonicalSlug = category.slug_localizado ?? category.slug
+  const path = buildLocalizedPath(`/categoria/${canonicalSlug}`, locale, { prefixDefaultLocale: false })
+
+  // hreflang: una URL por idioma PUBLICADO, cada una con su slug localizado.
+  const alternatesByLocale = Object.fromEntries(
+    publishedLocales().map((l) => {
+      const localizedSlug = category.slug_i18n?.[l] ?? category.slug
+      return [l, buildLocalizedPath(`/categoria/${localizedSlug}`, l, { prefixDefaultLocale: false })]
+    }),
+  )
+
   return buildPageMetadata({
     title: `${hubTitle} | ${name}`,
     description: cleanDescription,
-    path: `/categoria/${category.slug}`,
+    path,
     siteName: name,
+    alternatesByLocale,
   })
 }
 
 /** Página server de categoría: listado indexable de productos. */
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
+export default async function CategoryPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
+  const { locale, slug } = await params
   const [{ category }, { products }, { settings }, { items: navCategories }] = await Promise.all([
-    getCategoryBySlug(slug),
-    getProductsByCategorySlug(slug),
+    // La resolución por locale habilita URLs localizadas (/fr/categoria/...) y
+    // devuelve nombre/descripción/SEO del idioma pedido (con fallback).
+    getCategoryBySlug(slug, locale),
+    getProductsByCategorySlug(slug, 0, locale),
     getSiteSettings(),
-    getCategoryNav(),
+    getCategoryNav(undefined, locale),
   ])
 
   // 404 real si la categoría no existe o está inactiva.
@@ -120,7 +151,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const brandName = settings.company_name || 'ilumaX'
   const origin = absoluteUrl('/').replace(/\/+$/, '')
-  const categoryUrl = absoluteUrl(`/categoria/${category.slug}`)
+  // URL canónica del idioma: usa el slug LOCALIZADO (SEO por idioma).
+  const canonicalSlug = category.slug_localizado ?? category.slug
+  const categoryUrl = absoluteUrl(
+    buildLocalizedPath(`/categoria/${canonicalSlug}`, locale, { prefixDefaultLocale: false }),
+  )
 
   // JSON-LD: BreadcrumbList + ItemList de los productos de la categoría.
   const jsonLd = {
@@ -130,7 +165,12 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Inicio', item: origin },
-          { '@type': 'ListItem', position: 2, name: 'Catálogo', item: `${origin}/catalogo` },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Catálogo',
+            item: absoluteUrl(buildLocalizedPath('/catalogo', locale, { prefixDefaultLocale: false })),
+          },
           { '@type': 'ListItem', position: 3, name: category.name, item: categoryUrl },
         ],
       },
@@ -141,7 +181,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           '@type': 'ListItem',
           position: i + 1,
           name: p.name,
-          url: `${origin}/productos/${p.slug}`,
+          url: absoluteUrl(buildLocalizedPath(`/productos/${p.slug}`, locale, { prefixDefaultLocale: false })),
         })),
       },
       // FAQPage del nicho: refleja la FAQ visible del hub (Google exige que el

@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next'
 import { getSitemapProducts } from '@/services/aliProducts'
 import { getSitemapCategories } from '@/services/catalog'
 import { absoluteUrl, absoluteAssetUrl } from '@/lib/seo-url'
+import { buildLanguageAlternates } from '@/lib/seo'
+import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { SITEMAP_MAX_IMAGES_PER_URL, SITEMAP_MAX_URLS } from '@/lib/constants'
 
 /**
@@ -31,26 +33,59 @@ export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const generatedAt = new Date()
+  const locales = publishedLocales()
+  const entries: MetadataRoute.Sitemap = []
 
-  // 1) Rutas estáticas principales (siempre indexables, máxima prioridad).
-  const entries: MetadataRoute.Sitemap = [
-    { url: absoluteUrl('/'), lastModified: generatedAt, changeFrequency: 'daily', priority: 1 },
-    { url: absoluteUrl('/catalogo'), lastModified: generatedAt, changeFrequency: 'daily', priority: 0.9 },
-  ]
+  /**
+   * Construye el `alternates.languages` (hreflang) de una página.
+   * Next.js lo serializa como <xhtml:link rel="alternate" hreflang="..."> dentro
+   * de cada <url>, que es la señal que evita el "contenido duplicado" entre
+   * idiomas y le dice a Google qué versión servir a cada mercado.
+   */
+  const alternatesFor = (buildPath: (locale: string) => string) => ({
+    languages: buildLanguageAlternates(
+      Object.fromEntries(locales.map((locale) => [locale, buildPath(locale)])),
+    ),
+  })
 
-  // 2) Landings de categoría (/categoria/[slug]) — pSEO con lastmod real.
-  //    Reparte autoridad hacia las fichas de cada nicho.
-  const { items: categories } = await getSitemapCategories()
-  for (const category of categories) {
+  // 1) Rutas estáticas principales, una por cada idioma publicado.
+  for (const locale of locales) {
     entries.push({
-      url: absoluteUrl(`/categoria/${category.slug}`),
-      lastModified: category.lastmod,
-      changeFrequency: 'weekly',
-      priority: 0.7,
+      url: absoluteUrl(buildLocalizedPath('/', locale, { prefixDefaultLocale: false })),
+      lastModified: generatedAt,
+      changeFrequency: 'daily',
+      priority: 1,
+      alternates: alternatesFor((l) => buildLocalizedPath('/', l, { prefixDefaultLocale: false })),
+    })
+    entries.push({
+      url: absoluteUrl(buildLocalizedPath('/catalogo', locale, { prefixDefaultLocale: false })),
+      lastModified: generatedAt,
+      changeFrequency: 'daily',
+      priority: 0.9,
+      alternates: alternatesFor((l) => buildLocalizedPath('/catalogo', l, { prefixDefaultLocale: false })),
     })
   }
 
+  // 2) Landings de categoría (/categoria/[slug]) — pSEO con lastmod real y
+  //    SLUG LOCALIZADO por idioma (la URL habla el idioma del público).
+  const { items: categories } = await getSitemapCategories()
+  for (const category of categories) {
+    const slugFor = (locale: string) => category.slug_i18n?.[locale] ?? category.slug
+    for (const locale of locales) {
+      entries.push({
+        url: absoluteUrl(buildLocalizedPath(`/categoria/${slugFor(locale)}`, locale, { prefixDefaultLocale: false })),
+        lastModified: category.lastmod,
+        changeFrequency: 'weekly',
+        priority: 0.7,
+        alternates: alternatesFor((l) =>
+          buildLocalizedPath(`/categoria/${slugFor(l)}`, l, { prefixDefaultLocale: false }),
+        ),
+      })
+    }
+  }
+
   // 3) Fichas de producto indexables + su galería (sitemap de imágenes).
+  //    El slug del producto aún no se localiza: solo cambia el prefijo de idioma.
   const products = await getSitemapProducts()
   if (products.success && products.data) {
     for (const item of products.data) {
@@ -59,13 +94,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .filter(Boolean)
         .slice(0, SITEMAP_MAX_IMAGES_PER_URL)
 
-      entries.push({
-        url: absoluteUrl(`/productos/${item.slug}`),
-        lastModified: item.lastmod,
-        changeFrequency: 'daily',
-        priority: 0.8,
-        ...(images.length > 0 ? { images } : {}),
-      })
+      const alternates = alternatesFor((l) =>
+        buildLocalizedPath(`/productos/${item.slug}`, l, { prefixDefaultLocale: false }),
+      )
+      for (const locale of locales) {
+        entries.push({
+          url: absoluteUrl(buildLocalizedPath(`/productos/${item.slug}`, locale, { prefixDefaultLocale: false })),
+          lastModified: item.lastmod,
+          changeFrequency: 'daily',
+          priority: 0.8,
+          alternates,
+          ...(images.length > 0 ? { images } : {}),
+        })
+      }
     }
   }
 

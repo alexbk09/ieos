@@ -1,8 +1,20 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
-import { CATALOG_PAGE_SIZE, CATEGORY_NAV_LIMIT, FEATURED_PRODUCTS_LIMIT, RELATED_PRODUCTS_LIMIT } from '@/lib/constants'
+import {
+  CATALOG_PAGE_SIZE,
+  CATEGORY_NAV_LIMIT,
+  DEFAULT_LOCALE,
+  FEATURED_PRODUCTS_LIMIT,
+  RELATED_PRODUCTS_LIMIT,
+  SOURCE_LOCALE,
+} from '@/lib/constants'
+// Resolución de traducciones JSONB (lógica pura compartida) y base de idioma.
+import { resolveLocalizedValue, resolveLocalizedList } from '@/lib/i18n-content'
+import { baseLanguage } from '@/lib/i18n-config'
 import type { SeoFaqItem } from '@/lib/seo-types'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
+// Fuente única de slugs (lógica pura .mjs reutilizable por scripts y tests).
+import { slugify } from '@/lib/slug'
 
 /**
  * Servicio de catálogo.
@@ -106,6 +118,27 @@ export type Category = {
   seo_intro?: string | null
   /** FAQ del nicho (migración 0047) → schema FAQPage de la categoría. */
   seo_faq?: SeoFaqItem[] | null
+  // ---------- Internacionalización (migración 0049) ----------
+  // El inglés (idioma raíz/puente) sigue en `name`/`slug`; aquí van las
+  // traducciones por locale. La resolución con fallback vive en
+  // lib/i18n-content.mjs (resolveLocalizedValue / resolveLocalizedList).
+  /** Nombre visible por idioma: { en: "...", es: "..." }. */
+  name_i18n?: Record<string, string> | null
+  /** Slug/URL localizada por idioma: { es: "ratones-gamer" }. */
+  slug_i18n?: Record<string, string> | null
+  /** Descripción corta por idioma. */
+  description_i18n?: Record<string, string> | null
+  /** Título H1 del hub por idioma. */
+  seo_title_i18n?: Record<string, string> | null
+  /** HTML editorial del hub por idioma. */
+  seo_intro_i18n?: Record<string, string> | null
+  /** FAQ del nicho por idioma: { es: [{ pregunta, respuesta }] }. */
+  seo_faq_i18n?: Record<string, SeoFaqItem[]> | null
+  /**
+   * Slug traducido del idioma pedido, resuelto por `localizarCategoria`.
+   * `slug` sigue siendo el BASE (identidad de ruta estable e indexada).
+   */
+  slug_localizado?: string
 }
 
 export type CategoryInput = {
@@ -113,6 +146,13 @@ export type CategoryInput = {
   slug: string
   description?: string | null
   activa?: boolean
+  /** Traducciones por idioma (migración 0049). Opcionales: el CRUD simple no las toca. */
+  name_i18n?: Record<string, string> | null
+  slug_i18n?: Record<string, string> | null
+  description_i18n?: Record<string, string> | null
+  seo_title_i18n?: Record<string, string> | null
+  seo_intro_i18n?: Record<string, string> | null
+  seo_faq_i18n?: Record<string, SeoFaqItem[]> | null
 }
 
 /** Imagen de producto con color asociado (opcional). */
@@ -372,17 +412,13 @@ export async function getPublicProductSlugs() {
   return { slugs: (data ?? []).map((row: any) => row.slug).filter(Boolean) as string[], error: null }
 }
 
-/** Slug simple desde un texto (minúsculas, sin acentos, guiones). */
-export function slugify(text: string): string {
-  return (
-    text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || `item-${Date.now()}`
-  )
-}
+/**
+ * Slug simple desde un texto (minúsculas, sin acentos, guiones).
+ * La lógica pura vive en lib/slug.mjs: es la fuente ÚNICA (testeable en Node y
+ * reutilizable por scripts .mjs). Se re-exporta para no romper los imports
+ * existentes (services/aliProducts.ts, services/aliPipeline.ts).
+ */
+export { slugify }
 
 /**
  * Construye la lista de imágenes a guardar en product_images.
@@ -706,6 +742,87 @@ export async function getInventorySummary() {
 
 // ---------- Categorías ----------
 
+/** Opciones de resolución i18n (fuente única: lib/constants.ts). */
+const I18N_RESOLVE_OPTIONS = { sourceLocale: SOURCE_LOCALE, defaultLocale: DEFAULT_LOCALE }
+
+/** Columnas i18n de categoría (migración 0049). */
+const CATEGORY_I18N_COLUMNS = 'name_i18n,slug_i18n,description_i18n,seo_title_i18n,seo_intro_i18n,seo_faq_i18n'
+
+/**
+ * Ejecuta una consulta de categorías con las columnas i18n y, si el entorno aún
+ * NO tiene aplicada la migración 0049 (columna inexistente), REINTENTA sin ellas.
+ *
+ * POR QUÉ: la tienda puede apuntar a varios entornos (dev/prod) con migraciones
+ * desincronizadas. Sin esta degradación, un `select` con columnas ausentes
+ * vaciaría la navegación y el sitemap de categorías en silencio. Con ella, el
+ * sitio sigue sirviendo el idioma base y solo se pierde la capa de traducción.
+ *
+ * @param build Constructor de la consulta que recibe las columnas a seleccionar.
+ * @param baseColumns Columnas disponibles en cualquier entorno.
+ * @param i18nColumns Columnas de traducción (0049).
+ */
+async function selectCategoriesConFallback<T>(
+  build: (columns: string) => PromiseLike<{ data: T | null; error: any }>,
+  baseColumns: string,
+  i18nColumns: string = CATEGORY_I18N_COLUMNS,
+): Promise<{ data: T | null; error: any }> {
+  const intento = await build(`${baseColumns},${i18nColumns}`)
+  if (!intento.error) return intento
+
+  // 42703 = undefined_column (PostgREST/Postgres): la migración 0049 falta.
+  const code = (intento.error as any)?.code
+  const message = String((intento.error as any)?.message ?? '')
+  if (code === '42703' || /does not exist/i.test(message)) {
+    console.warn('[catalog] Columnas i18n ausentes (¿migración 0049 pendiente?); se sirve el idioma base.')
+    return build(baseColumns)
+  }
+  return intento
+}
+
+/** Entrada del sitemap de categorías (incluye datos i18n para hreflang). */
+export type SitemapCategoryItem = {
+  slug: string
+  lastmod: string
+  name_i18n?: Record<string, string> | null
+  slug_i18n?: Record<string, string> | null
+  name_localizado?: string
+}
+
+/** Slug base de categoría + sus traducciones por idioma (para generateStaticParams). */
+export type CategorySlugItem = {
+  slug: string
+  slug_i18n: Record<string, string> | null
+}
+
+/**
+ * Aplica las traducciones del idioma pedido a una fila de categoría.
+ * - `name`/`description`/`seo_*` se resuelven con fallback (pedido → defecto → raíz).
+ * - `slug` se mantiene como BASE (identidad de ruta estable, ya indexada); el
+ *   slug traducido se expone en `slug_localizado` para el enrutado localizado.
+ * Si no se pasa `locale`, devuelve la fila tal cual (comportamiento histórico:
+ * cero cambios visibles hasta que el enrutado por idioma los solicite).
+ */
+function localizarCategoria(row: any, locale?: string): Category {
+  if (!locale || !row) return row as Category
+
+  const localizedName = resolveLocalizedValue(row.name_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const localizedSlug = resolveLocalizedValue(row.slug_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const localizedDescription = resolveLocalizedValue(row.description_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const localizedSeoTitle = resolveLocalizedValue(row.seo_title_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const localizedSeoIntro = resolveLocalizedValue(row.seo_intro_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const localizedFaq = resolveLocalizedList<SeoFaqItem>(row.seo_faq_i18n, locale, I18N_RESOLVE_OPTIONS)
+
+  return {
+    ...row,
+    name: localizedName || row.name,
+    description: localizedDescription || (row.description ?? null),
+    seo_title: localizedSeoTitle || (row.seo_title ?? null),
+    seo_intro: localizedSeoIntro || (row.seo_intro ?? null),
+    seo_faq: localizedFaq.length > 0 ? localizedFaq : (row.seo_faq ?? null),
+    slug_localizado: localizedSlug || row.slug,
+  } as Category
+}
+
 /** Obtiene todas las categorías ordenadas por nombre. Cliente público → SSG+ISR. */
 export async function getCategories() {
   const supabase = createPublicClient()
@@ -716,25 +833,48 @@ export async function getCategories() {
  * Obtiene solo las categorías activas (para el filtro del catálogo público).
  * Cliente público → SSG+ISR.
  */
-export async function getCategoriesActivas() {
+export async function getCategoriesActivas(locale?: string) {
   const supabase = createPublicClient()
-  return supabase.from('categories').select('id,name,slug').eq('activa', true).order('name')
+  const { data, error } = await selectCategoriesConFallback<any>(
+    (columns) => supabase.from('categories').select(columns).eq('activa', true).order('name'),
+    'id,name,slug,description,activa',
+  )
+  if (error) return { data: null, error }
+  return { data: (data ?? []).map((row: any) => localizarCategoria(row, locale)), error: null }
 }
 
 /**
  * Obtiene una categoría activa por su slug exacto (página /categoria/[slug]).
  * Cliente público → SSG+ISR. Devuelve null si no existe o está inactiva.
  */
-export async function getCategoryBySlug(slug: string) {
+export async function getCategoryBySlug(slug: string, locale?: string) {
   const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('categories')
-    .select('id,name,slug,description,seo_title,seo_intro,seo_faq')
-    .eq('activa', true)
-    .eq('slug', slug)
-    .maybeSingle()
+  const BASE = 'id,name,slug,description,activa,seo_title,seo_intro,seo_faq'
+
+  // 1) Coincidencia por el slug BASE (URL histórica, ya indexada).
+  const { data, error } = await selectCategoriesConFallback<any>(
+    (columns) => supabase.from('categories').select(columns).eq('activa', true).eq('slug', slug).maybeSingle(),
+    BASE,
+  )
   if (error) return { category: null, error }
-  return { category: data as Category | null, error: null }
+  if (data) return { category: localizarCategoria(data, locale), error: null }
+
+  // 2) Fallback: slug LOCALIZADO (p. ej. /fr/categoria/souris-gamer).
+  if (locale) {
+    const { data: localized } = await selectCategoriesConFallback<any>(
+      (columns) =>
+        supabase
+          .from('categories')
+          .select(columns)
+          .eq('activa', true)
+          .contains('slug_i18n', { [baseLanguage(locale)]: slug })
+          .maybeSingle(),
+      BASE,
+    )
+    if (localized) return { category: localizarCategoria(localized, locale), error: null }
+  }
+
+  return { category: null, error: null }
 }
 
 /**
@@ -764,12 +904,23 @@ export async function getCategorySeo(categoryId: string) {
  */
 export async function getCategorySlugs() {
   const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('categories')
-    .select('slug')
-    .eq('activa', true)
-  if (error) return { slugs: [] as string[], error }
-  return { slugs: (data ?? []).map((row: any) => row.slug).filter(Boolean) as string[], error: null }
+  const { data, error } = await selectCategoriesConFallback<any>(
+    (columns) => supabase.from('categories').select(columns).eq('activa', true),
+    'slug',
+    'slug_i18n',
+  )
+  if (error) return { slugs: [] as string[], items: [] as CategorySlugItem[], error }
+  const rows = ((data ?? []) as any[]).filter((row) => row?.slug)
+  return {
+    slugs: rows.map((row) => String(row.slug)) as string[],
+    // Slugs BASE + traducciones: alimentan el generateStaticParams del pSEO,
+    // que necesita la URL localizada de cada idioma publicado.
+    items: rows.map((row) => ({
+      slug: String(row.slug),
+      slug_i18n: (row.slug_i18n ?? null) as Record<string, string> | null,
+    })) as CategorySlugItem[],
+    error: null,
+  }
 }
 
 /**
@@ -799,20 +950,29 @@ async function contarProductosPorCategoria() {
  * categorías" de la ficha y del hub, evitando enlaces a páginas vacías.
  * Cliente público → SSG+ISR.
  */
-export async function getCategoryNav(limit: number = CATEGORY_NAV_LIMIT) {
+export async function getCategoryNav(limit: number = CATEGORY_NAV_LIMIT, locale?: string) {
   const supabase = createPublicClient()
   const [{ data: cats }, counts] = await Promise.all([
-    supabase.from('categories').select('id,name,slug,description').eq('activa', true),
+    selectCategoriesConFallback<any>(
+      (columns) => supabase.from('categories').select(columns).eq('activa', true),
+      'id,name,slug,description',
+    ),
     contarProductosPorCategoria(),
   ])
   const items = ((cats ?? []) as any[])
-    .map((c) => ({
-      id: String(c.id),
-      name: String(c.name),
-      slug: String(c.slug),
-      description: (c.description ?? null) as string | null,
-      count: counts.get(c.id) ?? 0,
-    }))
+    .map((c) => {
+      const localized = localizarCategoria(c, locale)
+      return {
+        id: String(c.id),
+        name: String(localized.name ?? c.name),
+        // Slug BASE: identidad de ruta estable e indexada.
+        slug: String(c.slug),
+        // Slug traducido disponible para enlaces localizados (Fase 3).
+        slug_localizado: String(localized.slug_localizado ?? c.slug),
+        description: (localized.description ?? null) as string | null,
+        count: counts.get(c.id) ?? 0,
+      }
+    })
     .filter((c) => c.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
     .slice(0, Math.max(Number(limit) || CATEGORY_NAV_LIMIT, 1))
@@ -826,18 +986,28 @@ export async function getCategoryNav(limit: number = CATEGORY_NAV_LIMIT) {
  * SOLO incluye categorías CON productos visibles: indexar páginas vacías
  * (thin content) perjudica el pSEO.
  */
-export async function getSitemapCategories() {
+export async function getSitemapCategories(locale?: string) {
   const supabase = createPublicClient()
   const [{ data, error }, counts] = await Promise.all([
-    supabase.from('categories').select('id,slug,updated_at').eq('activa', true).order('name'),
+    selectCategoriesConFallback<any>(
+      (columns) => supabase.from('categories').select(columns).eq('activa', true).order('name'),
+      'id,slug,name,updated_at',
+      'name_i18n,slug_i18n',
+    ),
     contarProductosPorCategoria(),
   ])
-  if (error) return { items: [] as { slug: string; lastmod: string }[], error }
-  const items = ((data ?? []) as any[])
+  if (error) return { items: [] as SitemapCategoryItem[], error }
+  const items: SitemapCategoryItem[] = ((data ?? []) as any[])
     .filter((row) => row?.slug && (counts.get(row.id) ?? 0) > 0)
     .map((row) => ({
       slug: String(row.slug),
       lastmod: (row.updated_at ?? new Date().toISOString()).slice(0, 10),
+      // Datos i18n: alimentan el hreflang por idioma del sitemap (Fase 3).
+      name_i18n: (row.name_i18n ?? null) as Record<string, string> | null,
+      slug_i18n: (row.slug_i18n ?? null) as Record<string, string> | null,
+      name_localizado: locale
+        ? String(localizarCategoria(row, locale).name ?? row.name ?? row.slug)
+        : String(row.name ?? row.slug),
     }))
   return { items, error: null }
 }
@@ -847,24 +1017,37 @@ export async function getSitemapCategories() {
  * Cliente público → SSG+ISR. Reutiliza PRODUCT_SELECT + mapProduct.
  * Pensado para la página indexable /categoria/[slug] con paginación.
  */
-export async function getProductsByCategorySlug(slug: string, from = 0) {
+export async function getProductsByCategorySlug(slug: string, from = 0, locale?: string) {
   const supabase = createPublicClient()
 
-  // 1) Resolver la categoría activa por slug.
+  // 1) Resolver la categoría activa por slug BASE (URL histórica, ya indexada).
+  let categoryId: string | null = null
   const { data: cat } = await supabase
     .from('categories')
     .select('id')
     .eq('activa', true)
     .eq('slug', slug)
     .maybeSingle()
-  if (!cat) return { products: [], total: 0, hasMore: false, error: null }
+  categoryId = cat?.id ?? null
+
+  // 2) Fallback: slug LOCALIZADO del idioma pedido (p. ej. /fr/categoria/...).
+  if (!categoryId && locale) {
+    const { data: localized } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('activa', true)
+      .contains('slug_i18n', { [baseLanguage(locale)]: slug })
+      .maybeSingle()
+    categoryId = localized?.id ?? null
+  }
+  if (!categoryId) return { products: [], total: 0, hasMore: false, error: null }
 
   // 2) Traer los productos visibles de esa categoría (N:N vía product_categories).
   const { data, error, count } = await supabase
     .from('products')
     .select(PRODUCT_SELECT, { count: 'exact' })
     .eq('is_available', true)
-    .in('id', await getProductIdsByCategories([cat.id]))
+    .in('id', await getProductIdsByCategories([categoryId]))
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
     .range(from, from + CATALOG_PAGE_SIZE - 1)
@@ -910,24 +1093,55 @@ export async function getRelatedProducts(input: {
   if (error) return { products: [] as Product[], error }
   return { products: (data ?? []).map(mapProduct), error: null }
 }
-/** Crea una nueva categoría. */
+/**
+ * Crea una nueva categoría sembrando su traducción base.
+ * El idioma raíz (inglés, el `name`/`slug` introducidos) queda SIEMPRE presente,
+ * de modo que cualquier locale resuelve por fallback hasta que el pipeline o el
+ * backfill rellenen el resto de traducciones.
+ */
 export async function createCategory(payload: CategoryInput) {
   const supabase = await createServerClient()
-  const result = await supabase.from('categories').insert(payload).select('*').single()
+  const row = {
+    ...payload,
+    name_i18n: { [SOURCE_LOCALE]: payload.name, ...(payload.name_i18n ?? {}) },
+    slug_i18n: { [SOURCE_LOCALE]: payload.slug, ...(payload.slug_i18n ?? {}) },
+  }
+  const result = await supabase.from('categories').insert(row).select('*').single()
   // La nueva landing de categoría debe entrar al sitemap al instante.
   if (!result.error) revalidarSitemap({ categoriaSlug: payload.slug })
   return result
 }
 
-/** Actualiza una categoría existente. */
+/**
+ * Actualiza una categoría existente.
+ * Si cambia el nombre/slug BASE, sincroniza la clave del idioma raíz para no
+ * dejar traducciones desincronizadas, conservando el resto de idiomas.
+ */
 export async function updateCategory(id: string, payload: CategoryInput) {
   const supabase = await createServerClient()
-  const result = await supabase
-    .from('categories')
-    .update({ ...payload, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('*')
-    .single()
+  const update: Record<string, unknown> = { ...payload, updated_at: new Date().toISOString() }
+
+  if (payload.name || payload.slug) {
+    const { data: current } = await supabase
+      .from('categories')
+      .select('name_i18n,slug_i18n')
+      .eq('id', id)
+      .maybeSingle()
+    const names = {
+      ...((current?.name_i18n as Record<string, string> | null) ?? {}),
+      ...(payload.name_i18n ?? {}),
+    }
+    const slugs = {
+      ...((current?.slug_i18n as Record<string, string> | null) ?? {}),
+      ...(payload.slug_i18n ?? {}),
+    }
+    if (payload.name) names[SOURCE_LOCALE] = payload.name
+    if (payload.slug) slugs[SOURCE_LOCALE] = payload.slug
+    update.name_i18n = names
+    update.slug_i18n = slugs
+  }
+
+  const result = await supabase.from('categories').update(update).eq('id', id).select('*').single()
   // La URL/meta de la categoría cambió: sitemap y landing al instante.
   if (!result.error) revalidarSitemap({ categoriaSlug: payload.slug })
   return result
