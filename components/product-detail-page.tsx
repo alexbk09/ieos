@@ -6,6 +6,7 @@ import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { RichDescription } from '@/components/rich-description'
 import { RelatedProducts } from '@/components/related-products'
+import { CategoryNav, type CategoryNavItem } from '@/components/category-nav'
 import type { CardProduct } from '@/components/product-card'
 import { CartDrawer } from '@/components/cart-drawer'
 import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
@@ -60,6 +61,8 @@ type DetailProductProps = {
   product: DetailProduct
   /** Productos relacionados de la misma categoría (enlazado interno SEO). */
   related: CardProduct[]
+  /** Categorías para la navegación cross-categoría. */
+  categories: CategoryNavItem[]
   navLinks: HeaderNavLink[]
   brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null }
   footer: { copyright?: string; slogan?: string }
@@ -97,7 +100,7 @@ function DetailChip({ label, value }: { label: string; value: string }) {
  * NO contiene llamadas a Supabase: todo llega serializado desde el
  * Server Component (regla /services de la arquitectura).
  */
-export function ProductDetailPageView({ product, related, navLinks, brand, footer, social, brandAddress }: DetailProductProps) {
+export function ProductDetailPageView({ product, related, categories, navLinks, brand, footer, social, brandAddress }: DetailProductProps) {
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
@@ -379,6 +382,15 @@ export function ProductDetailPageView({ product, related, navLinks, brand, foote
         {/* Enlazado interno (SEO): productos de la misma categoría. */}
         <div className="mx-auto max-w-7xl">
           <RelatedProducts products={related} rate={exchangeRate} onAdd={add} />
+        </div>
+
+        {/* Navegación cross-categoría (UX moderna + enlazado interno). */}
+        <div className="mx-auto max-w-7xl">
+          <CategoryNav
+            items={categories}
+            currentSlug={product.categories[0]?.slug}
+            title="Explora más categorías"
+          />
         </div>
       </main>
 

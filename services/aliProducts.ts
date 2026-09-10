@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import { CATALOG_PAGE_SIZE, SITEMAP_MAX_IMAGES_PER_URL } from '@/lib/constants'
+import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 import { PRODUCT_SELECT, mapProduct, slugify } from '@/services/catalog'
 import type { Product, ProductInput } from '@/services/catalog'
 
@@ -161,6 +162,8 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
       .select('id')
       .single()
     if (errorCreacion || !creada) return { success: false as const, error: errorCreacion?.message ?? 'No se pudo crear categoria.' }
+    // Categoría nueva creada por el pipeline: se añade al sitemap al instante.
+    revalidarSitemap({ categoriaSlug: slug })
     return { success: true as const, categoriaId: creada.id, nombre }
   } catch (err: any) {
     console.error('[aliProducts] obtenerCategoriaAliExpress:', err?.message)

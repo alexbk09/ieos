@@ -235,6 +235,9 @@ export const SEO_OPTIONAL_SPECS_SECTION = 'Especificaciones físicas'
 /** Número máximo de productos relacionados mostrados en la ficha (enlazado interno). */
 export const RELATED_PRODUCTS_LIMIT = 4
 
+/** Número máximo de categorías mostradas en la navegación cross-categoría. */
+export const CATEGORY_NAV_LIMIT = 12
+
 /** Número de palabras iniciales que forman la "firma" anti-duplicado de un título. */
 export const SEO_TITLE_SIGNATURE_WORDS = 4
 

@@ -5,6 +5,7 @@ import type { CardProduct } from '@/components/product-card'
 import { getSiteSettings } from '@/services/site-settings'
 import {
   getCategoryBySlug,
+  getCategoryNav,
   getCategorySlugs,
   getProductsByCategorySlug,
   type Product,
@@ -107,10 +108,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 /** Página server de categoría: listado indexable de productos. */
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const [{ category }, { products }, { settings }] = await Promise.all([
+  const [{ category }, { products }, { settings }, { items: navCategories }] = await Promise.all([
     getCategoryBySlug(slug),
     getProductsByCategorySlug(slug),
     getSiteSettings(),
+    getCategoryNav(),
   ])
 
   // 404 real si la categoría no existe o está inactiva.
@@ -173,6 +175,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           seo_intro: category.seo_intro ?? null,
           seo_faq: category.seo_faq ?? null,
         }}
+        categories={navCategories}
         products={(products ?? []).map(toCardProduct)}
         navLinks={settings.nav_links}
         brand={{

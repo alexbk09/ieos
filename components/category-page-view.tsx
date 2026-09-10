@@ -6,6 +6,7 @@ import { SiteFooter } from '@/components/site-footer'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { RichDescription } from '@/components/rich-description'
+import { CategoryNav, type CategoryNavItem } from '@/components/category-nav'
 import type { SeoFaqItem } from '@/lib/seo-types'
 import { CartDrawer } from '@/components/cart-drawer'
 import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
@@ -29,6 +30,7 @@ import { AgentChat } from '@/components/agent-chat'
 export function CategoryPageView({
   category,
   products,
+  categories,
   navLinks,
   brand,
   footer,
@@ -47,6 +49,8 @@ export function CategoryPageView({
     seo_faq?: SeoFaqItem[] | null
   }
   products: CardProduct[]
+  /** Categorías para la navegación cross-categoría (enlazado interno). */
+  categories: CategoryNavItem[]
   navLinks: HeaderNavLink[]
   brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null }
   footer: { copyright?: string; slogan?: string }
@@ -135,6 +139,9 @@ export function CategoryPageView({
             </dl>
           </section>
         )}
+
+        {/* Navegación cross-categoría (enlazado interno + UX moderna). */}
+        <CategoryNav items={categories} currentSlug={category.slug} title="Explora otras categorías" />
       </main>
 
       <SiteFooter footer={footer} brand={{ name: brand.name, address: brandAddress }} social={social} />

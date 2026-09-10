@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Storefront, type StorefrontSettings } from '@/components/storefront'
-import { getFeaturedProducts, getCategoriesActivas } from '@/services/catalog'
+import { getFeaturedProducts, getCategoryNav } from '@/services/catalog'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/seo-url'
@@ -36,10 +36,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * para que Google entienda la estructura de la tienda de afiliados.
  */
 export default async function Home() {
-  const [{ products }, { settings }, { data: activeCategories }] = await Promise.all([
+  const [{ products }, { settings }, { items: activeCategories }] = await Promise.all([
     getFeaturedProducts(),
     getSiteSettings(),
-    getCategoriesActivas(),
+    // Solo categorías CON productos: evita que el cliente caiga en páginas vacías.
+    getCategoryNav(100),
   ])
 
   // Normaliza image_url (Supabase devuelve null) y garantiza que colors/specifications existan.

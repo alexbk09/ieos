@@ -1,6 +1,6 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
-import { CATALOG_PAGE_SIZE, FEATURED_PRODUCTS_LIMIT, RELATED_PRODUCTS_LIMIT } from '@/lib/constants'
+import { CATALOG_PAGE_SIZE, CATEGORY_NAV_LIMIT, FEATURED_PRODUCTS_LIMIT, RELATED_PRODUCTS_LIMIT } from '@/lib/constants'
 import type { SeoFaqItem } from '@/lib/seo-types'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 
@@ -773,20 +773,68 @@ export async function getCategorySlugs() {
 }
 
 /**
+ * Cuenta los productos VISIBLES por categoría (relación N:N product_categories).
+ * Fuente única para: navegación cross-categoría + no indexar categorías vacías.
+ * Cliente público → lectura ligera cacheada por ISR.
+ */
+async function contarProductosPorCategoria() {
+  const supabase = createPublicClient()
+  const [{ data: links }, { data: prods }] = await Promise.all([
+    supabase.from('product_categories').select('category_id,product_id'),
+    supabase.from('products').select('id').eq('is_available', true),
+  ])
+  // Solo cuentan los productos visibles (evita categorías "fantasma").
+  const disponibles = new Set(((prods ?? []) as any[]).map((p) => p.id))
+  const counts = new Map<string, number>()
+  for (const link of (links ?? []) as any[]) {
+    if (!disponibles.has(link.product_id)) continue
+    counts.set(link.category_id, (counts.get(link.category_id) ?? 0) + 1)
+  }
+  return counts
+}
+
+/**
+ * Navegación cross-categoría: categorías activas CON productos, ordenadas por
+ * relevancia (más productos primero). Alimenta el módulo "Explora otras
+ * categorías" de la ficha y del hub, evitando enlaces a páginas vacías.
+ * Cliente público → SSG+ISR.
+ */
+export async function getCategoryNav(limit: number = CATEGORY_NAV_LIMIT) {
+  const supabase = createPublicClient()
+  const [{ data: cats }, counts] = await Promise.all([
+    supabase.from('categories').select('id,name,slug,description').eq('activa', true),
+    contarProductosPorCategoria(),
+  ])
+  const items = ((cats ?? []) as any[])
+    .map((c) => ({
+      id: String(c.id),
+      name: String(c.name),
+      slug: String(c.slug),
+      description: (c.description ?? null) as string | null,
+      count: counts.get(c.id) ?? 0,
+    }))
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, Math.max(Number(limit) || CATEGORY_NAV_LIMIT, 1))
+  return { items, error: null }
+}
+
+/**
  * Entradas del sitemap para categorías activas (/categoria/[slug]).
  * Cliente público → SSG+ISR. Devuelve el lastmod REAL (updated_at) para que
  * Google revalide las landings de nicho solo cuando cambian de verdad.
+ * SOLO incluye categorías CON productos visibles: indexar páginas vacías
+ * (thin content) perjudica el pSEO.
  */
 export async function getSitemapCategories() {
   const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('categories')
-    .select('slug,updated_at')
-    .eq('activa', true)
-    .order('name')
+  const [{ data, error }, counts] = await Promise.all([
+    supabase.from('categories').select('id,slug,updated_at').eq('activa', true).order('name'),
+    contarProductosPorCategoria(),
+  ])
   if (error) return { items: [] as { slug: string; lastmod: string }[], error }
   const items = ((data ?? []) as any[])
-    .filter((row) => row?.slug)
+    .filter((row) => row?.slug && (counts.get(row.id) ?? 0) > 0)
     .map((row) => ({
       slug: String(row.slug),
       lastmod: (row.updated_at ?? new Date().toISOString()).slice(0, 10),
@@ -862,26 +910,36 @@ export async function getRelatedProducts(input: {
   if (error) return { products: [] as Product[], error }
   return { products: (data ?? []).map(mapProduct), error: null }
 }
+/** Crea una nueva categoría. */
 export async function createCategory(payload: CategoryInput) {
   const supabase = await createServerClient()
-  return supabase.from('categories').insert(payload).select('*').single()
+  const result = await supabase.from('categories').insert(payload).select('*').single()
+  // La nueva landing de categoría debe entrar al sitemap al instante.
+  if (!result.error) revalidarSitemap({ categoriaSlug: payload.slug })
+  return result
 }
 
 /** Actualiza una categoría existente. */
 export async function updateCategory(id: string, payload: CategoryInput) {
   const supabase = await createServerClient()
-  return supabase
+  const result = await supabase
     .from('categories')
     .update({ ...payload, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select('*')
     .single()
+  // La URL/meta de la categoría cambió: sitemap y landing al instante.
+  if (!result.error) revalidarSitemap({ categoriaSlug: payload.slug })
+  return result
 }
 
 /** Elimina una categoría (las relaciones N:N se borran en cascada, no los productos). */
 export async function deleteCategory(id: string) {
   const supabase = await createServerClient()
-  return supabase.from('categories').delete().eq('id', id)
+  const result = await supabase.from('categories').delete().eq('id', id)
+  // Al borrar, la URL deja de existir: se retira del sitemap al instante.
+  if (!result.error) revalidarSitemap()
+  return result
 }
 
 /**

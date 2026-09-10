@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getSiteSettings } from '@/services/site-settings'
-import { getPublicProductBySlug, getPublicProductSlugs, getRelatedProducts, type Product } from '@/services/catalog'
+import { getPublicProductBySlug, getPublicProductSlugs, getRelatedProducts, getCategoryNav, type Product } from '@/services/catalog'
 import { ProductDetailPageView, type DetailProduct } from '@/components/product-detail-page'
 import type { CardProduct } from '@/components/product-card'
 import { buildProductSchema, buildBreadcrumbSchema, buildFaqSchema, htmlToPlainText, clampText, toAbsoluteUrl } from '@/lib/schema/product-schema'
@@ -191,12 +191,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const origin = absoluteUrl('/').replace(/\/+$/, '')
   const productUrl = absoluteUrl(`/productos/${product.slug}`)
 
-  // Enlazado interno (SEO): trae productos de la misma categoría para el
-  // módulo de relacionados. Se resuelve en servidor → HTML crawlable.
-  const relatedResult = await getRelatedProducts({
-    productId: product.id,
-    categoryIds: (product.categories ?? []).map((c) => c.id),
-  })
+  // Enlazado interno (SEO): productos relacionados + navegación cross-categoría.
+  // Todo se resuelve en servidor → HTML crawlable por Google.
+  const [relatedResult, { items: navCategories }] = await Promise.all([
+    getRelatedProducts({
+      productId: product.id,
+      categoryIds: (product.categories ?? []).map((c) => c.id),
+    }),
+    getCategoryNav(),
+  ])
   const related = (relatedResult.products ?? []).map(toCardProduct)
 
   const jsonLd = buildProductSchema({
@@ -273,6 +276,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <ProductDetailPageView
         product={detailProduct}
         related={related}
+        categories={navCategories}
         navLinks={settings.nav_links}
         brand={{
           name: settings.company_name || 'ilumaX',

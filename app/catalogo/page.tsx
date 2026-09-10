@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { CatalogView } from '@/components/catalog-view'
-import { getCatalogPage, getCategoriesActivas } from '@/services/catalog'
+import { getCatalogPage, getCategoryNav } from '@/services/catalog'
 import { getMarcasActivas } from '@/services/marcas'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
@@ -33,10 +33,11 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Página pública: Catálogo completo con filtros e infinite scroll. La tasa se obtiene en cliente. */
 export default async function CatalogPage() {
 
-  const [{ products, total }, { data: categoriesData }, { data: marcas }, { settings }] =
+  const [{ products, total }, { items: categoriesData }, { data: marcas }, { settings }] =
     await Promise.all([
       getCatalogPage({}, 0),
-      getCategoriesActivas(),
+      // Solo categorías CON productos: filtrar por una categoría vacía da 0 resultados.
+      getCategoryNav(100),
       getMarcasActivas(),
       getSiteSettings(),
     ])
