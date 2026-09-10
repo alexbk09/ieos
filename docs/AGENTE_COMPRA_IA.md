@@ -1,38 +1,58 @@
-# Asistente de Compra Inteligente por Contexto (IA)
+# Asistente de Catálogo y Afiliados (IA)
 
-## Que es
-Widget de chat flotante que usa DeepSeek (via Vercel AI SDK 4) con function calling para:
-- Consultar el catalogo REAL de productos en Supabase (herramienta buscarProductos, ejecutada en servidor).
-- Agregar al carrito fisico de la tienda los productos que el cliente aprueba (herramienta agregarAlCarrito, ejecutada en el FRONTEND via onToolCall + CustomEvent).
+## Qué es
+Widget de chat flotante (`components/agent-chat.tsx`) que usa DeepSeek (Vercel AI SDK 4) con function calling, con **alcance restringido a la tienda**:
+- Responde dudas de productos, categorías y compras por afiliado (AliExpress/Amazon).
+- Busca productos y categorías reales en Supabase (tools ejecutadas en el servidor).
+- Agrega al carrito los productos que el cliente aprueba; el pago se cierra en el marketplace vía el enlace de afiliado.
+- **Rechaza cualquier tema ajeno** (cultura general, noticias, código, consejos personales, etc.).
 
-## Arquitectura / Flujo
-1. El usuario escribe en components/agent-chat.tsx. useChat() envia el historial a POST /api/chat.
-2. El route handler inicializa DeepSeek con createOpenAICompatible (base https://api.deepseek.com/v1) y llama streamText con system + tools (services/agent.ts).
-3. Si el LLM decide buscar, streamText ejecuta buscarProductos EN EL SERVIDOR con createPublicClient (Supabase): busca por ilike en products.is_available = true y devuelve un snapshot completo (precios, colores, imagenes, pricing_type, stock_grams). Resultado optimizado para pocos tokens.
-4. La respuesta fluye como data stream: useChat renderiza letra a letra y los tool-invocations (buscarProductos) como mini-tarjetas de producto.
-5. Si el cliente aprueba, el LLM invoca agregarAlCarrito. Como esa tool NO tiene execute, el SDK la envia al cliente y dispara onToolCall.
-6. En onToolCall (frontend) se busca el snapshot del producto en el cache de la conversacion y se llama emitAddToCart (CustomEvent ilumax:add-to-cart). Se devuelve { ok: true } como tool result.
-7. La vista activa (storefront.tsx o catalog-view.tsx) escucha ese evento con useAgentAddToCart(add) y ejecuta su propio add() del carrito: abre el drawer, muestra el toast y persiste en localStorage.
+## Alcance (off-topic guard)
+El alcance se impone desde `AGENT_SYSTEM_PROMPT` en `services/agent.ts`. No se usan listas negras de palabras (frágiles): se instruye al modelo a responder SOLO sobre:
+1. Productos: características, precio, stock, colores y disponibilidad.
+2. Categorías de la tienda y qué productos las componen.
+3. Compras por afiliado: cómo comprar, enlaces, redirección a AliExpress/Amazon, envío, garantía y devoluciones del marketplace.
+4. Uso de la tienda: carrito, búsqueda y navegación.
 
-## Por que este diseno
-- Sin backend Node intermedio: las tools de consulta viven en Route Handlers de Next (serverless) y el carrito sigue en Supabase/localStorage.
-- Regla de oro: ningun componente llama supabase.from() - services/agent.ts es la unica capa de datos del agente.
-- El carrito sigue siendo un hook local en cada vista (useCart). Para que el agente (que vive en cualquier pagina) lo mute, se usa un puente de eventos global (lib/cart-bridge.ts) en lugar de un Provider global: cero riesgos de regresion y sin duplicar la logica de negocio del carrito.
-- Costos minimos de tokens: buscarProductos limita a 6 resultados, el system prompt es corto y el snapshot mapeado solo envia campos utiles.
-- Los productos por peso (pricing_type=weight) se recomiendan con su price_per_kilo_usd y min_order_grams para que el usuario confirme gramos/kilos.
+Fuera de eso responde: "Solo puedo ayudarte con productos, categorías y compras por afiliados de ilumaX." y reconduce al catálogo.
 
-## Archivos nuevos/modificados
-- services/agent.ts: prompt del sistema, schema zod, tool buscarProductos (execute) y agregarAlCarrito (declarativa).
-- app/api/chat/route.ts: orquestador serverless streamText + DeepSeek (modelo deepseek-chat).
-- components/agent-chat.tsx: chat flotante responsive (Tailwind, dark mode incluido), estados streaming/error, render de tool-invocations y onToolCall.
-- hooks/use-agent-add-to-cart.ts + lib/cart-bridge.ts: puente de eventos IA → carrito.
-- app/page.tsx flujo: Storefront y CatalogView ahora montan <AgentChat /> y escuchan el puente.
+## Herramientas (tools)
+- `buscarProductos({ query?, categorySlug?, maxResults? })` — ejecuta en servidor. Busca productos con `is_available = true` por texto (`name`/`description` ilike) y/o por categoría (`product_categories`). Devuelve un snapshot con precio, stock, colores, `pricing_type` y los **enlaces de afiliado** (`url_afiliado_ali` / `url_afiliado_amazon` / `url_afiliado_store` + `has_affiliate_link`).
+- `buscarCategorias({ query?, maxResults? })` — ejecuta en servidor. Lista o busca categorías activas (`id, name, slug, description`).
+- `agregarAlCarrito({ productId, quantity, unit?, colorName? })` — SIN `execute`: la resuelve el frontend vía `onToolCall` y emite el evento `ilumax:add-to-cart`.
 
-## Configuracion requerida (variables de entorno)
-Añadir a .env.local :
+## Flujo
+1. El usuario escribe en `components/agent-chat.tsx`; `useChat()` envía el historial a `POST /api/chat`.
+2. `app/api/chat/route.ts` usa el proveedor central (`services/ai-provider.ts` → `createDeepSeekProvider()` + `DEEPSEEK_CHAT_MODEL`) y `streamText` con `AGENT_SYSTEM_PROMPT` y `AGENT_TOOLS`. Temperatura y número de pasos salen de `lib/constants.ts` (sin magic numbers).
+3. El modelo llama `buscarCategorias` y/o `buscarProductos`; el servidor consulta Supabase con `createPublicClient` (RLS de lectura pública).
+4. El stream se renderiza letra a letra; los `tool-invocations` se pintan como chips de categoría (enlaces a `/categoria/[slug]`) y tarjetas de producto con botón **Comprar en AliExpress/Amazon** (abre la URL de afiliado en pestaña nueva y registra `affiliate_click`).
+5. Si el cliente aprueba, el modelo llama `agregarAlCarrito`; el frontend lo resuelve con `emitAddToCart` (`lib/cart-bridge.ts`) y la vista activa (`storefront.tsx`, `catalog-view.tsx`, `category-page-view.tsx`) ejecuta su `add()` de `useCart`. Los enlaces de afiliado viajan dentro del ítem del carrito.
+6. Al finalizar, el checkout híbrido (`hooks/use-cart.ts` → `finishAffiliateCheckout`) abre los enlaces de afiliado y/o muestra `AffiliateRedirectModal`.
 
-DEEPSEEK_API_KEY=sk-...
-# Opcional si usas otro endpoint compatible OpenAI:
-DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+## Analítica
+- `track_agent_search` (RPC) registra el término buscado (`source = agent`) y las impresiones (`ai_impressions_count`) de los productos mostrados.
+- Las búsquedas de categorías se registran con la misma RPC (sin impresiones).
+- El clic real de salida al marketplace lo registra `trackAffiliateClick` (evento `affiliate_click`).
+- Panel: `/admin/analytics-productos`.
 
-Nota: el cliente usa Next.js + Supabase URL/publishable key ya existentes. products requiere RLS de lectura publica (ya definida en SUPABASE_QUERIES.md).
+## Reglas arquitectónicas respetadas
+- Ningún componente llama `supabase.from()`: toda la data del agente vive en `services/agent.ts`.
+- Constantes centralizadas en `lib/constants.ts`: `AGENT_MAX_PRODUCT_RESULTS`, `AGENT_MAX_CATEGORY_RESULTS`, `AGENT_MIN_QUERY_LENGTH`, `AGENT_MAX_STEPS`, `AGENT_TEMPERATURE`, `AGENT_CATEGORY_PATH_PREFIX`.
+- UI desacoplada: `AgentProductCard` y `AgentCategoryChips` son presentacionales (no consultan Supabase).
+
+## Configuración (variables de entorno)
+En `.env.local` o `.env.development.local`:
+
+    DEEPSEEK_API_KEY=sk-...
+    DEEPSEEK_BASE_URL=https://api.deepseek.com/v1   # opcional
+    DEEPSEEK_MODEL=deepseek-chat                    # opcional
+
+Requiere que `products.is_available`, `categories.activa` y las políticas RLS de lectura pública estén activas (ver `SUPABASE_QUERIES.md`).
+
+## Archivos
+- `services/agent.ts` — prompt con alcance, tools y snapshot con enlaces de afiliado.
+- `services/ai-provider.ts` — proveedor DeepSeek centralizado.
+- `app/api/chat/route.ts` — orquestador serverless (`streamText`).
+- `components/agent-chat.tsx` — widget flotante, chips de categoría y tarjetas con CTA de afiliado.
+- `lib/constants.ts` — límites y configuración del agente.
+- `lib/cart-bridge.ts` + `hooks/use-agent-add-to-cart.ts` — puente IA → carrito.

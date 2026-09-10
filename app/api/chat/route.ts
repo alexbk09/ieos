@@ -1,15 +1,13 @@
-﻿import { streamText, convertToCoreMessages } from 'ai'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { streamText, convertToCoreMessages } from 'ai'
 import { AGENT_SYSTEM_PROMPT, AGENT_TOOLS } from '@/services/agent'
+import { createDeepSeekProvider, DEEPSEEK_CHAT_MODEL } from '@/services/ai-provider'
+import { AGENT_MAX_STEPS, AGENT_TEMPERATURE } from '@/lib/constants'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-const provider = createOpenAICompatible({
-  name: 'deepseek',
-  baseURL: process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1',
-  apiKey: process.env.DEEPSEEK_API_KEY ?? '',
-})
+/** Proveedor central (services/ai-provider): URL, API key y modelo fuera de la ruta. */
+const provider = createDeepSeekProvider()
 
 export async function POST(req: Request) {
   try {
@@ -17,13 +15,15 @@ export async function POST(req: Request) {
     if (!Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'messages requerido' }), { status: 400 })
     }
+    // El asistente SOLO atiende temas de la tienda: catalogo, categorias y
+    // compras por afiliados (AliExpress/Amazon). El alcance lo impone AGENT_SYSTEM_PROMPT.
     const result = streamText({
-      model: provider('deepseek-chat'),
+      model: provider(DEEPSEEK_CHAT_MODEL),
       system: AGENT_SYSTEM_PROMPT,
       messages: convertToCoreMessages(messages),
       tools: AGENT_TOOLS,
-      temperature: 0.3,
-      maxSteps: 4,
+      temperature: AGENT_TEMPERATURE,
+      maxSteps: AGENT_MAX_STEPS,
     })
     return result.toDataStreamResponse()
   } catch (err) {

@@ -16,15 +16,20 @@ type UIMessageLike = {
     }
   }>
 }
-import { Bot, LoaderCircle, Send, ShoppingBag, Sparkles, X } from 'lucide-react'
+import { Bot, ExternalLink, Layers, LoaderCircle, Send, ShoppingBag, Sparkles, X } from 'lucide-react'
 import { emitAddToCart } from '@/lib/cart-bridge'
-import { moneyEur } from '@/lib/currency'
+import { moneyEur, moneyUsd } from '@/lib/currency'
+import { marketplaceForUrl } from '@/lib/affiliate'
+import { trackAffiliateClick } from '@/lib/analytics-client'
+import { AGENT_CATEGORY_PATH_PREFIX, AGENT_MAX_STEPS } from '@/lib/constants'
 
 
+/** Sugerencias iniciales: SOLO temas de la tienda (catálogo, categorías y compra por afiliado). */
 const SUGGESTIONS = [
+  '¿Qué categorías venden?',
   'Busca un panel LED',
-  'Recomienda algo para un estudio',
-  'Que hay por menos de 30 USD?',
+  '¿Cómo compro por AliExpress?',
+  'Recomienda algo para un escritorio',
 ]
 
 /** Snapshot del producto tal cual lo devuelve buscarProductos (mismo shape CartProduct). */
@@ -44,7 +49,90 @@ type AgentProduct = {
   min_order_grams?: number
   unit_label?: string
   specifications?: Record<string, string>
+  /** URL de afiliado de AliExpress (con tag de seguimiento). Opcional. */
+  url_afiliado_ali?: string | null
+  /** URL de afiliado de Amazon (con tag de seguimiento). Opcional. */
+  url_afiliado_amazon?: string | null
+  /** URL de afiliado genérica de la store (legado). Opcional. */
+  url_afiliado_store?: string | null
   [key: string]: unknown
+}
+
+/** Categoría devuelta por buscarCategorias (orienta al cliente por tema). */
+type AgentCategory = {
+  id: string
+  name: string
+  slug: string
+  description?: string | null
+}
+
+/** Mejor enlace de afiliado del producto: AliExpress → Amazon → store. */
+function bestAffiliateUrl(prod: AgentProduct): string | null {
+  return prod.url_afiliado_ali ?? prod.url_afiliado_amazon ?? prod.url_afiliado_store ?? null
+}
+
+/**
+ * Tarjeta compacta de producto dentro del chat: precio, chip del marketplace
+ * y CTA de compra por afiliado. Es UI pura: recibe datos ya resueltos por el
+ * servicio del agente (services/agent.ts) y no consulta Supabase.
+ */
+function AgentProductCard({ prod, onBuy }: { prod: AgentProduct; onBuy: (productId: string, url: string) => void }) {
+  const affiliateUrl = bestAffiliateUrl(prod)
+  const market = marketplaceForUrl(affiliateUrl)
+  const isWeight = prod.pricing_type === 'weight'
+  return (
+    <div className="grid gap-2 rounded-xl border border-border bg-card p-3">
+      <div className="flex gap-3">
+        {prod.image_url && (
+          <img src={prod.image_url} alt="" className="size-12 rounded-lg object-cover" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="truncate text-xs font-semibold">{prod.name}</p>
+            {affiliateUrl && (
+              <span className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${market.chipClassName}`}>
+                {market.shortLabel}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isWeight
+              ? `${moneyUsd(Number(prod.price_per_kilo_usd ?? 0))}/kg · mín ${Number(prod.min_order_grams ?? 0)} g`
+              : `${moneyUsd(Number(prod.price_usd))} · ${moneyEur(Number(prod.price_usd))}`}
+          </p>
+          <p className="text-[10px] text-muted-foreground">Stock: {prod.stock}</p>
+        </div>
+      </div>
+      {affiliateUrl ? (
+        <button
+          type="button"
+          onClick={() => onBuy(prod.id, affiliateUrl)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-[11px] font-semibold text-navy-foreground transition hover:bg-brand hover:text-brand-foreground"
+        >
+          <ExternalLink size={12} /> Comprar en {market.shortLabel}
+        </button>
+      ) : (
+        <p className="text-[10px] text-amber-600 dark:text-amber-400">Sin enlace de afiliado todavía.</p>
+      )}
+    </div>
+  )
+}
+
+/** Chips de categorías navegables (/categoria/[slug]) devueltas por buscarCategorias. */
+function AgentCategoryChips({ categories }: { categories: AgentCategory[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {categories.map((c) => (
+        <a
+          key={c.id}
+          href={`${AGENT_CATEGORY_PATH_PREFIX}${c.slug}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-brand hover:text-brand-strong"
+        >
+          <Layers size={12} /> {c.name}
+        </a>
+      ))}
+    </div>
+  )
 }
 
 /** Extrae de la cache local del producto el CartProduct para el carrito real. */
@@ -65,6 +153,11 @@ function toCartProductR(prod: AgentProduct | undefined): Record<string, unknown>
     stock_grams: Number(prod?.stock_grams ?? 0),
     min_order_grams: Number(prod?.min_order_grams ?? 0),
     unit_label: prod?.unit_label ?? 'u',
+    // Los enlaces viajan con el carrito para que el checkout de afiliado
+    // (AliExpress/Amazon) pueda redirigir al marketplace correcto.
+    url_afiliado_ali: prod?.url_afiliado_ali ?? null,
+    url_afiliado_amazon: prod?.url_afiliado_amazon ?? null,
+    url_afiliado_store: prod?.url_afiliado_store ?? null,
   }
 }
 
@@ -88,7 +181,7 @@ export function AgentChat() {
 
   const { messages, input, setInput, handleSubmit, setMessages, status, error } = useChat({
     api: '/api/chat',
-    maxSteps: 4,
+    maxSteps: AGENT_MAX_STEPS,
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === 'agregarAlCarrito') {
         const args = (toolCall.args ?? {}) as AddArgs
@@ -108,6 +201,13 @@ export function AgentChat() {
       return { ok: false, error: 'Herramienta desconocida: ' + (qargs.query ?? toolCall.toolName) }
     },
   })
+
+  /** Abre el enlace de afiliado del producto en otra pestaña y registra el clic. */
+  const openAffiliateLink = (productId: string, url: string) => {
+    if (!url) return
+    window.open(url, '_blank', 'noopener,noreferrer')
+    trackAffiliateClick(productId, url)
+  }
 
   const bottomRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -158,7 +258,7 @@ export function AgentChat() {
               </span>
               <div>
                 <p className="text-sm font-semibold">Asistente ilumaX</p>
-                <p className="text-xs text-navy-muted">Compra inteligente con IA</p>
+                <p className="text-xs text-navy-muted">Productos, categorías y afiliados</p>
               </div>
             </div>
             <button onClick={() => setOpen(false)} aria-label="Cerrar"><X size={18} /></button>
@@ -168,7 +268,7 @@ export function AgentChat() {
             {messages.length === 0 && (
               <div className="grid gap-3 pt-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Hola, soy tu asistente de compra. Busco en el catalogo real de ilumaX y agrego lo que apruebes.
+                  Hola, soy el asistente de ilumaX. Te ayudo a encontrar productos y categorías y a resolver dudas de tus compras por afiliados (AliExpress/Amazon). Si preguntas algo fuera de la tienda, no podré ayudarte.
                 </p>
                 {SUGGESTIONS.map((s) => (
                   <button key={s} onClick={() => setInput(s)}
@@ -195,6 +295,22 @@ export function AgentChat() {
                       if (p.type === 'tool-invocation') {
                         const ti = p.toolInvocation
                         if (!ti) return null
+                        if (ti.toolName === 'buscarCategorias') {
+                          const res = ti.state === 'result' ? (ti.result as { ok?: boolean; error?: string; categories?: AgentCategory[] } | undefined) : undefined
+                          const cats = res?.ok ? (res.categories ?? []) : []
+                          const catError = ti.state === 'result' && !res?.ok ? (res?.error ?? 'Error consultando las categorías') : null
+                          return (
+                            <div key={idx} className="mt-2 grid gap-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-strong">
+                                {ti.state === 'call' ? 'Buscando categorías...' : catError ? 'No se pudo consultar' : cats.length > 0 ? 'Categorías disponibles:' : 'Sin categorías para esa búsqueda'}
+                              </p>
+                              {catError && (
+                                <p className="text-[11px] font-medium text-red-500">{catError}</p>
+                              )}
+                              {ti.state === 'result' && cats.length > 0 && <AgentCategoryChips categories={cats} />}
+                            </div>
+                          )
+                        }
                         if (ti.toolName === 'buscarProductos') {
                           const res = ti.state === 'result' ? (ti.result as { ok?: boolean; error?: string; products?: AgentProduct[] } | undefined) : undefined
                           const items = res?.ok ? (res.products ?? []) : []
@@ -202,7 +318,7 @@ export function AgentChat() {
                           return (
                             <div key={idx} className="mt-2 grid gap-2">
                               <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-strong">
-                                {ti.state === 'call' ? 'Buscando en el catalogo...' : toolError ? 'No se pudo consultar' : items.length > 0 ? 'Encontre estas opciones:' : 'Sin resultados para esa busqueda'}
+                                {ti.state === 'call' ? 'Buscando productos...' : toolError ? 'No se pudo consultar' : items.length > 0 ? 'Estas opciones están disponibles:' : 'Sin resultados para esa búsqueda'}
                               </p>
                               {ti.state === 'call' && (
                                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -215,16 +331,7 @@ export function AgentChat() {
 										{ti.state === 'result' && items.length > 0 && (
                                 <div className="space-y-2">
                                   {items.map((prod) => (
-                                    <div key={prod.id} className="flex gap-3 rounded-xl border border-border bg-card p-3">
-                                      {prod.image_url && (
-                                        <img src={prod.image_url} alt="" className="size-12 rounded-lg object-cover" />
-                                      )}
-                                      <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-semibold">{prod.name}</p>
-                                        <p className="text-xs text-muted-foreground">${Number(prod.price_usd).toFixed(2)} USD · {moneyEur(Number(prod.price_usd))}</p>
-                                        <p className="text-[10px] text-muted-foreground">Stock: {prod.stock}</p>
-                                      </div>
-                                    </div>
+                                    <AgentProductCard key={prod.id} prod={prod} onBuy={openAffiliateLink} />
                                   ))}
                                 </div>
                               )}
@@ -281,7 +388,7 @@ export function AgentChat() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ej: busco un panel LED de 24W"
+              placeholder="Ej: busca paneles LED o pregúntame por AliExpress"
               className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand disabled:opacity-50"
               disabled={isStreaming}
             />

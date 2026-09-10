@@ -141,6 +141,26 @@ export const SEARCH_LOG_SOURCES = {
   AGENT: 'agent',
 } as const
 
+// ---------- Asistente IA (catálogo + afiliación AliExpress/Amazon) ----------
+
+/** Máximo de productos que el asistente devuelve por búsqueda (controla costo y ruido). */
+export const AGENT_MAX_PRODUCT_RESULTS = 6
+
+/** Máximo de categorías que el asistente devuelve por búsqueda. */
+export const AGENT_MAX_CATEGORY_RESULTS = 8
+
+/** Longitud mínima del término para filtrar por texto (evita escaneos inútiles en la DB). */
+export const AGENT_MIN_QUERY_LENGTH = 2
+
+/** Pasos máximos de herramientas por turno (buscar categoría → buscar producto → agregar). */
+export const AGENT_MAX_STEPS = 4
+
+/** Creatividad del modelo: baja para respuestas fieles al catálogo real (sin inventar). */
+export const AGENT_TEMPERATURE = 0.3
+
+/** Prefijo de la ruta pública de categoría usada por el asistente para enlazar. */
+export const AGENT_CATEGORY_PATH_PREFIX = '/categoria/'
+
 // ---------- Constantes de negocio nuevas ----------
 
 /** Factor estándar aéreo para peso volumétrico (cm³ / kg). */
