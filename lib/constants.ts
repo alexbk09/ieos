@@ -161,6 +161,9 @@ export const AGENT_TEMPERATURE = 0.3
 /** Prefijo de la ruta pública de categoría usada por el asistente para enlazar. */
 export const AGENT_CATEGORY_PATH_PREFIX = '/categoria/'
 
+/** Nombre de la marca que anuncia el Asistente IA (chat flotante). */
+export const AGENT_BRAND_NAME = 'zonahobbies'
+
 // ---------- Constantes de negocio nuevas ----------
 
 /** Factor estándar aéreo para peso volumétrico (cm³ / kg). */

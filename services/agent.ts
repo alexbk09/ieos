@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { createPublicClient } from '@/lib/supabase/public'
 import {
+  AGENT_BRAND_NAME,
   AGENT_MAX_CATEGORY_RESULTS,
   AGENT_MAX_PRODUCT_RESULTS,
   AGENT_MIN_QUERY_LENGTH,
@@ -57,13 +58,13 @@ const AGENT_CATEGORY_SELECT = 'id,name,slug,description'
  * listas negras fragiles de palabras.
  */
 export const AGENT_SYSTEM_PROMPT = [
-  'Eres el asistente oficial de ilumaX, una tienda que recomienda productos y cierra la compra como afiliado en AliExpress/Amazon.',
+  `Eres el asistente oficial de ${AGENT_BRAND_NAME}, una tienda que recomienda productos y cierra la compra como afiliado en AliExpress/Amazon.`,
   'ALCANCE PERMITIDO (solo puedes responder sobre esto):',
   '1) Productos del catalogo: caracteristicas, precios, stock, colores y disponibilidad.',
   '2) Categorias de la tienda y que productos las componen.',
   '3) Compras por afiliado: como comprar, enlaces de afiliado, redireccion a AliExpress/Amazon, envio, garantia y devoluciones del marketplace.',
   '4) Uso de la tienda: carrito, busqueda y navegacion.',
-  'FUERA DE TEMA: si la pregunta no tiene relacion con la tienda, sus productos, sus categorias o las compras por afiliado (por ejemplo cultura general, noticias, codigo, tareas, consejos personales o politica), NO la respondas. Rechaza en una sola frase: "Solo puedo ayudarte con productos, categorias y compras por afiliados de ilumaX." y ofrece volver al catalogo.',
+  `FUERA DE TEMA: si la pregunta no tiene relacion con la tienda, sus productos, sus categorias o las compras por afiliado (por ejemplo cultura general, noticias, codigo, tareas, consejos personales o politica), NO la respondas. Rechaza en una sola frase: "Solo puedo ayudarte con productos, categorias y compras por afiliados de ${AGENT_BRAND_NAME}." y ofrece volver al catalogo.`,
   'DATOS: usa siempre buscarProductos o buscarCategorias antes de hablar de productos, precios o stock. Nunca inventes datos ni enlaces.',
   'Si un producto no tiene enlace de afiliado, dilo con claridad y ofrece alternativas del catalogo.',
   'Para agregar al carrito, espera la confirmacion del cliente y pregunta cantidad y color.',
@@ -105,7 +106,7 @@ function toCartProduct(p: any) {
 
 export const buscarProductosTool = tool({
   description:
-    'Busca productos reales del catalogo ilumaX por texto libre y/o por categoria. ' +
+    `Busca productos reales del catalogo ${AGENT_BRAND_NAME} por texto libre y/o por categoria. ` +
     'Devuelve el snapshot completo (precio, stock, colores y enlace de afiliado) ' +
     'util para recomendar y agregar al carrito.',
   parameters: z.object({
@@ -168,7 +169,7 @@ export const buscarProductosTool = tool({
 
 export const buscarCategoriasTool = tool({
   description:
-    'Lista o busca las categorias reales del catalogo ilumaX. Usala para ' +
+    `Lista o busca las categorias reales del catalogo ${AGENT_BRAND_NAME}. Usala para ` +
     'orientar al cliente por tema y luego buscar productos con su slug.',
   parameters: z.object({
     query: z.string().optional().describe('Texto opcional (ej: iluminacion, hogar). Vacio = categorias principales.'),

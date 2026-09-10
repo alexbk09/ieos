@@ -14,7 +14,7 @@ El alcance se impone desde `AGENT_SYSTEM_PROMPT` en `services/agent.ts`. No se u
 3. Compras por afiliado: cómo comprar, enlaces, redirección a AliExpress/Amazon, envío, garantía y devoluciones del marketplace.
 4. Uso de la tienda: carrito, búsqueda y navegación.
 
-Fuera de eso responde: "Solo puedo ayudarte con productos, categorías y compras por afiliados de ilumaX." y reconduce al catálogo.
+Fuera de eso responde: "Solo puedo ayudarte con productos, categorías y compras por afiliados de zonahobbies." y reconduce al catálogo.
 
 ## Herramientas (tools)
 - `buscarProductos({ query?, categorySlug?, maxResults? })` — ejecuta en servidor. Busca productos con `is_available = true` por texto (`name`/`description` ilike) y/o por categoría (`product_categories`). Devuelve un snapshot con precio, stock, colores, `pricing_type` y los **enlaces de afiliado** (`url_afiliado_ali` / `url_afiliado_amazon` / `url_afiliado_store` + `has_affiliate_link`).

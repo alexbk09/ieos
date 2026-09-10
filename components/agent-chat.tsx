@@ -21,7 +21,7 @@ import { emitAddToCart } from '@/lib/cart-bridge'
 import { moneyEur, moneyUsd } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
 import { trackAffiliateClick } from '@/lib/analytics-client'
-import { AGENT_CATEGORY_PATH_PREFIX, AGENT_MAX_STEPS } from '@/lib/constants'
+import { AGENT_BRAND_NAME, AGENT_CATEGORY_PATH_PREFIX, AGENT_MAX_STEPS } from '@/lib/constants'
 
 
 /** Sugerencias iniciales: SOLO temas de la tienda (catálogo, categorías y compra por afiliado). */
@@ -257,7 +257,7 @@ export function AgentChat() {
                 <Sparkles size={17} />
               </span>
               <div>
-                <p className="text-sm font-semibold">Asistente ilumaX</p>
+                <p className="text-sm font-semibold">Asistente {AGENT_BRAND_NAME}</p>
                 <p className="text-xs text-navy-muted">Productos, categorías y afiliados</p>
               </div>
             </div>
@@ -268,7 +268,7 @@ export function AgentChat() {
             {messages.length === 0 && (
               <div className="grid gap-3 pt-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Hola, soy el asistente de ilumaX. Te ayudo a encontrar productos y categorías y a resolver dudas de tus compras por afiliados (AliExpress/Amazon). Si preguntas algo fuera de la tienda, no podré ayudarte.
+                  {`Hola, soy el asistente de ${AGENT_BRAND_NAME}. Te ayudo a encontrar productos y categorías y a resolver dudas de tus compras por afiliados (AliExpress/Amazon). Si preguntas algo fuera de la tienda, no podré ayudarte.`}
                 </p>
                 {SUGGESTIONS.map((s) => (
                   <button key={s} onClick={() => setInput(s)}
