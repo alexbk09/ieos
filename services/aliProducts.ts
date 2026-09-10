@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import { CATALOG_PAGE_SIZE, SITEMAP_MAX_IMAGES_PER_URL, SOURCE_LOCALE } from '@/lib/constants'
+import { isOwnOriginUrl } from '@/lib/seo-url'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 import { PRODUCT_SELECT, mapProduct, slugify } from '@/services/catalog'
 import type { Product, ProductInput } from '@/services/catalog'
@@ -228,7 +229,10 @@ export async function obtenerMarcaAliExpress(nombreMarca?: string | null) {
 /**
  * Ordena y des-duplica las imágenes de un producto para el sitemap.
  * Prioriza la imagen principal (image_url) y luego la galería product_images
- * ordenada por sort_order. Devuelve URLs crudas (el sitemap las absolutiza).
+ * ordenada por sort_order. SOLO conserva imágenes del DOMINIO PROPIO: las de
+ * CDNs ajenos (AliExpress) se descartan porque un sitemap debe publicar
+ * únicamente URLs del propio sitio (ver lib/seo-url.ts). Devuelve URLs crudas
+ * (el sitemap las absolutiza).
  */
 function buildSitemapImageUrls(row: any): string[] {
   const gallery = ((row?.product_images ?? []) as any[])
@@ -240,7 +244,8 @@ function buildSitemapImageUrls(row: any): string[] {
   const unique: string[] = []
   for (const candidate of candidates) {
     const clean = String(candidate).trim()
-    if (clean && !unique.includes(clean)) unique.push(clean)
+    // Solo dominio propio: filtra CDNs ajenos (p. ej. ae-pic-a1.aliexpress-media.com).
+    if (clean && isOwnOriginUrl(clean) && !unique.includes(clean)) unique.push(clean)
   }
   return unique.slice(0, SITEMAP_MAX_IMAGES_PER_URL)
 }
@@ -249,8 +254,8 @@ function buildSitemapImageUrls(row: any): string[] {
  * Entradas del sitemap (/sitemap.xml) para productos indexables.
  * Proyección LIGERA con cliente público → solo columnas necesarias:
  *  - slug + lastmod REAL (updated_at/created_at) para priorizar el crawl.
- *  - imágenes de la galería → habilita el sitemap de imágenes de Google
- *    (Google Imágenes / fichas de producto de afiliado).
+ *  - imágenes de la galería del PROPIO dominio → habilita el sitemap de
+ *    imágenes de Google sin publicar URLs de otro sitio.
  * Filtra is_available = true e indexado_google = true para que el sitemap
  * contenga EXACTAMENTE las URLs que la ficha marca como index (sin noindex).
  */

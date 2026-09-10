@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getSitemapProducts } from '@/services/aliProducts'
 import { getSitemapCategories } from '@/services/catalog'
-import { absoluteUrl, absoluteAssetUrl } from '@/lib/seo-url'
+import { absoluteUrl, ownOriginAssetUrl } from '@/lib/seo-url'
 import { buildLanguageAlternates } from '@/lib/seo'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { SITEMAP_MAX_IMAGES_PER_URL, SITEMAP_MAX_URLS } from '@/lib/constants'
@@ -16,9 +16,11 @@ import { SITEMAP_MAX_IMAGES_PER_URL, SITEMAP_MAX_URLS } from '@/lib/constants'
  *     están marcadas `indexado_google = true` (las noindex quedan fuera).
  *  2. `<lastmod>` REAL por URL (updated_at/created_at de la fila) para que
  *     Google priorice el re-crawl de lo que realmente cambió.
- *  3. Sitemap de IMÁGENES: cada ficha incluye su galería absoluta
- *     (<image:image><image:loc>), clave para e-commerce/afiliados
- *     (Google Imágenes y fichas de producto).
+ *  3. Sitemap de IMÁGENES: cada ficha incluye su galería, pero SOLO con
+ *     imágenes alojadas en el DOMINIO PROPIO (<image:loc>). Google solo admite
+ *     imágenes de otro dominio si ese dominio está verificado en Search Console;
+ *     por eso se descartan las del CDN de AliExpress (dominio ajeno) y el
+ *     sitemap publica EXCLUSIVAMENTE URLs de este sitio.
  *  4. Toda la lectura de datos pasa por /services (regla de oro: los
  *     componentes/rutas no llaman a supabase.from() directamente).
  *  5. `revalidate` sirve el XML cacheado (ISR) y lo regenera cada hora:
@@ -89,8 +91,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await getSitemapProducts()
   if (products.success && products.data) {
     for (const item of products.data) {
+      // Solo imágenes del propio dominio: `ownOriginAssetUrl` devuelve '' para
+      // hosts ajenos (CDN de AliExpress…), que se descartan con el filter.
       const images = item.images
-        .map(absoluteAssetUrl)
+        .map(ownOriginAssetUrl)
         .filter(Boolean)
         .slice(0, SITEMAP_MAX_IMAGES_PER_URL)
 

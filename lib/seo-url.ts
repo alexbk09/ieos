@@ -31,14 +31,34 @@ export function getSiteOrigin(): string {
 }
 
 /**
- * Convierte una ruta interna en URL absoluta.
+ * Codifica una ruta para que sea una URL VÁLIDA (RFC 3986).
+ * POR QUÉ: algunos slugs importados pueden contener caracteres no ASCII
+ * (ej. "canon" con eñe). Google RECHAZA en el sitemap las URLs con caracteres
+ * sin escapar ("Invalid URL"), así que aquí se convierten a percent-encoding
+ * UTF-8. Se usa encodeURI a propósito:
+ *  - preserva '/' (no rompe los segmentos de la ruta);
+ *  - NO re-codifica '%' → nunca produce doble codificación.
+ * Si la ruta trae una secuencia '%' inválida, encodeURI lanza y se devuelve
+ * el valor original (nunca rompe el render).
+ */
+function encodeUrlPath(path: string): string {
+  try {
+    return encodeURI(path)
+  } catch {
+    return path
+  }
+}
+
+/**
+ * Convierte una ruta interna en URL absoluta y válida (RFC 3986).
  * @example absoluteUrl('/productos/luz-led') → 'https://dominio.com/productos/luz-led'
+ * @example absoluteUrl('/productos/cañon')   → 'https://dominio.com/productos/ca%C3%B1on'
  */
 export function absoluteUrl(path = ''): string {
   const base = getSiteOrigin()
   if (!path || path === '/') return `${base}/`
   const cleanPath = path.startsWith('/') ? path : `/${path}`
-  return `${base}${cleanPath}`
+  return `${base}${encodeUrlPath(cleanPath)}`
 }
 
 /**
@@ -55,5 +75,39 @@ export function absoluteAssetUrl(value: string | null | undefined): string {
   if (/^https?:\/\//i.test(trimmed)) return trimmed
   const base = getSiteOrigin()
   const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
-  return `${base}${cleanPath}`
+  return `${base}${encodeUrlPath(cleanPath)}`
+}
+
+/**
+ * Indica si un recurso pertenece al DOMINIO PROPIO del sitio.
+ * POR QUÉ: un sitemap debe contener ÚNICAMENTE URLs del propio sitio. Las
+ * imágenes alojadas en un dominio ajeno (p. ej. el CDN de AliExpress) solo
+ * son válidas para Google si ese dominio está verificado en Search Console;
+ * si no lo está, generan errores y "ensucian" el sitemap.
+ *  - Rutas relativas ('/products/webp/x.webp') SIEMPRE son del sitio.
+ *  - URLs absolutas o protocol-relative: solo si su host coincide con el
+ *    origin del sitio.
+ */
+export function isOwnOriginUrl(value: string | null | undefined): boolean {
+  if (!value) return false
+  const trimmed = value.trim()
+  if (!trimmed) return false
+  // Ruta relativa real (no empieza por '//' ni por esquema): es del sitio.
+  if (!/^(https?:)?\/\//i.test(trimmed)) return true
+  try {
+    const candidate = trimmed.startsWith('//') ? `https:${trimmed}` : trimmed
+    return new URL(candidate).host === new URL(getSiteOrigin()).host
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Devuelve el recurso como URL absoluta SOLO si es del dominio propio.
+ * Para recursos externos (CDN de AliExpress, storage ajeno…) retorna '',
+ * de modo que el sitemap nunca publique URLs de otro dominio.
+ */
+export function ownOriginAssetUrl(value: string | null | undefined): string {
+  if (!isOwnOriginUrl(value)) return ''
+  return absoluteAssetUrl(value)
 }
