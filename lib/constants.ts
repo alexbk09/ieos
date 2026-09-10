@@ -36,6 +36,14 @@ export const WHATSAPP_NUMBER = '584122649707'
 /** Prefijo de ruta para imágenes locales del catálogo (WebP optimizadas). */
 export const LOCAL_IMAGES_PREFIX = '/products/webp/'
 
+/**
+ * Token público de verificación de Google Search Console (método meta tag).
+ * Se emite como <meta name="google-site-verification" content={...} /> en el
+ * <head> desde app/layout.tsx. Es complementario al archivo físico
+ * public/google8222e40aea313a4f.html (método HTML file) que sirve Google.
+ */
+export const GOOGLE_SITE_VERIFICATION = 'google8222e40aea313a4f'
+
 /** Cantidad de productos por página en el catálogo (infinite scroll). */
 export const CATALOG_PAGE_SIZE = 10
 

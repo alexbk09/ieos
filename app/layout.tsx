@@ -8,6 +8,7 @@ import { WhatsAppButton } from '@/components/whatsapp-button'
 import { ScrollReset } from '@/components/scroll-reset'
 import { getSiteSettings } from '@/services/site-settings'
 import { themeStyleTagContent } from '@/lib/theme'
+import { GOOGLE_SITE_VERIFICATION } from '@/lib/constants'
 
 /** ISR: el layout raíz se revalida cada 5 min (metadata dinámica). */
 export const revalidate = 300
@@ -22,6 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: `${name} — ${tagline}`,
     description: settings.hero_texts?.description ?? 'Soluciones LED y revestimientos que convierten espacios en experiencias memorables.',
     generator: name,
+    // Verificación de Google Search Console (método meta tag).
+    verification: { google: GOOGLE_SITE_VERIFICATION },
     icons: settings.icon_url
       ? { icon: settings.icon_url, apple: settings.icon_url }
       : undefined,
