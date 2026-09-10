@@ -189,6 +189,10 @@ export const ALI_OPTIMIZE_PER_BATCH = 5
  * Revalidación del sitemap (segundos → 1 hora).
  * Google valora frescura, pero consultar la BD en cada request sería costoso:
  * 1 hora equilibra crawl budget y datos actualizados.
+ *
+ * ⚠️ Next.js exige un LITERAL estático en `export const revalidate = ...`
+ * (no resuelve identificadores importados). Por eso app/sitemap.ts duplica
+ * este valor como literal: si cambias aquí, actualiza también ese archivo.
  */
 export const SITEMAP_REVALIDATE_SECONDS = 3600
 

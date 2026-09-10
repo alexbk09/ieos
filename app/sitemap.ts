@@ -2,11 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getSitemapProducts } from '@/services/aliProducts'
 import { getSitemapCategories } from '@/services/catalog'
 import { absoluteUrl, absoluteAssetUrl } from '@/lib/seo-url'
-import {
-  SITEMAP_MAX_IMAGES_PER_URL,
-  SITEMAP_MAX_URLS,
-  SITEMAP_REVALIDATE_SECONDS,
-} from '@/lib/constants'
+import { SITEMAP_MAX_IMAGES_PER_URL, SITEMAP_MAX_URLS } from '@/lib/constants'
 
 /**
  * Sitemap dinámico accesible en /sitemap.xml (para entregar a Google Search
@@ -27,7 +23,11 @@ import {
  *     respeta el crawl budget y mantiene el archivo fresco.
  *  6. Guard defensivo del límite de 50,000 URLs por archivo.
  */
-export const revalidate = SITEMAP_REVALIDATE_SECONDS
+// ⚠️ Next.js exige un LITERAL estático en los segment configs: su análisis
+// estático (extract-const-value) NO resuelve identificadores importados y
+// aborta el build con "Invalid segment configuration export detected".
+// Este valor DEBE coincidir con SITEMAP_REVALIDATE_SECONDS (lib/constants.ts).
+export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const generatedAt = new Date()
