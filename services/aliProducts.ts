@@ -1,6 +1,6 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
-import { CATALOG_PAGE_SIZE } from '@/lib/constants'
+import { CATALOG_PAGE_SIZE, SITEMAP_MAX_IMAGES_PER_URL } from '@/lib/constants'
 import { PRODUCT_SELECT, mapProduct, slugify } from '@/services/catalog'
 import type { Product, ProductInput } from '@/services/catalog'
 
@@ -207,19 +207,51 @@ export async function obtenerMarcaAliExpress(nombreMarca?: string | null) {
   }
 }
 
-/** Slugs indexables + lastmod para /sitemap.xml (proyección ligera). */
+/**
+ * Ordena y des-duplica las imágenes de un producto para el sitemap.
+ * Prioriza la imagen principal (image_url) y luego la galería product_images
+ * ordenada por sort_order. Devuelve URLs crudas (el sitemap las absolutiza).
+ */
+function buildSitemapImageUrls(row: any): string[] {
+  const gallery = ((row?.product_images ?? []) as any[])
+    .slice()
+    .sort((a, b) => Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0))
+    .map((img) => img?.url)
+
+  const candidates = [row?.image_url, ...gallery].filter(Boolean) as string[]
+  const unique: string[] = []
+  for (const candidate of candidates) {
+    const clean = String(candidate).trim()
+    if (clean && !unique.includes(clean)) unique.push(clean)
+  }
+  return unique.slice(0, SITEMAP_MAX_IMAGES_PER_URL)
+}
+
+/**
+ * Entradas del sitemap (/sitemap.xml) para productos indexables.
+ * Proyección LIGERA con cliente público → solo columnas necesarias:
+ *  - slug + lastmod REAL (updated_at/created_at) para priorizar el crawl.
+ *  - imágenes de la galería → habilita el sitemap de imágenes de Google
+ *    (Google Imágenes / fichas de producto de afiliado).
+ * Filtra is_available = true e indexado_google = true para que el sitemap
+ * contenga EXACTAMENTE las URLs que la ficha marca como index (sin noindex).
+ */
 export async function getSitemapProducts() {
   try {
     const supabase = createPublicClient()
     const { data, error } = await supabase.from('products')
-      .select('slug,updated_at,created_at')
+      .select('slug,updated_at,created_at,image_url,product_images(url,sort_order)')
       .eq('is_available', true)
       .eq('indexado_google', true)
       .order('created_at', { ascending: false })
     if (error) return { success: false as const, error: error.message }
     const items = ((data ?? []) as any[])
       .filter((r) => r?.slug?.trim())
-      .map((r) => ({ slug: r.slug.trim(), lastmod: (r.updated_at ?? r.created_at ?? new Date().toISOString()).slice(0, 10) }))
+      .map((r) => ({
+        slug: r.slug.trim(),
+        lastmod: (r.updated_at ?? r.created_at ?? new Date().toISOString()).slice(0, 10),
+        images: buildSitemapImageUrls(r),
+      }))
     return { success: true as const, data: items }
   } catch (err: any) {
     return { success: false as const, error: err?.message ?? 'Error en sitemap.' }

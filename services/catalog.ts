@@ -719,6 +719,28 @@ export async function getCategorySlugs() {
 }
 
 /**
+ * Entradas del sitemap para categorías activas (/categoria/[slug]).
+ * Cliente público → SSG+ISR. Devuelve el lastmod REAL (updated_at) para que
+ * Google revalide las landings de nicho solo cuando cambian de verdad.
+ */
+export async function getSitemapCategories() {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('categories')
+    .select('slug,updated_at')
+    .eq('activa', true)
+    .order('name')
+  if (error) return { items: [] as { slug: string; lastmod: string }[], error }
+  const items = ((data ?? []) as any[])
+    .filter((row) => row?.slug)
+    .map((row) => ({
+      slug: String(row.slug),
+      lastmod: (row.updated_at ?? new Date().toISOString()).slice(0, 10),
+    }))
+  return { items, error: null }
+}
+
+/**
  * Devuelve una página de productos que pertenecen a una categoría por slug.
  * Cliente público → SSG+ISR. Reutiliza PRODUCT_SELECT + mapProduct.
  * Pensado para la página indexable /categoria/[slug] con paginación.

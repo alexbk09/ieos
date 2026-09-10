@@ -40,3 +40,20 @@ export function absoluteUrl(path = ''): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`
   return `${base}${cleanPath}`
 }
+
+/**
+ * Convierte la URL de un recurso (imagen) en URL absoluta.
+ * Google EXIGE URLs absolutas en el sitemap de imágenes.
+ *  - URLs ya absolutas (Supabase Storage, CDN de AliExpress) se devuelven intactas.
+ *  - Rutas relativas (ej. /products/webp/x.webp) se prefijan con el origin del sitio.
+ * @example absoluteAssetUrl('/products/webp/a.webp') → 'https://dominio.com/products/webp/a.webp'
+ */
+export function absoluteAssetUrl(value: string | null | undefined): string {
+  if (!value) return ''
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  const base = getSiteOrigin()
+  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  return `${base}${cleanPath}`
+}

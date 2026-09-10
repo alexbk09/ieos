@@ -182,3 +182,22 @@ export const ALI_PIPELINE_MAX_PRODUCTS = 10
 
 /** Cantidad por defecto de productos a optimizar por lote. */
 export const ALI_OPTIMIZE_PER_BATCH = 5
+
+// ---------- Sitemap / SEO ----------
+
+/**
+ * Revalidación del sitemap (segundos → 1 hora).
+ * Google valora frescura, pero consultar la BD en cada request sería costoso:
+ * 1 hora equilibra crawl budget y datos actualizados.
+ */
+export const SITEMAP_REVALIDATE_SECONDS = 3600
+
+/** Máximo de URLs por archivo de sitemap (límite duro de Google: 50,000). */
+export const SITEMAP_MAX_URLS = 50_000
+
+/**
+ * Máximo de imágenes por URL en el sitemap de imágenes.
+ * Google permite hasta 1,000 por página; usamos 8 para enviar la galería
+ * principal (el mismo tope del schema JSON-LD) sin inflar el archivo.
+ */
+export const SITEMAP_MAX_IMAGES_PER_URL = 8
