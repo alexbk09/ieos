@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { CircleUserRound, Menu, ShoppingBag, X } from 'lucide-react'
 import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { LocaleSwitcher } from '@/components/locale-switcher'
 import { UserMenu } from '@/components/user-menu'
+import { useTranslations } from '@/hooks/use-translations'
 
 type SessionRole = 'admin' | 'client' | null
 
@@ -44,6 +46,8 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sessionRole, setSessionRole] = useState<SessionRole>(null)
+  // Traductor de la interfaz (idioma activo de la página, vía contexto).
+  const t = useTranslations()
 
   // Combina la marca actual con los valores por defecto.
   const currentBrand: HeaderBrand = { ...DEFAULT_BRAND, ...(brand ?? {}) }
@@ -87,17 +91,18 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
         </nav>
 
         <div className="flex items-center gap-2">
+          <LocaleSwitcher />
           <ThemeToggle />
 
           {sessionRole ? (
             <UserMenu />
           ) : (
-            <a href="/login" aria-label="Cuenta" className="hidden size-10 place-items-center rounded-full border border-border md:grid"><CircleUserRound size={17} /></a>
+            <a href="/login" aria-label={t('header.account')} className="hidden size-10 place-items-center rounded-full border border-border md:grid"><CircleUserRound size={17} /></a>
           )}
 
-          <button aria-label="Abrir carrito" onClick={onOpenCart} className="relative grid size-10 place-items-center rounded-full bg-navy text-navy-foreground"><ShoppingBag size={17} />{cartCount > 0 && <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-brand text-[10px] font-bold text-brand-foreground">{cartCount}</span>}</button>
+          <button aria-label={t('header.openCart')} onClick={onOpenCart} className="relative grid size-10 place-items-center rounded-full bg-navy text-navy-foreground"><ShoppingBag size={17} />{cartCount > 0 && <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-brand text-[10px] font-bold text-brand-foreground">{cartCount}</span>}</button>
 
-          <button aria-label="Menú" onClick={() => setMenuOpen(!menuOpen)} className="grid size-10 place-items-center md:hidden">{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
+          <button aria-label={t('header.menu')} onClick={() => setMenuOpen(!menuOpen)} className="grid size-10 place-items-center md:hidden">{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
         </div>
       </div>
 
@@ -107,9 +112,9 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
             {links.map((link) => (
               <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={link.highlight ? 'font-semibold text-brand-strong' : ''}>{link.label}</a>
             ))}
-            {sessionRole === 'admin' ? <a href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">Panel admin</a> : sessionRole === 'client' ? <a href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">Mis Solicitudes</a> : null}
-            {sessionRole && <a href="/perfil" onClick={() => setMenuOpen(false)}>Mi Perfil</a>}
-            {!sessionRole && <a href="/login" onClick={() => setMenuOpen(false)}>Mi cuenta</a>}
+            {sessionRole === 'admin' ? <a href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">{t('header.adminPanel')}</a> : sessionRole === 'client' ? <a href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">{t('header.myRequests')}</a> : null}
+            {sessionRole && <a href="/perfil" onClick={() => setMenuOpen(false)}>{t('header.myAccount')}</a>}
+            {!sessionRole && <a href="/login" onClick={() => setMenuOpen(false)}>{t('header.account')}</a>}
           </div>
         </div>
       )}

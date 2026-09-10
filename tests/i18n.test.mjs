@@ -305,5 +305,49 @@ test('mergeProductTranslations ignora entradas vacías y normaliza JSONB inváli
   assert.deepEqual(mergeProductTranslations([1, 2], { es: {} }), {})
 })
 
+// ---------- Mensajes de interfaz (lib/i18n-messages.mjs) ----------
+
+const { MESSAGES, MESSAGE_LOCALES, translate, createTranslator } = await import(
+  '../lib/i18n-messages.mjs'
+)
+
+test('MESSAGES define un diccionario para cada idioma soportado', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    assert.ok(MESSAGES[locale], 'falta el diccionario de ' + locale)
+  }
+  assert.deepEqual([...MESSAGE_LOCALES].sort(), [...SUPPORTED_LOCALES].sort())
+})
+
+test('todos los diccionarios cubren EXACTAMENTE las mismas claves (sin huecos)', () => {
+  const base = Object.keys(MESSAGES[DEFAULT_LOCALE]).sort()
+  assert.ok(base.length > 0)
+  for (const locale of MESSAGE_LOCALES) {
+    assert.deepEqual(
+      Object.keys(MESSAGES[locale]).sort(),
+      base,
+      'claves distintas en el idioma ' + locale,
+    )
+  }
+})
+
+test('translate devuelve el texto del idioma pedido (acepta variantes regionales)', () => {
+  assert.equal(translate(MESSAGES, 'es', 'header.openCart'), 'Abrir carrito')
+  assert.equal(translate(MESSAGES, 'fr', 'header.openCart'), 'Ouvrir le panier')
+  assert.equal(translate(MESSAGES, 'fr-FR', 'header.openCart'), 'Ouvrir le panier')
+})
+
+test('translate cae al idioma por defecto y, como último recurso, a la clave', () => {
+  assert.equal(translate(MESSAGES, 'pl', 'header.openCart'), MESSAGES[DEFAULT_LOCALE]['header.openCart'])
+  assert.equal(translate(MESSAGES, 'es', 'no.existe'), 'no.existe')
+  assert.equal(translate({}, 'es', 'sin.diccionario'), 'sin.diccionario')
+})
+
+test('createTranslator interpola variables y conserva los marcadores sin valor', () => {
+  const t = createTranslator({ es: { saludo: 'Hola {nombre}' } }, 'es')
+  assert.equal(t('saludo', { nombre: 'Ana' }), 'Hola Ana')
+  assert.equal(t('saludo'), 'Hola {nombre}')
+})
+
+
 
 

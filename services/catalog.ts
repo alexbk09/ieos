@@ -748,35 +748,43 @@ const I18N_RESOLVE_OPTIONS = { sourceLocale: SOURCE_LOCALE, defaultLocale: DEFAU
 /** Columnas i18n de categoría (migración 0049). */
 const CATEGORY_I18N_COLUMNS = 'name_i18n,slug_i18n,description_i18n,seo_title_i18n,seo_intro_i18n,seo_faq_i18n'
 
+/** ¿El error de PostgREST es por una columna inexistente (migración pendiente)? */
+function esColumnaAusente(error: any): boolean {
+  const code = error?.code
+  const message = String(error?.message ?? '')
+  return code === '42703' || /does not exist/i.test(message)
+}
+
 /**
- * Ejecuta una consulta de categorías con las columnas i18n y, si el entorno aún
- * NO tiene aplicada la migración 0049 (columna inexistente), REINTENTA sin ellas.
+ * Ejecuta una consulta de categorías DEGRADANDO la proyección de columnas en
+ * cascada hasta que el entorno la soporte.
  *
- * POR QUÉ: la tienda puede apuntar a varios entornos (dev/prod) con migraciones
- * desincronizadas. Sin esta degradación, un `select` con columnas ausentes
- * vaciaría la navegación y el sitemap de categorías en silencio. Con ella, el
- * sitio sigue sirviendo el idioma base y solo se pierde la capa de traducción.
+ * POR QUÉ: un mismo código puede apuntar a varios entornos (dev/prod) con
+ * migraciones desincronizadas. Si se selecciona una columna que ese entorno aún
+ * no tiene (p. ej. 0047 `seo_*` o 0049 `*_i18n`), la consulta ENTERA falla y la
+ * categoría se vuelve invisible (página "no encontrada", sitemap vacío).
+ * Con esta cascada el sitio sirve lo que exista y solo pierde la capa opcional.
  *
- * @param build Constructor de la consulta que recibe las columnas a seleccionar.
- * @param baseColumns Columnas disponibles en cualquier entorno.
- * @param i18nColumns Columnas de traducción (0049).
+ * Orden: proyección completa → sin i18n → mínimo viable (id/name/slug).
+ *
+ * @param build Constructor de la consulta (recibe las columnas a seleccionar).
+ * @param baseColumns Columnas base del caso de uso.
+ * @param i18nColumns Columnas de traducción (migración 0049).
  */
 async function selectCategoriesConFallback<T>(
   build: (columns: string) => PromiseLike<{ data: T | null; error: any }>,
   baseColumns: string,
   i18nColumns: string = CATEGORY_I18N_COLUMNS,
 ): Promise<{ data: T | null; error: any }> {
-  const intento = await build(`${baseColumns},${i18nColumns}`)
-  if (!intento.error) return intento
+  const proyecciones = [`${baseColumns},${i18nColumns}`, baseColumns, 'id,name,slug']
 
-  // 42703 = undefined_column (PostgREST/Postgres): la migración 0049 falta.
-  const code = (intento.error as any)?.code
-  const message = String((intento.error as any)?.message ?? '')
-  if (code === '42703' || /does not exist/i.test(message)) {
-    console.warn('[catalog] Columnas i18n ausentes (¿migración 0049 pendiente?); se sirve el idioma base.')
-    return build(baseColumns)
+  let resultado = await build(proyecciones[0])
+  for (let i = 1; i < proyecciones.length && resultado.error; i += 1) {
+    if (!esColumnaAusente(resultado.error)) return resultado
+    console.warn(`[catalog] Proyección no disponible en este entorno; se degrada a "${proyecciones[i]}".`)
+    resultado = await build(proyecciones[i])
   }
-  return intento
+  return resultado
 }
 
 /** Entrada del sitemap de categorías (incluye datos i18n para hreflang). */

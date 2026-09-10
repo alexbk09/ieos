@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { RootShell } from '@/components/root-shell'
+import { I18nProvider } from '@/components/i18n-provider'
 import { ROOT_VIEWPORT, buildRootMetadata } from '@/lib/root-metadata'
 import { publishedLocales } from '@/lib/i18n-config'
 
@@ -40,5 +41,10 @@ export default async function SiteLayout({
   // Blindaje: solo los idiomas PUBLICADOS son accesibles (evita doorway pages).
   if (!publishedLocales().includes(locale)) notFound()
 
-  return <RootShell lang={locale}>{children}</RootShell>
+  return (
+    <RootShell lang={locale}>
+      {/* El idioma se fija UNA vez para todo el árbol cliente (useLocale/t). */}
+      <I18nProvider locale={locale}>{children}</I18nProvider>
+    </RootShell>
+  )
 }

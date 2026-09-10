@@ -13,6 +13,7 @@ import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
+import { useTranslations } from '@/hooks/use-translations'
 import { AgentChat } from '@/components/agent-chat'
 
 /**
@@ -60,6 +61,7 @@ export function CategoryPageView({
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
+  const t = useTranslations()
 
   const [selected, setSelected] = useState<CardProduct | null>(null)
 
@@ -114,9 +116,9 @@ export function CategoryPageView({
             </div>
           ) : (
             <div className="grid place-items-center rounded-3xl border border-dashed border-border py-20 text-center">
-              <p className="text-muted-foreground">Aún no hay productos publicados en esta categoría.</p>
+              <p className="text-muted-foreground">{t('category.empty')}</p>
               <a href="/catalogo" className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-brand-foreground transition hover:bg-brand-strong">
-                Ver todo el catálogo
+                {t('category.seeAll')}
               </a>
             </div>
           )}
@@ -127,7 +129,7 @@ export function CategoryPageView({
         {category.seo_faq && category.seo_faq.length > 0 && (
           <section aria-labelledby="category-faq-heading" className="mt-12 max-w-3xl border-t border-border pt-8">
             <h2 id="category-faq-heading" className="text-2xl font-semibold tracking-[-.04em]">
-              Preguntas frecuentes
+              {t('category.faq')}
             </h2>
             <dl className="mt-5 space-y-4">
               {category.seo_faq.map((item, i) => (
@@ -141,7 +143,7 @@ export function CategoryPageView({
         )}
 
         {/* Navegación cross-categoría (enlazado interno + UX moderna). */}
-        <CategoryNav items={categories} currentSlug={category.slug} title="Explora otras categorías" />
+        <CategoryNav items={categories} currentSlug={category.slug} />
       </main>
 
       <SiteFooter footer={footer} brand={{ name: brand.name, address: brandAddress }} social={social} />

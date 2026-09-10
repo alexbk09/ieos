@@ -1,4 +1,7 @@
+'use client'
+
 import { ArrowUpRight, Package } from 'lucide-react'
+import { useTranslations } from '@/hooks/use-translations'
 
 /** Item de navegación de categoría (con conteo de productos visibles). */
 export type CategoryNavItem = {
@@ -21,15 +24,20 @@ export type CategoryNavItem = {
 export function CategoryNav({
   items,
   currentSlug,
-  title = 'Explora otras categorías',
-  subtitle = 'Descubre más productos curados por nuestro equipo.',
+  title,
+  subtitle,
 }: {
   items: CategoryNavItem[]
   /** Slug de la categoría actual (se excluye de la lista). */
   currentSlug?: string
+  /** Título opcional: si no llega, se usa el traducido por defecto. */
   title?: string
   subtitle?: string
 }) {
+  const t = useTranslations()
+  const resolvedTitle = title ?? t('category.exploreOthers')
+  const resolvedSubtitle = subtitle ?? t('category.exploreOthersSubtitle')
+
   const others = (items ?? []).filter((c) => c.slug !== currentSlug)
   if (others.length === 0) return null
 
@@ -39,15 +47,15 @@ export function CategoryNav({
         <div>
           {/* H2 semántico: jerarquía de encabezados dentro de la página. */}
           <h2 id="category-nav-heading" className="text-2xl font-semibold tracking-[-.04em] sm:text-3xl">
-            {title}
+            {resolvedTitle}
           </h2>
-          {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+          {resolvedSubtitle && <p className="mt-1 text-sm text-muted-foreground">{resolvedSubtitle}</p>}
         </div>
         <a
           href="/catalogo"
           className="hidden shrink-0 items-center gap-1 text-sm font-medium text-brand-strong transition hover:underline sm:inline-flex"
         >
-          Ver catálogo completo <ArrowUpRight size={14} />
+          {t('category.viewFullCatalog')} <ArrowUpRight size={14} />
         </a>
       </div>
 
@@ -72,7 +80,7 @@ export function CategoryNav({
               </span>
             </div>
             <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-brand-strong">
-              <Package size={11} /> {c.count} producto{c.count !== 1 ? 's' : ''}
+              <Package size={11} /> {c.count} {c.count !== 1 ? t('category.stockMany') : t('category.stockOne')}
             </p>
           </a>
         ))}

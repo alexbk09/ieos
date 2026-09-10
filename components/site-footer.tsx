@@ -1,6 +1,7 @@
 'use client'
 
 import { Code2, Globe2, Star } from 'lucide-react'
+import { useTranslations } from '@/hooks/use-translations'
 
 // ---------- Tipos ----------
 
@@ -45,6 +46,8 @@ export function SiteFooter({
 }) {
   const currentBrand: FooterBrand = { ...DEFAULT_BRAND, ...(brand ?? {}) }
   const currentFooter: FooterTexts = { ...DEFAULT_FOOTER, ...(footer ?? {}) }
+  // Etiquetas fijas de la interfaz traducidas al idioma activo.
+  const t = useTranslations()
 
   const copyright = currentFooter.copyright ?? `© 2025 ${currentBrand.name}. ${currentBrand.address}.`
   const slogan = currentFooter.slogan ?? 'Iluminamos ideas.'
@@ -72,7 +75,7 @@ export function SiteFooter({
               </a>
             )}
             {social.email && (
-              <a href={social.email} aria-label="Enviar correo" className={`grid size-8 place-items-center rounded-full border border-border transition-colors ${iconClass}`}>
+              <a href={social.email} aria-label={t('footer.sendEmail')} className={`grid size-8 place-items-center rounded-full border border-border transition-colors ${iconClass}`}>
                 <Globe2 size={14} />
               </a>
             )}
@@ -88,7 +91,7 @@ export function SiteFooter({
         <div className="flex flex-col items-start gap-1 border-l-2 border-border pl-3">
           <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
             <Code2 size={11} aria-hidden="true" />
-            Desarrollado por
+            {t('footer.developedBy')}
           </p>
           <a
             href="https://portafolio-new-jet.vercel.app"
