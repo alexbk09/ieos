@@ -419,10 +419,15 @@ export function CatalogView({
       <SiteHeader cartCount={count} onOpenCart={() => setCartOpen(true)} navLinks={navLinks} brand={brand} />
 
       <main className="mx-auto grid w-full max-w-7xl flex-1 gap-8 px-5 py-10 lg:grid-cols-[280px_1fr] lg:px-8">
-        {/* Panel de filtros: sidebar en desktop, collapsible en móvil */}
-        <aside className="h-fit lg:sticky lg:top-24">
+        {/* Panel de filtros: sidebar en desktop, collapsible en móvil.
+            En desktop es sticky y se limita a la altura visible (100dvh menos
+            el offset del header + un respiro): si el panel es más alto que la
+            pantalla, su contenido scrollea DENTRO del aside. Sin esto, al
+            activarse el sticky el fondo del panel (marcas + botones) quedaba
+            fuera del viewport y era inalcanzable al cargar más productos. */}
+        <aside className="h-fit lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh_-_7rem)] lg:flex-col">
           {/* Encabezado del panel */}
-          <div className="rounded-t-3xl border border-border bg-card p-5 lg:rounded-3xl lg:p-6">
+          <div className="rounded-t-3xl border border-border bg-card p-5 lg:shrink-0 lg:rounded-3xl lg:p-6">
             <button
               onClick={() => setFiltersOpen((o) => !o)}
               className="flex w-full items-center justify-between lg:cursor-default lg:pointer-events-none"
@@ -443,9 +448,12 @@ export function CatalogView({
             </p>
           </div>
 
-          {/* Cuerpo del panel */}
+          {/* Cuerpo del panel.
+              En desktop ocupa el espacio restante del aside y scrollea dentro
+              de él (`overflow-y-auto` + `min-h-0`) para que categorías, marcas
+              y acciones nunca queden cortados por la pantalla. */}
           <div
-            className={`border-x border-b border-border bg-card p-5 lg:border lg:rounded-3xl lg:p-6 ${
+            className={`border-x border-b border-border bg-card p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:scrollbar-theme lg:border lg:rounded-3xl lg:p-6 ${
               filtersOpen ? 'block' : 'hidden lg:block'
             } rounded-b-3xl`}
           >
