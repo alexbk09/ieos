@@ -14,7 +14,6 @@ import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { useTranslations } from '@/hooks/use-translations'
-import { AgentChat } from '@/components/agent-chat'
 
 /**
  * Vista cliente de la página /categoria/[slug].
@@ -175,8 +174,6 @@ export function CategoryPageView({
         onClose={() => setPopupsBlocked(false)}
         onClearCheckout={clear}
       />
-
-      <AgentChat />
     </div>
   )
 }

@@ -3,7 +3,6 @@ import '@/app/globals.css'
 import { ToastProvider } from '@/components/toast-provider'
 import { AppProviders } from '@/components/app-providers'
 import { NavigationProgress } from '@/components/navigation-progress'
-import { WhatsAppButton } from '@/components/whatsapp-button'
 import { ScrollReset } from '@/components/scroll-reset'
 import { getSiteSettings } from '@/services/site-settings'
 import { themeStyleTagContent } from '@/lib/theme'
@@ -59,7 +58,6 @@ export async function RootShell({
         <ScrollReset />
         <ToastProvider />
         {process.env.NODE_ENV === 'production' && <Analytics />}
-        <WhatsAppButton whatsappNumber={settings.whatsapp_number} />
       </body>
     </html>
   )

@@ -13,7 +13,6 @@ import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
-import { AgentChat } from '@/components/agent-chat'
 import { SearchableMultiSelect } from '@/components/ui/select-search'
 import { ProductGridSkeleton } from '@/components/ui/skeleton'
 
@@ -387,7 +386,6 @@ export function CatalogView({
         />
       )}
 
-      <AgentChat />
       <SiteFooter footer={footer} brand={{ name: brand?.name, address: brandAddress }} social={social} />
 
       <CartDrawer

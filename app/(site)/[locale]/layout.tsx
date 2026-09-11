@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { RootShell } from '@/components/root-shell'
 import { I18nProvider } from '@/components/i18n-provider'
+import { AgentChat } from '@/components/agent-chat'
 import { ROOT_VIEWPORT, buildRootMetadata } from '@/lib/root-metadata'
 import { publishedLocales } from '@/lib/i18n-config'
 
@@ -45,6 +46,13 @@ export default async function SiteLayout({
     <RootShell lang={locale}>
       {/* El idioma se fija UNA vez para todo el árbol cliente (useLocale/t). */}
       <I18nProvider locale={locale}>{children}</I18nProvider>
+      {/*
+        Asistente de Compra IA: se monta UNA sola vez para TODO el sitio público
+        (portada, catálogo, categoría y detalle de producto). Al vivir en el
+        layout persiste el estado del chat al navegar entre vistas y evita
+        duplicar el widget en cada página (principio DRY / componente atómico).
+      */}
+      <AgentChat />
     </RootShell>
   )
 }

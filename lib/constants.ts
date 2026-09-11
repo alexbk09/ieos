@@ -43,9 +43,6 @@ export const PRODUCTS_BUCKET = 'productos-bucket'
 /** Bucket de Supabase Storage para avatares de usuario. */
 export const AVATARS_BUCKET = 'avatars-bucket'
 
-/** Número de WhatsApp para confirmación de pedidos. */
-export const WHATSAPP_NUMBER = '584122649707'
-
 /** Prefijo de ruta para imágenes locales del catálogo (WebP optimizadas). */
 export const LOCAL_IMAGES_PREFIX = '/products/webp/'
 

@@ -17,7 +17,6 @@ import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
-import { AgentChat } from '@/components/agent-chat'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig } from '@/lib/homepage-config'
 import { HomepageHero, type SegmentData } from '@/components/homepage-sections'
 
@@ -307,7 +306,5 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
       onClose={() => setPopupsBlocked(false)}
       onClearCheckout={clear}
     />
-
-    <AgentChat />
   </div>
 }
