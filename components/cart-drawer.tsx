@@ -4,6 +4,7 @@ import { ArrowUpRight, Minus, Plus, ShieldCheck, X } from 'lucide-react'
 import { formatBolivars, formatRate, moneyForProduct } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
+import { useTranslations } from '@/hooks/use-translations'
 
 /**
  * Panel lateral del carrito ("Resumen de tu selección").
@@ -28,6 +29,9 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
   /** Indica si algún producto no tiene enlace de afiliado configurado. */
   hasNonAffiliate?: boolean
 }) {
+  // Traductor de la interfaz (idioma activo). Se llama ANTES del early-return
+  // para respetar las reglas de los hooks.
+  const t = useTranslations()
   if (!open) return null
 
   /**
@@ -65,16 +69,16 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
       <aside onClick={(e) => e.stopPropagation()} className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-brand-strong">Paso 2 · Resumen</p>
-            <h2 className="mt-1 text-2xl font-semibold">Tu selección</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Confirmas y te llevamos al producto real en AliExpress / Amazon.</p>
+            <p className="font-mono text-xs uppercase tracking-widest text-brand-strong">{t('cart.stepSummary')}</p>
+            <h2 className="mt-1 text-2xl font-semibold">{t('cart.title')}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('cart.subtitle')}</p>
           </div>
-          <button onClick={onClose} aria-label="Cerrar carrito"><X size={20} /></button>
+          <button onClick={onClose} aria-label={t('cart.closeAria')}><X size={20} /></button>
         </div>
 
         <div className="mt-6 flex-1 space-y-4 overflow-y-auto">
           {cart.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">Aún no has agregado piezas.</p>
+            <p className="py-12 text-center text-sm text-muted-foreground">{t('cart.empty')}</p>
           ) : cart.map((item) => (
             <div key={item.cartItemId} className="flex gap-3 border-b border-border pb-4">
               {(() => {
@@ -85,7 +89,7 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
                 const displayImage = colorImage ?? item.image_url
                 return displayImage
                   ? <img src={displayImage} alt="" className="size-16 rounded-xl object-cover" />
-                  : <div className="grid size-16 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">Sin img</div>
+                  : <div className="grid size-16 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">{t('product.noImage')}</div>
               })()}
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.name}</p>
