@@ -24,6 +24,7 @@ const {
 const { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations, buildLocalizedSlug } = await import(
   '../lib/i18n-content.mjs'
 )
+const { resolveSiteSettings, TRANSLATABLE_SETTINGS_KEYS } = await import('../lib/site-settings-i18n.mjs')
 const { slugify } = await import('../lib/slug.mjs')
 
 // ---------- slugify (fuente única, re-exportada por services/catalog.ts) ----------
@@ -218,6 +219,60 @@ test('resolveProductTranslations NO cae en otro idioma: usa el dato base (raíz)
     name: '',
     titulo_seo: '',
   })
+})
+
+// ---------- Textos configurables multilenguaje (site_settings.i18n) ----------
+
+const BASE_SETTINGS = {
+  company_name: 'Tienda',
+  tagline: 'Las mejores ofertas',
+  whatsapp_number: '58412',
+  nav_links: [
+    { href: '/', label: 'Inicio' },
+    { href: '/catalogo', label: 'Ofertas' },
+  ],
+  hero_texts: { title: 'Hola', primaryHref: '#catalogo', stats: [{ value: '+1.000', label: 'productos' }] },
+  i18n: {
+    en: {
+      company_name: 'Shop',
+      nav_links: [
+        { href: '/', label: 'Home' },
+        { href: '/catalogo', label: 'Deals' },
+      ],
+      hero_texts: { title: 'Hi' },
+    },
+  },
+}
+
+test('resolveSiteSettings devuelve la base si el idioma no tiene overrides', () => {
+  assert.equal(resolveSiteSettings(BASE_SETTINGS, 'de'), BASE_SETTINGS)
+  assert.equal(resolveSiteSettings(BASE_SETTINGS, null), BASE_SETTINGS)
+})
+
+test('resolveSiteSettings aplica el override del idioma (deep merge + arrays)', () => {
+  const en = resolveSiteSettings(BASE_SETTINGS, 'en')
+  assert.equal(en.company_name, 'Shop')
+  assert.equal(en.tagline, 'Las mejores ofertas') // no traducido: se conserva la base
+  assert.equal(en.whatsapp_number, '58412') // no traducible: intacto
+  assert.deepEqual(en.nav_links, [
+    { href: '/', label: 'Home' },
+    { href: '/catalogo', label: 'Deals' },
+  ])
+  assert.equal(en.hero_texts.title, 'Hi') // override
+  assert.equal(en.hero_texts.primaryHref, '#catalogo') // merge profundo: se conserva del base
+  assert.deepEqual(en.hero_texts.stats, [{ value: '+1.000', label: 'productos' }]) // array base intacto
+})
+
+test('resolveSiteSettings acepta variantes regionales (fr-CA → fr)', () => {
+  const settings = { tagline: 'Base', i18n: { fr: { tagline: 'Base FR' } } }
+  assert.equal(resolveSiteSettings(settings, 'fr-CA').tagline, 'Base FR')
+})
+
+test('TRANSLATABLE_SETTINGS_KEYS excluye campos técnicos (theme, urls, mapas)', () => {
+  assert.ok(!TRANSLATABLE_SETTINGS_KEYS.includes('theme'))
+  assert.ok(!TRANSLATABLE_SETTINGS_KEYS.includes('social_links'))
+  assert.ok(!TRANSLATABLE_SETTINGS_KEYS.includes('map_lat'))
+  assert.ok(TRANSLATABLE_SETTINGS_KEYS.includes('hero_texts'))
 })
 
 // ---------- Coherencia de la configuración de locales ----------

@@ -20,7 +20,7 @@ export function generateStaticParams() {
  */
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
-  const { settings } = await getSiteSettings()
+  const { settings } = await getSiteSettings(locale)
   const name = settings.company_name || 'ilumaX'
   const tagline = settings.tagline || 'Arquitectura de luz'
   const description =
@@ -50,7 +50,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ locale
       // Solo categorías CON productos: filtrar por una categoría vacía da 0 resultados.
       getCategoryNav(100, locale),
       getMarcasActivas(),
-      getSiteSettings(),
+      getSiteSettings(locale),
     ])
 
   const categories = (categoriesData ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug }))

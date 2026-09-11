@@ -32,7 +32,7 @@ export function generateStaticParams() {
  */
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
-  const { settings } = await getSiteSettings()
+  const { settings } = await getSiteSettings(locale)
   const name = settings.company_name || 'ilumaX'
   const tagline = settings.tagline || 'Arquitectura de luz'
   const description =
@@ -57,7 +57,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const { locale } = await params
   const [{ products }, { settings }, { items: activeCategories }] = await Promise.all([
     getFeaturedProducts(locale),
-    getSiteSettings(),
+    getSiteSettings(locale),
     // Solo categorías CON productos: evita que el cliente caiga en páginas vacías.
     // Se pasa el idioma para servir el nombre del nicho traducido (con fallback).
     getCategoryNav(100, locale),

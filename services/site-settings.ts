@@ -2,6 +2,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig, type HomepageConfig } from '@/lib/homepage-config'
+// Resolución de los textos configurables multilenguaje (site_settings.i18n).
+import { resolveSiteSettings } from '@/lib/site-settings-i18n'
 
 /**
  * Servicio de configuración del sitio.
@@ -90,6 +92,12 @@ export type SiteSettings = {
   social_links: SocialLinks
   /** Personalización del inicio: layout de portada y segmentos apilables. */
   homepage_config: HomepageConfig
+  /**
+   * Overrides de texto POR IDIOMA (migración 0053):
+   * { "en": { "tagline": "...", "nav_links": [...], "hero_texts": {...} } }.
+   * Se aplican sobre la base (idioma raíz) al leer con `getSiteSettings(locale)`.
+   */
+  i18n?: Record<string, any> | null
 }
 
 /** Valores por defecto de una fila de site_settings (para el mapa seguro). */
@@ -117,6 +125,7 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
     footer_texts: row?.footer_texts ?? fallback.footer_texts ?? {},
     social_links: row?.social_links ?? fallback.social_links ?? {},
     homepage_config: normalizeHomepageConfig(row?.homepage_config ?? fallback.homepage_config ?? {}),
+    i18n: row?.i18n ?? fallback.i18n ?? null,
   }
 }
 
@@ -197,15 +206,17 @@ const DEFAULT_SETTINGS: SiteSettings = {
 /**
  * Obtiene la configuración del sitio para el render público.
  * Cliente público → SSG+ISR. Si la fila no existe devuelve la configuración por defecto.
+ * `locale` aplica los overrides de texto del idioma (migración 0053); sin locale,
+ * devuelve la base (idioma raíz).
  */
-export async function getSiteSettings(): Promise<{ settings: SiteSettings; error: null | { message: string } }> {
+export async function getSiteSettings(locale?: string): Promise<{ settings: SiteSettings; error: null | { message: string } }> {
   const supabase = createPublicClient()
   const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle()
   if (error) {
     console.error('Error leyendo site_settings:', error.message)
-    return { settings: DEFAULT_SETTINGS, error: { message: error.message } }
+    return { settings: resolveSiteSettings(DEFAULT_SETTINGS, locale), error: { message: error.message } }
   }
-  return { settings: mapSettings(data, DEFAULT_SETTINGS), error: null }
+  return { settings: resolveSiteSettings(mapSettings(data, DEFAULT_SETTINGS), locale), error: null }
 }
 
 /** Obtiene la configuración del sitio para el admin (cliente servidor). */
@@ -259,7 +270,7 @@ export async function updateSiteSettings(payload: Partial<SiteSettings>) {
 
   // Columnas JSONB: se copian tal cual (objetos/arreglos).
   const jsonb: Record<string, unknown> = {}
-  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme', 'homepage_config'] as const) {
+  for (const key of ['nav_links', 'hero_texts', 'hero_images', 'studio_texts', 'contact_texts', 'footer_texts', 'social_links', 'theme', 'homepage_config', 'i18n'] as const) {
     if (payload[key] !== undefined) jsonb[key] = payload[key]
   }
 

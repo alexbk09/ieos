@@ -101,7 +101,7 @@ function toCardProduct(product: Product): CardProduct {
 /** Metadatos SEO dinámicos de la categoría (title, description, OG, canonical, hreflang). */
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params
-  const [{ category }, { settings }] = await Promise.all([getCategoryBySlug(slug, locale), getSiteSettings()])
+  const [{ category }, { settings }] = await Promise.all([getCategoryBySlug(slug, locale), getSiteSettings(locale)])
 
   if (!category) return { title: 'Categoría no encontrada' }
 
@@ -143,7 +143,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
     // devuelve nombre/descripción/SEO del idioma pedido (con fallback).
     getCategoryBySlug(slug, locale),
     getProductsByCategorySlug(slug, 0, locale),
-    getSiteSettings(),
+    getSiteSettings(locale),
     getCategoryNav(undefined, locale),
   ])
 
