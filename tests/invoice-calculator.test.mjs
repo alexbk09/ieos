@@ -16,6 +16,7 @@ const {
 
 // ---------- Validación de RIF ----------
 
+
 test('acepta un RIF J con dígito verificador correcto', () => {
   // J-12345678-5: según pesos SENIAT → DV 5
   const result = validateRif('J-12345678-5')
