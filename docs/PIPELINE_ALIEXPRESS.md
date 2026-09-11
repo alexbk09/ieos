@@ -177,14 +177,22 @@ en tiempo real:
 | 4 | **Extraer** detalle físico + imágenes por color | `aliScraper.scrapearProductoAliExpress` |
 | 5 | **Generar** enlace de afiliado oficial con tracking | `aliApi.generarEnlaceAfiliado` |
 | 6 | **SEO único** con DeepSeek (título optimizado + HTML H2/H3 + FAQ + keywords) con control anti-duplicado | `seo-content.generateSeoContent` + `seoDedupe.existeTituloSimilar` |
-| 7 | **Guardar** en Supabase (incluye `seo_faq` y `seo_keywords`), **traducir la ficha** (nombre + título SEO a los idiomas soportados) y **revalidar el sitemap** al instante | `aliProducts.insertAutomatedProduct` → `catalog.createProduct` + `i18n-translate.traducirProducto` |
-| 8 | **Traducir el nicho** (categoría: nombre, slug, descripción y SEO por idioma) | `i18n-translate.traducirCategoria` |
+| 7 | **Guardar** en Supabase (incluye `seo_faq` y `seo_keywords`), **traducir la ficha** automáticamente al crearla (nombre, título SEO, cuerpo HTML de la descripción y FAQ a los idiomas soportados) y **revalidar el sitemap** al instante | `aliProducts.insertAutomatedProduct` → `catalog.createProduct` (traduce vía `i18n-translate.traducirProducto`) |
+| 8 | **Traducir el nicho** (categoría: nombre, slug, descripción y contenido editorial del hub: `seo_title`, `seo_intro` y `seo_faq`) | `i18n-translate.traducirCategoria` |
 
-**Internacional (i18n):** cada producto nuevo se traduce al guardarse (paso 7) y el
-nicho se completa una vez por ejecución (paso 8). Ambos son **idempotentes**: si
-ya está traducido, no vuelven a llamar al modelo (coste cero). Los idiomas
-publicados en la web se controlan con `PUBLISHED_LOCALES` (lib/i18n-config.mjs);
-un producto sin traducción usa el fallback de su idioma raíz.
+**Internacional (i18n):** el contenido se traduce al CREARSE (paso 7), tanto para
+los productos del pipeline como para las altas manuales/API; el nicho se completa
+una vez por ejecución (paso 8). Todo es **idempotente**: si ya está traducido, no
+vuelve a llamar al modelo (coste cero). Los idiomas publicados en la web se
+controlan con `PUBLISHED_LOCALES` (lib/i18n-config.mjs); un producto sin traducción
+usa el fallback de su idioma raíz.
+
+**Panel "Idiomas y Traducciones" (`/admin/idiomas`, RBAC `categorias_idiomas`):**
+traduce desde la UI el contenido pendiente (lo ya existente y las cargas masivas)
+sin consola, reutilizando `services/i18n-pending`. La carga masiva NO traduce en
+línea (una sola petición HTTP no aguanta cientos de llamadas al modelo): se
+completa desde este panel. El backfill por consola (`npm run i18n:products` /
+`npm run i18n:backfill`) sigue disponible para CI o ejecuciones desatendidas.
 
 **Defensivo:** procesa máximo 5 productos nuevos por ejecución para no agotar
 créditos del proxy ni de DeepSeek. Cada producto se procesa en un `try-catch`

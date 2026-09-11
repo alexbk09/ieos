@@ -194,17 +194,33 @@ test('buildLocalizedSlug genera el slug desde el nombre traducido', () => {
   assert.equal(buildLocalizedSlug(null, 'fr', RESOLVE_OPTIONS), '')
 })
 
-test('resolveProductTranslations resuelve name/titulo_seo del idioma pedido', () => {
+test('resolveProductTranslations resuelve name/titulo_seo/description/seo_faq del idioma pedido', () => {
   const translations = {
-    en: { name: 'Gaming Mouse', titulo_seo: 'Wireless Gaming Mouse' },
+    en: {
+      name: 'Gaming Mouse',
+      titulo_seo: 'Wireless Gaming Mouse',
+      description: '<p>Great mouse</p>',
+      seo_faq: [{ pregunta: 'Wired?', respuesta: 'No.' }],
+    },
     fr: { name: 'Souris Gamer', titulo_seo: 'Souris Gamer sans fil' },
   }
-  const base = { name: 'Ratón Gamer', titulo_seo: 'Ratón Gamer Inalámbrico' }
+  const base = {
+    name: 'Ratón Gamer',
+    titulo_seo: 'Ratón Gamer Inalámbrico',
+    description: '<p>Gran ratón</p>',
+    seo_faq: [{ pregunta: '¿Cable?', respuesta: 'No.' }],
+  }
   assert.deepEqual(resolveProductTranslations(translations, base, 'en', RESOLVE_OPTIONS), {
     name: 'Gaming Mouse',
     titulo_seo: 'Wireless Gaming Mouse',
+    description: '<p>Great mouse</p>',
+    seo_faq: [{ pregunta: 'Wired?', respuesta: 'No.' }],
   })
-  assert.equal(resolveProductTranslations(translations, base, 'fr', RESOLVE_OPTIONS).name, 'Souris Gamer')
+  // "fr" no trae cuerpo ni FAQ: cae al dato base (raíz), NUNCA a "en".
+  const fr = resolveProductTranslations(translations, base, 'fr', RESOLVE_OPTIONS)
+  assert.equal(fr.name, 'Souris Gamer')
+  assert.equal(fr.description, '<p>Gran ratón</p>')
+  assert.deepEqual(fr.seo_faq, base.seo_faq)
 })
 
 test('resolveProductTranslations NO cae en otro idioma: usa el dato base (raíz)', () => {
@@ -214,10 +230,12 @@ test('resolveProductTranslations NO cae en otro idioma: usa el dato base (raíz)
     resolveProductTranslations({ en: { name: 'Gaming Mouse' } }, base, 'de', RESOLVE_OPTIONS).name,
     'Ratón Gamer',
   )
-  // Sin traducciones ni base → cadena vacía (no inventa texto).
+  // Sin traducciones ni base → cadenas vacías y lista vacía (no inventa texto).
   assert.deepEqual(resolveProductTranslations(null, { name: null, titulo_seo: null }, 'fr', RESOLVE_OPTIONS), {
     name: '',
     titulo_seo: '',
+    description: '',
+    seo_faq: [],
   })
 })
 
@@ -307,7 +325,11 @@ test('publishedLocales fuerza el idioma por defecto y descarta idiomas inválido
 
 const {
   TARGET_LOCALES,
+  missingProductLocales,
+  missingCategoryLocales,
+  normalizeFaqList,
   buildCategoryMessages,
+  buildProductMessages,
   parseTranslationResponse,
   mergeCategoryTranslations,
   mergeProductTranslations,
@@ -316,6 +338,47 @@ const {
 test('TARGET_LOCALES excluye el idioma raíz (no se traduce a sí mismo)', () => {
   assert.ok(!TARGET_LOCALES.includes(SOURCE_LOCALE))
   assert.equal(TARGET_LOCALES.length, SUPPORTED_LOCALES.length - 1)
+})
+
+test('missingProductLocales exige nombre y descripción por idioma', () => {
+  const row = {
+    description: '<p>Cuerpo</p>',
+    translations: { en: { name: 'Mouse' }, fr: { name: 'Souris', description: '<p>Corps</p>' } },
+  }
+  // "en" tiene nombre pero no descripción → pendiente; "fr" completo → no.
+  assert.deepEqual(missingProductLocales(row), ['en', 'de', 'it', 'pt'])
+})
+
+test('missingProductLocales no exige descripción si el producto no la tiene', () => {
+  const row = { description: null, translations: { en: { name: 'Mouse' } } }
+  assert.deepEqual(missingProductLocales(row), ['fr', 'de', 'it', 'pt'])
+})
+
+test('missingCategoryLocales exige slug y, si existe, el SEO editorial del hub', () => {
+  const row = {
+    seo_title: 'Mejores ratones',
+    seo_intro: '<h2>Guia</h2>',
+    seo_faq: [{ pregunta: 'Q', respuesta: 'A' }],
+    name_i18n: { en: 'Gaming Mice' },
+    slug_i18n: { en: 'gaming-mice' },
+    seo_title_i18n: { en: 'Best mice' },
+    // Falta la intro y la FAQ traducidas de "en".
+  }
+  assert.deepEqual(missingCategoryLocales(row), ['en', 'fr', 'de', 'it', 'pt'])
+
+  // Con intro y FAQ traducidas, "en" deja de estar pendiente.
+  const completo = {
+    ...row,
+    seo_intro_i18n: { en: '<h2>Guide</h2>' },
+    seo_faq_i18n: { en: [{ pregunta: 'Which?', respuesta: 'It depends.' }] },
+  }
+  assert.ok(!missingCategoryLocales(completo).includes('en'))
+})
+
+test('missingCategoryLocales ignora el SEO cuando no existe en el idioma raíz', () => {
+  // Sin seo_title/intro/faq base: basta con nombre + slug traducidos.
+  const row = { name_i18n: { en: 'Gaming Mice' }, slug_i18n: { en: 'gaming-mice' } }
+  assert.ok(!missingCategoryLocales(row).includes('en'))
 })
 
 test('buildCategoryMessages pide los idiomas destino e incluye el nombre de origen', () => {
@@ -385,6 +448,87 @@ test('mergeProductTranslations fusiona nombre y título SEO por idioma', () => {
 test('mergeProductTranslations ignora entradas vacías y normaliza JSONB inválido', () => {
   assert.deepEqual(mergeProductTranslations(null, { en: { name: '   ' } }), {})
   assert.deepEqual(mergeProductTranslations([1, 2], { en: {} }), {})
+})
+
+test('buildProductMessages incluye la descripción y la FAQ de origen', () => {
+  const messages = buildProductMessages({
+    nombre: 'Ratón Gamer',
+    tituloSeo: 'Ratón inalámbrico',
+    descripcion: '<h2>Características</h2>',
+    seoFaq: [{ pregunta: '¿Cable?', respuesta: 'No.' }],
+    locales: ['en', 'fr'],
+  })
+  const payload = JSON.parse(messages[1].content)
+  assert.equal(payload.descripcion_origen, '<h2>Características</h2>')
+  assert.deepEqual(payload.seo_faq_origen, [{ pregunta: '¿Cable?', respuesta: 'No.' }])
+  assert.deepEqual(payload.idiomas_destino, ['en', 'fr'])
+})
+
+test('buildCategoryMessages incluye el contenido editorial del hub de origen', () => {
+  const messages = buildCategoryMessages({
+    nombre: 'Ratones Gamer',
+    descripcion: 'Los mejores ratones.',
+    seoTitle: 'Los mejores ratones gamer',
+    seoIntro: '<h2>Guía de compra</h2>',
+    seoFaq: [{ pregunta: '¿Cuál elegir?', respuesta: 'Depende del uso.' }],
+    locales: ['en'],
+  })
+  const payload = JSON.parse(messages[1].content)
+  assert.equal(payload.seo_title_origen, 'Los mejores ratones gamer')
+  assert.equal(payload.seo_intro_origen, '<h2>Guía de compra</h2>')
+  assert.deepEqual(payload.seo_faq_origen, [{ pregunta: '¿Cuál elegir?', respuesta: 'Depende del uso.' }])
+})
+
+test('normalizeFaqList descarta elementos inválidos o incompletos', () => {
+  assert.deepEqual(normalizeFaqList(null), [])
+  assert.deepEqual(normalizeFaqList('nope'), [])
+  assert.deepEqual(
+    normalizeFaqList([
+      { pregunta: 'Q', respuesta: 'A' },
+      { pregunta: '   ', respuesta: 'A' },
+      { pregunta: 'Q2' },
+      'nope',
+      { pregunta: 'Q3', respuesta: '  A3  ' },
+    ]),
+    [
+      { pregunta: 'Q', respuesta: 'A' },
+      { pregunta: 'Q3', respuesta: 'A3' },
+    ],
+  )
+})
+
+test('mergeProductTranslations conserva la descripción y la FAQ traducidas', () => {
+  const resultado = mergeProductTranslations(
+    { fr: { name: 'Souris', description: '<p>Ancienne</p>', seo_faq: [{ pregunta: 'Vieja', respuesta: 'Si.' }] } },
+    {
+      fr: { name: 'Souris Gamer', description: '<p>Nouvelle</p>', seo_faq: [{ pregunta: 'Neuve', respuesta: 'Oui.' }] },
+      // Solo el nombre: ningún otro campo se crea ni se borra.
+      en: { name: 'Gaming Mouse' },
+    },
+  )
+  assert.deepEqual(resultado.fr, {
+    name: 'Souris Gamer',
+    description: '<p>Nouvelle</p>',
+    seo_faq: [{ pregunta: 'Neuve', respuesta: 'Oui.' }],
+  })
+  assert.deepEqual(resultado.en, { name: 'Gaming Mouse' })
+})
+
+test('mergeCategoryTranslations traduce también el contenido editorial del hub', () => {
+  const row = { name: 'Ratones Gamer', slug: 'ratones-gamer' }
+  const mapas = mergeCategoryTranslations(row, {
+    en: {
+      name: 'Gaming Mice',
+      seo_title: 'Best Gaming Mice — Guide and comparison',
+      seo_intro: '<h2>Buying guide</h2><p>Text</p>',
+      seo_faq: [{ pregunta: 'Which mouse?', respuesta: 'It depends.' }],
+    },
+  })
+  assert.equal(mapas.seo_title_i18n.en, 'Best Gaming Mice — Guide and comparison')
+  assert.equal(mapas.seo_intro_i18n.en, '<h2>Buying guide</h2><p>Text</p>')
+  assert.deepEqual(mapas.seo_faq_i18n.en, [{ pregunta: 'Which mouse?', respuesta: 'It depends.' }])
+  // Un idioma sin FAQ no crea una clave vacía.
+  assert.equal(mapas.seo_faq_i18n.fr, undefined)
 })
 
 // ---------- Mensajes de interfaz (lib/i18n-messages.mjs) ----------

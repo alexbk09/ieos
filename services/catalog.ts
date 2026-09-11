@@ -105,8 +105,11 @@ export type Product = {
   /** Título optimizado para SEO/Google. Fallback = name. */
   titulo_seo?: string | null
   // ---------- Internacionalización (migración 0050) ----------
-  /** Traducciones por idioma del nombre y título SEO: { fr: { name, titulo_seo } }. */
-  translations?: Record<string, { name?: string; titulo_seo?: string }> | null
+  /** Traducciones por idioma de la ficha: { fr: { name, titulo_seo, description, seo_faq } }. */
+  translations?: Record<
+    string,
+    { name?: string; titulo_seo?: string; description?: string; seo_faq?: SeoFaqItem[] }
+  > | null
   /** Precio original/referencia en USD (para mostrar oferta). */
   precio_original?: number | null
   /** TRUE = incluir en sitemap / indexación de Google. Default FALSE. */
@@ -581,10 +584,36 @@ function buildProductRow(payload: ProductInput) {
 }
 
 /**
+ * Traduce la ficha de un producto (best-effort) tras crearlo o actualizarlo.
+ * Importa el servicio de i18n de forma DIFERIDA: evita acoplar el CRUD al motor
+ * de traducción y cualquier ciclo de importación. Nunca lanza: un fallo deja el
+ * producto en su idioma raíz y el backfill (`npm run i18n:products`) reintenta.
+ * @param productoId UUID del producto recién creado/actualizado.
+ */
+async function traducirFichaProducto(productoId: string) {
+  try {
+    const { traducirProducto } = await import('@/services/i18n-translate')
+    const traduccion = await traducirProducto(productoId)
+    if (!traduccion.success) console.error('[catalog] i18n producto:', traduccion.error)
+  } catch (err: any) {
+    console.error('[catalog] i18n producto inesperado:', err?.message)
+  }
+}
+
+/**
  * Crea un producto con sus categorías (N:N), imágenes múltiples,
  * marca y proveedor. Requiere sesión de admin — usa cliente servidor.
+ * El producto NACE internacional: al crearlo se traduce su ficha (nombre, título
+ * SEO, descripción y FAQ) a los idiomas soportados. Es idempotente y de coste
+ * cero si ya estaba traducido.
+ * @param options.revalidar FALSE en cargas masivas (se revalida una vez al final).
+ * @param options.traducir FALSE para no encadenar una llamada al modelo por item
+ *   (lo usa la carga masiva; sus productos se traducen con `npm run i18n:products`).
  */
-export async function createProduct(payload: ProductInput, options: { revalidar?: boolean } = {}) {
+export async function createProduct(
+  payload: ProductInput,
+  options: { revalidar?: boolean; traducir?: boolean } = {},
+) {
   const supabase = await createServerClient()
 
   const categoryIds = payload.category_ids?.filter(Boolean) ?? []
@@ -618,6 +647,8 @@ export async function createProduct(payload: ProductInput, options: { revalidar?
   const { data: full } = await supabase.from('products').select(PRODUCT_SELECT).eq('id', data.id).single()
   // Sitemap al día al instante (salvo en carga masiva, que revalida una vez).
   if (options.revalidar !== false) revalidarSitemap({ productoSlug: payload.slug })
+  // i18n: el producto nace internacional (traducción inmediata al crearlo).
+  if (options.traducir !== false) await traducirFichaProducto(data.id)
   return { data: mapProduct(full ?? data) }
 }
 
@@ -806,7 +837,9 @@ export async function createProductsBulk(items: ProductInput[]) {
     for (let i = 0; i < enriched.length; i++) {
       const payload = enriched[i]
       if (!payload) continue
-      const result = await createProduct(payload, { revalidar: false })
+      // i18n desactivado en lote: traducir 500 fichas dentro de UNA petición HTTP
+      // la haría caducar. Se internacionalizan después con `npm run i18n:products`.
+      const result = await createProduct(payload, { revalidar: false, traducir: false })
       if (result.error) {
         errors.push({ row: i + 2, error: result.error.message })
       } else if (result.data) {
@@ -925,7 +958,9 @@ function localizarCategoria(row: any, locale?: string): Category {
 
 /**
  * Aplica las traducciones del idioma pedido a una fila de producto.
- * - `name`/`titulo_seo` se resuelven con fallback (pedido → defecto → raíz).
+ * - `name`/`titulo_seo`/`description`/`seo_faq` se resuelven con fallback
+ *   (pedido → defecto → raíz), de modo que la ficha y su JSON-LD (FAQPage)
+ *   viajen en el idioma de la página.
  * - Las categorías anidadas se localizan también (nombre + slug localizado), de
  *   modo que los enlaces internos desde la card apunten a la URL del idioma.
  * Si no se pasa `locale`, devuelve el producto tal cual (cero cambios visibles).
@@ -934,9 +969,14 @@ function localizarProducto(row: any, locale?: string): Product {
   const producto = mapProduct(row)
   if (!locale) return producto
 
-  const { name, titulo_seo } = resolveProductTranslations(
+  const { name, titulo_seo, description, seo_faq } = resolveProductTranslations(
     row?.translations,
-    { name: row?.name, titulo_seo: row?.titulo_seo },
+    {
+      name: row?.name,
+      titulo_seo: row?.titulo_seo,
+      description: row?.description,
+      seo_faq: row?.seo_faq,
+    },
     locale,
     I18N_RESOLVE_OPTIONS,
   )
@@ -945,6 +985,9 @@ function localizarProducto(row: any, locale?: string): Product {
     ...producto,
     name: name || producto.name,
     titulo_seo: titulo_seo || producto.titulo_seo,
+    description: description || producto.description,
+    // FAQ traducida: si el idioma aún no tiene traducción, se conserva la base.
+    seo_faq: seo_faq.length > 0 ? seo_faq : (producto.seo_faq ?? null),
     categories: (producto.categories ?? []).map((categoria) =>
       localizarCategoria(categoria as any, locale),
     ),

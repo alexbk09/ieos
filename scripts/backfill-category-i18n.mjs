@@ -27,8 +27,7 @@ import { createClient } from '@supabase/supabase-js'
 // Núcleo de traducción COMPARTIDO con la app: mismo prompt, misma llamada y
 // misma fusión (fuente única: lib/i18n-translate.mjs). Cero duplicación.
 import {
-  TARGET_LOCALES,
-  toLocaleMap,
+  missingCategoryLocales,
   buildCategoryMessages,
   parseTranslationResponse,
   requestTranslation,
@@ -40,11 +39,13 @@ config({ path: ['.env.development.local', '.env.local', '.env'] })
 // ⚠️ Deben coincidir con lib/constants.ts (los scripts .mjs no importan TS):
 // mismo patrón documentado que app/sitemap.ts con SITEMAP_REVALIDATE_SECONDS.
 const TRANSLATION_TEMPERATURE = 0.2
-const TRANSLATION_MAX_TOKENS = 1600
+// 8000 tokens: debe cubrir todos los idiomas pendientes con su contenido completo
+// (nombre + descripción + título SEO + guía editorial + FAQ) en una sola respuesta.
+const TRANSLATION_MAX_TOKENS = 8000
 const TRANSLATION_MODEL = 'deepseek-chat'
 
-// TARGET_LOCALES (idiomas destino) se importa de lib/i18n-translate.mjs:
-// el idioma raíz no se traduce, se hereda del dato actual `name`/`slug`.
+// Los idiomas destino (TARGET_LOCALES) y el idioma raíz se resuelven dentro de
+// lib/i18n-translate.mjs: el raíz no se traduce, se hereda del dato `name`/`slug`.
 
 const DEEPSEEK_BASE_URL = (process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1').replace(/\/+$/, '')
 const API_URL = `${DEEPSEEK_BASE_URL}/chat/completions`
@@ -85,25 +86,9 @@ function parseArgs(argv) {
   return args
 }
 
-/**
- * Idiomas que faltan por rellenar en una categoría.
- * Solo evalúa los idiomas DESTINO: el idioma raíz (inglés) no se traduce, se
- * hereda del dato actual `name`/`slug` (así no se gasta un idioma extra por
- * categoría y su URL ya indexada se conserva intacta).
- * @param {any} row Fila de `categories`.
- * @param {boolean} force TRUE = considera pendientes TODOS los idiomas destino.
- * @returns {string[]} Locales destino con nombre o slug vacío.
- */
-function missingLocales(row, force) {
-  const names = toLocaleMap(row.name_i18n)
-  const slugs = toLocaleMap(row.slug_i18n)
-  return TARGET_LOCALES.filter((locale) => {
-    if (force) return true
-    const name = typeof names[locale] === 'string' ? names[locale].trim() : ''
-    const slug = typeof slugs[locale] === 'string' ? slugs[locale].trim() : ''
-    return !name || !slug
-  })
-}
+// La detección de idiomas pendientes vive en lib/i18n-translate.mjs
+// (missingCategoryLocales): la MISMA lógica que usa el botón "Traducir pendientes"
+// del panel admin, para que backfill y panel nunca se desincronicen.
 
 // Traducción delegada al núcleo compartido lib/i18n-translate.mjs
 // (buildCategoryMessages + requestTranslation + parseTranslationResponse).
@@ -150,7 +135,10 @@ async function main() {
   logStep('Leyendo categorías…')
   const { data: rows, error } = await supabase
     .from('categories')
-    .select('id,name,slug,description,name_i18n,slug_i18n,description_i18n')
+    // Select en una sola cadena (misma lista que traducirCategoria en /services).
+    .select(
+      'id,name,slug,description,seo_title,seo_intro,seo_faq,name_i18n,slug_i18n,description_i18n,seo_title_i18n,seo_intro_i18n,seo_faq_i18n',
+    )
     .order('name')
   if (error) {
     logError(error.message)
@@ -158,7 +146,7 @@ async function main() {
   }
 
   const todas = rows ?? []
-  const pendientes = todas.filter((row) => missingLocales(row, args.force).length > 0)
+  const pendientes = todas.filter((row) => missingCategoryLocales(row, args.force).length > 0)
   logOk(`${todas.length} categorías leídas · ${pendientes.length} por completar.`)
 
   if (pendientes.length === 0) {
@@ -175,7 +163,7 @@ async function main() {
   let fallidas = 0
 
   for (const [index, row] of lote.entries()) {
-    const missing = missingLocales(row, args.force)
+    const missing = missingCategoryLocales(row, args.force)
     const etiqueta = `[${index + 1}/${lote.length}] ${row.name} (${row.slug}) → ${missing.join(', ')}`
 
     if (args.dryRun) {
@@ -193,6 +181,9 @@ async function main() {
       messages: buildCategoryMessages({
         nombre: row.name,
         descripcion: row.description ?? '',
+        seoTitle: row.seo_title ?? null,
+        seoIntro: row.seo_intro ?? null,
+        seoFaq: row.seo_faq ?? null,
         locales: missing,
       }),
     })

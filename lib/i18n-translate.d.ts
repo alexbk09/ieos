@@ -15,17 +15,37 @@ export const TARGET_LOCALES: readonly string[]
 /** Normaliza un campo JSONB a objeto plano. */
 export function toLocaleMap(value: unknown): Record<string, any>
 
-/** Mensajes del modelo para traducir una categoría (nombre + descripción). */
+/** Pregunta/respuesta frecuente (forma mínima compartida). */
+export type FaqItemLike = { pregunta: string; respuesta: string }
+
+/**
+ * Normaliza una lista de FAQ al formato { pregunta, respuesta } con ambos textos
+ * no vacíos; tolera null/valores inválidos (devuelve []).
+ */
+export function normalizeFaqList(value: unknown): FaqItemLike[]
+
+/** Idiomas destino que faltan por traducir en un producto (fuente única). */
+export function missingProductLocales(row: any, force?: boolean): string[]
+
+/** Idiomas destino que faltan por traducir en una categoría (fuente única). */
+export function missingCategoryLocales(row: any, force?: boolean): string[]
+
+/** Mensajes del modelo para traducir una categoría (nombre, descripción y SEO del hub). */
 export function buildCategoryMessages(input: {
   nombre: string
   descripcion?: string
+  seoTitle?: string | null
+  seoIntro?: string | null
+  seoFaq?: FaqItemLike[] | null
   locales: string[]
 }): ChatMessage[]
 
-/** Mensajes del modelo para traducir un producto (nombre + título SEO). */
+/** Mensajes del modelo para traducir un producto (nombre, título SEO, descripción y FAQ). */
 export function buildProductMessages(input: {
   nombre: string
   tituloSeo?: string | null
+  descripcion?: string | null
+  seoFaq?: FaqItemLike[] | null
   locales: string[]
 }): ChatMessage[]
 
@@ -47,15 +67,27 @@ export function requestTranslation(input: {
 /** Fusiona la traducción nueva con el estado actual de una categoría. */
 export function mergeCategoryTranslations(
   row: any,
-  traduccion: Record<string, { name?: string; description?: string }>,
+  traduccion: Record<
+    string,
+    { name?: string; description?: string; seo_title?: string; seo_intro?: string; seo_faq?: FaqItemLike[] }
+  >,
 ): {
   name_i18n: Record<string, string>
   slug_i18n: Record<string, string>
   description_i18n: Record<string, string>
+  seo_title_i18n: Record<string, string>
+  seo_intro_i18n: Record<string, string>
+  seo_faq_i18n: Record<string, FaqItemLike[]>
 }
 
 /** Fusiona la traducción nueva con el estado actual de un producto. */
 export function mergeProductTranslations(
   translationsActuales: Record<string, any> | null | undefined,
-  traduccion: Record<string, { name?: string; titulo_seo?: string }>,
-): Record<string, { name?: string; titulo_seo?: string }>
+  traduccion: Record<
+    string,
+    { name?: string; titulo_seo?: string; description?: string; seo_faq?: FaqItemLike[] }
+  >,
+): Record<
+  string,
+  { name?: string; titulo_seo?: string; description?: string; seo_faq?: FaqItemLike[] }
+>

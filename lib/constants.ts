@@ -587,14 +587,28 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
  */
 export const TRANSLATION_TEMPERATURE = 0.2
 
-/** Máximo de tokens de salida del traductor de contenido (nombre + descripción + SEO). */
-export const TRANSLATION_MAX_TOKENS = 1600
+/**
+ * Máximo de tokens de salida del traductor de contenido.
+ * Debe cubrir, en UNA sola respuesta, todos los idiomas pendientes con su
+ * contenido COMPLETO: nombre, título SEO, cuerpo de la ficha (descripción HTML)
+ * y FAQ/guía del hub. Con 1600 el cuerpo HTML se truncaba en cuanto había más de
+ * un idioma destino, por eso se dimensiona para varias fichas largas.
+ */
+export const TRANSLATION_MAX_TOKENS = 8000
 
 /** Nº máximo de entidades a traducir por lote (controla el coste de tokens). */
 export const TRANSLATION_BATCH_SIZE = 10
 
 /** Slug del módulo "Idiomas de Categorías" (traducciones) para permisos RBAC. */
 export const CATEGORY_I18N_MODULE_SLUG = 'categorias_idiomas'
+
+/**
+ * Entidades (producto o categoría) que traduce el botón "Traducir pendientes"
+ * del panel por cada tanda. Se mantiene BAJO a propósito para acotar la duración
+ * de cada petición HTTP; el cliente repite tandas hasta terminar, mostrando el
+ * progreso en vivo.
+ */
+export const I18N_PENDING_BATCH_LIMIT = 5
 
 /** Endpoint del modelo de traducción (DeepSeek, API compatible con OpenAI). */
 export const TRANSLATION_API_URL = 'https://api.deepseek.com/v1/chat/completions'

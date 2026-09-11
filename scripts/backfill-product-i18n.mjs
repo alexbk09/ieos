@@ -30,8 +30,7 @@ import { createClient } from '@supabase/supabase-js'
 // Núcleo de traducción COMPARTIDO con la app: mismo prompt, misma llamada y
 // misma fusión (fuente única: lib/i18n-translate.mjs). Cero duplicación.
 import {
-  TARGET_LOCALES,
-  toLocaleMap,
+  missingProductLocales,
   buildProductMessages,
   parseTranslationResponse,
   requestTranslation,
@@ -43,7 +42,9 @@ config({ path: ['.env.development.local', '.env.local', '.env'] })
 // ⚠️ Deben coincidir con lib/constants.ts (los scripts .mjs no importan TS):
 // mismo patrón documentado que app/sitemap.ts con SITEMAP_REVALIDATE_SECONDS.
 const TRANSLATION_TEMPERATURE = 0.2
-const TRANSLATION_MAX_TOKENS = 1600
+// 8000 tokens: debe cubrir todos los idiomas pendientes con su contenido completo
+// (nombre + título SEO + descripción HTML + FAQ) en una sola respuesta.
+const TRANSLATION_MAX_TOKENS = 8000
 const TRANSLATION_MODEL = 'deepseek-chat'
 
 const DEEPSEEK_BASE_URL = (process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/v1').replace(/\/+$/, '')
@@ -85,22 +86,9 @@ function parseArgs(argv) {
   return args
 }
 
-/**
- * Idiomas que faltan por rellenar en un producto.
- * Solo evalúa los idiomas DESTINO: el idioma raíz (es) no se traduce, se hereda
- * del dato base `name`/`titulo_seo`.
- * @param {any} row Fila de `products`.
- * @param {boolean} force TRUE = considera pendientes TODOS los idiomas destino.
- * @returns {string[]} Locales destino sin nombre traducido.
- */
-function missingLocales(row, force) {
-  const translations = toLocaleMap(row.translations)
-  return TARGET_LOCALES.filter((locale) => {
-    if (force) return true
-    const name = typeof translations[locale]?.name === 'string' ? translations[locale].name.trim() : ''
-    return !name
-  })
-}
+// La detección de idiomas pendientes vive en lib/i18n-translate.mjs
+// (missingProductLocales): la MISMA lógica que usa el botón "Traducir pendientes"
+// del panel admin, para que backfill y panel nunca se desincronicen.
 
 /**
  * Orquesta el backfill: lee productos, traduce solo lo que falta y actualiza.
@@ -140,7 +128,7 @@ async function main() {
   logStep('Leyendo productos…')
   const { data: rows, error } = await supabase
     .from('products')
-    .select('id,name,slug,titulo_seo,translations')
+    .select('id,name,slug,titulo_seo,description,seo_faq,translations')
     .order('created_at', { ascending: false })
   if (error) {
     logError(error.message)
@@ -148,7 +136,7 @@ async function main() {
   }
 
   const todos = rows ?? []
-  const pendientes = todos.filter((row) => missingLocales(row, args.force).length > 0)
+  const pendientes = todos.filter((row) => missingProductLocales(row, args.force).length > 0)
   logOk(`${todos.length} productos leídos · ${pendientes.length} por completar.`)
 
   if (pendientes.length === 0) {
@@ -165,7 +153,7 @@ async function main() {
   let fallidas = 0
 
   for (const [index, row] of lote.entries()) {
-    const missing = missingLocales(row, args.force)
+    const missing = missingProductLocales(row, args.force)
     const etiqueta = `[${index + 1}/${lote.length}] ${row.name} (${row.slug}) → ${missing.join(', ')}`
 
     if (args.dryRun) {
@@ -182,6 +170,8 @@ async function main() {
       messages: buildProductMessages({
         nombre: row.name,
         tituloSeo: row.titulo_seo,
+        descripcion: row.description ?? null,
+        seoFaq: row.seo_faq ?? null,
         locales: missing,
       }),
     })

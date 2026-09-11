@@ -47,6 +47,9 @@ export type TraduccionCategoriaResult =
         name_i18n: Record<string, string>
         slug_i18n: Record<string, string>
         description_i18n: Record<string, string>
+        seo_title_i18n: Record<string, string>
+        seo_intro_i18n: Record<string, string>
+        seo_faq_i18n: Record<string, { pregunta: string; respuesta: string }[]>
         /** Idiomas que se acaban de traducir ([] si ya estaba completo). */
         traducidos: string[]
       }
@@ -55,8 +58,9 @@ export type TraduccionCategoriaResult =
 
 /**
  * Traduce y persiste los idiomas que falten de una categoría.
- * El idioma raíz (inglés) nunca se traduce: se hereda de `name`/`slug`, por lo
- * que su URL ya indexada permanece intacta.
+ * Cubre el contenido básico (nombre, slug, descripción) y el editorial del hub
+ * (título H1, guía de compra y FAQ). El idioma raíz (español) nunca se traduce:
+ * se hereda de `name`/`slug`, por lo que su URL ya indexada permanece intacta.
  * @param categoriaId UUID de la categoría.
  * @param options.locales Locales concretos a traducir (por defecto, todos los destino).
  */
@@ -71,7 +75,11 @@ export async function traducirCategoria(
     const supabase = await createServerClient()
     const { data: row, error: readError } = await supabase
       .from('categories')
-      .select('id,name,slug,description,name_i18n,slug_i18n,description_i18n')
+      // Select en UNA sola cadena: concatenar rompería la inferencia de tipos de
+      // PostgREST y degradaría `row` a GenericStringError.
+      .select(
+        'id,name,slug,description,seo_title,seo_intro,seo_faq,name_i18n,slug_i18n,description_i18n,seo_title_i18n,seo_intro_i18n,seo_faq_i18n',
+      )
       .eq('id', categoriaId)
       .maybeSingle()
     if (readError) return { success: false, error: readError.message }
@@ -80,13 +88,32 @@ export async function traducirCategoria(
     const names = asMap(row.name_i18n)
     const slugs = asMap(row.slug_i18n)
     const descriptions = asMap(row.description_i18n)
-    const pendientes = (options.locales ?? TARGET_LOCALES).filter((locale) => !names[locale] || !slugs[locale])
+    const seoTitles = asMap(row.seo_title_i18n)
+    const seoIntros = asMap(row.seo_intro_i18n)
+    const seoFaqs = asMap(row.seo_faq_i18n)
+    const pendientes = (options.locales ?? TARGET_LOCALES).filter((locale) => {
+      // El contenido básico es obligatorio para publicar el idioma.
+      if (!names[locale] || !slugs[locale]) return true
+      // El contenido editorial solo se exige si existe en el idioma raíz.
+      const faltaSeoTitle = Boolean(row.seo_title) && !seoTitles[locale]
+      const faltaSeoIntro = Boolean(row.seo_intro) && !seoIntros[locale]
+      const faltaSeoFaq = Array.isArray(row.seo_faq) && row.seo_faq.length > 0 && !seoFaqs[locale]
+      return faltaSeoTitle || faltaSeoIntro || faltaSeoFaq
+    })
 
     // Nada que traducir: evitar una llamada al modelo (coste cero).
     if (pendientes.length === 0) {
       return {
         success: true,
-        data: { name_i18n: names, slug_i18n: slugs, description_i18n: descriptions, traducidos: [] },
+        data: {
+          name_i18n: names,
+          slug_i18n: slugs,
+          description_i18n: descriptions,
+          seo_title_i18n: seoTitles,
+          seo_intro_i18n: seoIntros,
+          seo_faq_i18n: seoFaqs,
+          traducidos: [],
+        },
       }
     }
 
@@ -99,6 +126,9 @@ export async function traducirCategoria(
       messages: buildCategoryMessages({
         nombre: row.name,
         descripcion: row.description ?? '',
+        seoTitle: row.seo_title ?? null,
+        seoIntro: row.seo_intro ?? null,
+        seoFaq: row.seo_faq ?? null,
         locales: pendientes,
       }),
     })
@@ -127,7 +157,8 @@ export type TraduccionProductoResult =
   | { success: false; error: string }
 
 /**
- * Traduce y persiste los idiomas que falten del nombre/título SEO de un producto.
+ * Traduce y persiste los idiomas que falten del contenido de un producto:
+ * nombre, título SEO, cuerpo de la ficha (descripción HTML) y FAQ estructurada.
  * Se guarda en `products.translations` (JSONB): no se duplican filas, así stock,
  * precios y enlaces internos siguen intactos.
  * @param productoId UUID del producto.
@@ -144,14 +175,19 @@ export async function traducirProducto(
     const supabase = await createServerClient()
     const { data: row, error: readError } = await supabase
       .from('products')
-      .select('id,name,titulo_seo,translations')
+      .select('id,name,titulo_seo,description,seo_faq,translations')
       .eq('id', productoId)
       .maybeSingle()
     if (readError) return { success: false, error: readError.message }
     if (!row) return { success: false, error: 'El producto no existe.' }
 
     const translations = asMap(row.translations)
-    const pendientes = (options.locales ?? TARGET_LOCALES).filter((locale) => !translations[locale]?.name)
+    const pendientes = (options.locales ?? TARGET_LOCALES).filter((locale) => {
+      const entry = asMap(translations[locale])
+      // El nombre es obligatorio; la descripción solo si existe en el idioma raíz.
+      if (!entry.name) return true
+      return Boolean(row.description) && !entry.description
+    })
 
     if (pendientes.length === 0) {
       return { success: true, data: { translations, traducidos: [] } }
@@ -166,6 +202,8 @@ export async function traducirProducto(
       messages: buildProductMessages({
         nombre: row.name,
         tituloSeo: row.titulo_seo,
+        descripcion: row.description ?? null,
+        seoFaq: row.seo_faq ?? null,
         locales: pendientes,
       }),
     })
