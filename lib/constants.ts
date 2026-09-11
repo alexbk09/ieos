@@ -57,6 +57,42 @@ export const GOOGLE_SITE_VERIFICATION = 'google8222e40aea313a4f'
 /** Cantidad de productos por página en el catálogo (infinite scroll). */
 export const CATALOG_PAGE_SIZE = 10
 
+/** Milisegundos de espera antes de recargar el catálogo mientras el usuario escribe. */
+export const CATALOG_FILTER_DEBOUNCE_MS = 400
+
+/** Nº máximo de categorías sugeridas cuando el filtro no arroja resultados. */
+export const CATALOG_EMPTY_STATE_CATEGORY_SUGGESTIONS = 6
+
+// ---------- Catálogo público: ordenamiento ----------
+
+/**
+ * Opciones de ordenamiento del catálogo.
+ * `value` viaja en la query string (parámetro `sort` de /api/catalog) y
+ * `labelKey` es la clave i18n que resuelve la etiqueta visible (no se queman
+ * textos en los componentes).
+ */
+export const CATALOG_SORT_OPTIONS = [
+  { value: 'relevance', labelKey: 'catalog.sortRelevance' },
+  { value: 'rating', labelKey: 'catalog.sortRating' },
+  { value: 'price-asc', labelKey: 'catalog.sortPriceAsc' },
+  { value: 'price-desc', labelKey: 'catalog.sortPriceDesc' },
+  { value: 'newest', labelKey: 'catalog.sortNewest' },
+] as const
+
+/** Tipo de orden válido (derivado de las opciones: evita strings sueltos). */
+export type CatalogSortValue = (typeof CATALOG_SORT_OPTIONS)[number]['value']
+
+/** Lista de valores de orden válidos, para validar entradas externas. */
+export const CATALOG_SORT_VALUES: readonly CatalogSortValue[] = CATALOG_SORT_OPTIONS.map((option) => option.value)
+
+/** Orden por defecto: curaduría manual del equipo + novedad. */
+export const DEFAULT_CATALOG_SORT: CatalogSortValue = 'relevance'
+
+/** Comprueba si un valor arbitrario es un orden de catálogo válido. */
+export function isCatalogSortValue(value: string): value is CatalogSortValue {
+  return (CATALOG_SORT_VALUES as readonly string[]).includes(value)
+}
+
 /** Límite de productos destacados que se muestran en la portada. */
 export const FEATURED_PRODUCTS_LIMIT = 6
 

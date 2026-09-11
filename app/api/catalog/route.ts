@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getCatalogPage } from '@/services/catalog'
-import { CATALOG_PAGE_SIZE } from '@/lib/constants'
+import { CATALOG_PAGE_SIZE, isCatalogSortValue } from '@/lib/constants'
 import { isPublishedLocale } from '@/lib/i18n-config'
 
 /**
  * API pública del catálogo con paginación (infinite scroll).
- * Filtros: from, search, slug, minPrice, maxPrice, categories (csv), featured, locale.
+ * Filtros: from, search, slug, minPrice, maxPrice, categories (csv),
+ * marcas (csv), featured, sort (ver CATALOG_SORT_OPTIONS), locale.
  * `locale` (validado contra los idiomas PUBLICADOS) resuelve los textos traducidos;
  * al viajar en la query, la caché de CDN se segmenta por idioma automáticamente.
  * Cacheada en CDN por 60s con stale-while-revalidate (300s).
@@ -22,6 +23,9 @@ export async function GET(request: Request) {
   // Solo idiomas publicados: evita cache poisoning con valores arbitrarios.
   const localeRaw = url.searchParams.get('locale')?.trim() || ''
   const locale = isPublishedLocale(localeRaw) ? localeRaw : undefined
+  // Orden validado contra la lista blanca: cualquier valor inválido cae al por defecto.
+  const sortRaw = url.searchParams.get('sort')?.trim() || ''
+  const sort = isCatalogSortValue(sortRaw) ? sortRaw : undefined
   const minPrice = minPriceRaw ? Number(minPriceRaw) : undefined
   const maxPrice = maxPriceRaw ? Number(maxPriceRaw) : undefined
   const categoryIds = categoriesRaw ? categoriesRaw.split(',').filter(Boolean) : undefined
@@ -34,6 +38,7 @@ export async function GET(request: Request) {
     maxPrice: Number.isFinite(maxPrice) ? maxPrice : undefined,
     categoryIds,
     marcaIds,
+    sort,
     featuredOnly: url.searchParams.get('featured') === 'true',
   }, from, locale)
 

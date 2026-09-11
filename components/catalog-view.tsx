@@ -1,9 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { CATALOG_PAGE_SIZE, SEARCH_LOG_SOURCES } from '@/lib/constants'
+import {
+  CATALOG_EMPTY_STATE_CATEGORY_SUGGESTIONS,
+  CATALOG_FILTER_DEBOUNCE_MS,
+  CATALOG_PAGE_SIZE,
+  CATALOG_SORT_OPTIONS,
+  DEFAULT_CATALOG_SORT,
+  SEARCH_LOG_SOURCES,
+  type CatalogSortValue,
+} from '@/lib/constants'
 import { trackSearchLog } from '@/lib/analytics-client'
-import { LoaderCircle, RotateCcw, Search, SlidersHorizontal } from 'lucide-react'
+import { ArrowUpDown, LoaderCircle, RotateCcw, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
@@ -16,6 +24,7 @@ import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { SearchableMultiSelect } from '@/components/ui/select-search'
 import { ProductGridSkeleton } from '@/components/ui/skeleton'
 import { useLocale } from '@/components/i18n-provider'
+import { useTranslations } from '@/hooks/use-translations'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogMarca = { id: string; nombre: string }
@@ -37,27 +46,36 @@ type CatalogProduct = {
   marca?: { id: string; nombre: string; activa: boolean } | null
 }
 
-/** Convierte el estado de los filtros a parámetros URL comunes. */
+/** Convierte el snapshot de filtros a los parámetros de la API de catálogo. */
 function buildParams(filters: {
   from: number
   search: string
-  slug: string
   minPrice: string
   maxPrice: string
   categories: string[]
   marcas: string[]
+  /** Orden elegido por el usuario (ver CATALOG_SORT_OPTIONS). */
+  sort: CatalogSortValue
   /** Idioma activo: el API resuelve nombre/título SEO traducidos. */
   locale?: string
 }) {
   const params = new URLSearchParams({ from: String(filters.from) })
   if (filters.search) params.set('search', filters.search)
-  if (filters.slug) params.set('slug', filters.slug)
   if (filters.minPrice) params.set('minPrice', filters.minPrice)
   if (filters.maxPrice) params.set('maxPrice', filters.maxPrice)
   if (filters.categories.length > 0) params.set('categories', filters.categories.join(','))
   if (filters.marcas.length > 0) params.set('marcas', filters.marcas.join(','))
+  // Solo se envía el orden cuando NO es el de por defecto, para no fragmentar la caché.
+  if (filters.sort && filters.sort !== DEFAULT_CATALOG_SORT) params.set('sort', filters.sort)
   if (filters.locale) params.set('locale', filters.locale)
   return params
+}
+
+/** Etiqueta legible de un rango de precio para el chip de filtro (USD). */
+function formatPriceRange(min: string, max: string): string {
+  if (min && max) return `${min} – ${max} USD`
+  if (min) return `≥ ${min} USD`
+  return `≤ ${max} USD`
 }
 
 /** Etiqueta de la sección de filtros. */
@@ -67,8 +85,9 @@ function FilterLabel({ children }: { children: ReactNode }) {
 
 /**
  * Vista de catálogo completo con filtros modernos e infinite scroll.
- * Filtros: búsqueda por texto (nombre/slug), rango de precio, categorías
- * y marcas con selección por buscador.
+ * Filtros: búsqueda por texto (nombre/descripción), rango de precio, categorías
+ * y marcas con selección por buscador, más un selector de ORDEN (relevancia,
+ * mejor valorados, precio, novedades) que viaja en la query de /api/catalog.
  * Los productos se cargan de 10 en 10 desde /api/catalog.
  * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
  * y el mismo ProductCard para cada producto.
@@ -96,11 +115,11 @@ export function CatalogView({
 }) {
   const [products, setProducts] = useState(initialProducts)
   const [search, setSearch] = useState('')
-  const [slug, setSlug] = useState('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedMarcas, setSelectedMarcas] = useState<string[]>([])
+  const [sort, setSort] = useState<CatalogSortValue>(DEFAULT_CATALOG_SORT)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(initialProducts.length < total)
@@ -113,31 +132,41 @@ export function CatalogView({
   const exchangeRate = useExchangeRate()
   // Idioma activo: el infinite scroll debe pedir los textos en su idioma.
   const locale = useLocale()
+  // Traductor de la interfaz: evita quemar textos en el panel de filtros/orden.
+  const t = useTranslations()
   const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
 
   // Escucha el Asistente IA: agrega al carrito si el agente emite agregarAlCarrito.
   useAgentAddToCart(add)
 
+  /**
+   * Snapshot SIEMPRE actual de los filtros. Permite recargar de forma
+   * programática (orden inmediato, "Aplicar", retirar chips) sin sufrir
+   * closures obsoletos de React.
+   */
+  const filtersRef = useRef({ search, minPrice, maxPrice, selectedCategories, selectedMarcas, sort })
+  filtersRef.current = { search, minPrice, maxPrice, selectedCategories, selectedMarcas, sort }
 
   const activeFilterCount =
-    (search ? 1 : 0) + (slug ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length
+    (search ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length
 
   /** Opciones para los selects con buscador. */
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }))
   const marcaOptions = marcas.map((m) => ({ value: m.id, label: m.nombre }))
 
-  /** Reinicia y recarga la primera página con los filtros actuales. */
-  const resetAndLoad = useCallback(async () => {
+  /** Carga la primera página con el snapshot actual de filtros. */
+  const loadFirstPage = useCallback(async () => {
+    const f = filtersRef.current
     pageRef.current = 0
     setLoading(true)
     const params = buildParams({
       from: 0,
-      search,
-      slug,
-      minPrice,
-      maxPrice,
-      categories: selectedCategories,
-      marcas: selectedMarcas,
+      search: f.search,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      categories: f.selectedCategories,
+      marcas: f.selectedMarcas,
+      sort: f.sort,
       locale,
     })
 
@@ -149,25 +178,26 @@ export function CatalogView({
     setLoading(false)
 
     // Analítica: registra el término libre que el cliente buscó en el filtro.
-    // El debounce (400ms) garantiza una sola captura cuando el usuario se detiene.
-    if (search.trim().length >= 2) {
-      trackSearchLog(search.trim(), SEARCH_LOG_SOURCES.CATALOG_FILTER, data.total ?? 0)
+    // El debounce garantiza una sola captura cuando el usuario se detiene.
+    if (f.search.trim().length >= 2) {
+      trackSearchLog(f.search.trim(), SEARCH_LOG_SOURCES.CATALOG_FILTER, data.total ?? 0)
     }
-  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, locale])
+  }, [locale])
 
-  /** Carga la siguiente página (infinite scroll). */
+  /** Carga la siguiente página (infinite scroll) con el snapshot actual. */
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return
     setLoading(true)
+    const f = filtersRef.current
     const next = pageRef.current + CATALOG_PAGE_SIZE
     const params = buildParams({
       from: next,
-      search,
-      slug,
-      minPrice,
-      maxPrice,
-      categories: selectedCategories,
-      marcas: selectedMarcas,
+      search: f.search,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      categories: f.selectedCategories,
+      marcas: f.selectedMarcas,
+      sort: f.sort,
       locale,
     })
 
@@ -177,14 +207,20 @@ export function CatalogView({
     setHasMore(data.hasMore ?? false)
     pageRef.current = next
     setLoading(false)
-  }, [loading, hasMore, search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, locale])
+  }, [loading, hasMore, locale])
 
-  // Debounce de los filtros: recarga al escribir.
+  // Debounce de los filtros de texto/rango/selecciones: recarga al escribir.
+  // Se SALTA el primer render: los datos iniciales ya llegan del servidor (SSG).
+  const didMountRef = useRef(false)
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(resetAndLoad, 400)
+    debounceRef.current = setTimeout(loadFirstPage, CATALOG_FILTER_DEBOUNCE_MS)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, resetAndLoad])
+  }, [search, minPrice, maxPrice, selectedCategories, selectedMarcas, loadFirstPage])
 
   // Intersection Observer para infinite scroll.
   useEffect(() => {
@@ -197,56 +233,81 @@ export function CatalogView({
     return () => observer.disconnect()
   }, [loadMore])
 
-  /** Limpia todos los filtros activos. */
+  /** Cambia el orden y recarga de inmediato (el orden no se debouncea). */
+  function handleSortChange(value: CatalogSortValue) {
+    setSort(value)
+    // Actualiza el snapshot antes del re-render para que la recarga use el valor nuevo.
+    filtersRef.current = { ...filtersRef.current, sort: value }
+    void loadFirstPage()
+  }
+
+  /** Limpia todos los filtros activos (conserva el orden elegido). */
   function clearFilters() {
     setSearch('')
-    setSlug('')
     setMinPrice('')
     setMaxPrice('')
     setSelectedCategories([])
     setSelectedMarcas([])
   }
 
+  /** Aplica una categoría desde el estado vacío (sugerencia rápida). */
+  function applyCategorySuggestion(categoryId: string) {
+    setSelectedCategories([categoryId])
+  }
+
+  /**
+   * Chips de filtros activos con acción para retirarlos uno a uno.
+   * Mejora la comprensión del resultado y evita "callejones sin salida".
+   */
+  const activeChips = [
+    ...(search.trim()
+      ? [{ key: `search:${search}`, label: t('catalog.chipSearch', { value: search.trim() }), onRemove: () => setSearch('') }]
+      : []),
+    ...(minPrice || maxPrice
+      ? [{
+          key: `price:${minPrice}-${maxPrice}`,
+          label: t('catalog.chipPrice', { range: formatPriceRange(minPrice, maxPrice) }),
+          onRemove: () => { setMinPrice(''); setMaxPrice('') },
+        }]
+      : []),
+    ...selectedCategories.map((id) => ({
+      key: `cat:${id}`,
+      label: categories.find((c) => c.id === id)?.name ?? id,
+      onRemove: () => setSelectedCategories((prev) => prev.filter((v) => v !== id)),
+    })),
+    ...selectedMarcas.map((id) => ({
+      key: `marca:${id}`,
+      label: marcas.find((m) => m.id === id)?.nombre ?? id,
+      onRemove: () => setSelectedMarcas((prev) => prev.filter((v) => v !== id)),
+    })),
+  ]
+
   const filterPanel = (
     <div className="grid gap-5">
       {/* Buscador por nombre */}
       <label className="grid gap-2">
-        <FilterLabel>Buscar producto</FilterLabel>
+        <FilterLabel>{t('catalog.searchLabel')}</FilterLabel>
         <div className="relative">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Nombre o descripción…"
+            placeholder={t('catalog.searchPlaceholder')}
             className="w-full rounded-xl border border-border bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
-          />
-        </div>
-      </label>
-
-      {/* Buscador por slug */}
-      <label className="grid gap-2">
-        <FilterLabel>Slug</FilterLabel>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-muted-foreground">/</span>
-          <input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="mi-producto"
-            className="w-full rounded-xl border border-border bg-transparent py-2.5 pl-7 pr-3 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
       </label>
 
       {/* Rango de precio */}
       <div className="grid gap-2">
-        <FilterLabel>Precio (USD)</FilterLabel>
+        <FilterLabel>{t('catalog.priceLabel')}</FilterLabel>
         <div className="grid grid-cols-2 gap-2">
           <input
             type="number"
             min="0"
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
-            placeholder="Mín."
+            placeholder={t('catalog.min')}
             className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           <input
@@ -254,7 +315,7 @@ export function CatalogView({
             min="0"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
-            placeholder="Máx."
+            placeholder={t('catalog.max')}
             className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
@@ -263,13 +324,13 @@ export function CatalogView({
       {/* Categorías con buscador */}
       {categoryOptions.length > 0 && (
         <div className="grid gap-2">
-          <FilterLabel>Categorías</FilterLabel>
+          <FilterLabel>{t('catalog.categories')}</FilterLabel>
           <SearchableMultiSelect
             values={selectedCategories}
             onChange={setSelectedCategories}
             options={categoryOptions}
-            placeholder="Todas las categorías"
-            searchPlaceholder="Buscar categoría…"
+            placeholder={t('catalog.allCategories')}
+            searchPlaceholder={t('catalog.searchCategory')}
           />
         </div>
       )}
@@ -277,13 +338,13 @@ export function CatalogView({
       {/* Marcas con buscador */}
       {marcaOptions.length > 0 && (
         <div className="grid gap-2">
-          <FilterLabel>Marcas</FilterLabel>
+          <FilterLabel>{t('catalog.marcas')}</FilterLabel>
           <SearchableMultiSelect
             values={selectedMarcas}
             onChange={setSelectedMarcas}
             options={marcaOptions}
-            placeholder="Todas las marcas"
-            searchPlaceholder="Buscar marca…"
+            placeholder={t('catalog.allMarcas')}
+            searchPlaceholder={t('catalog.searchMarca')}
           />
         </div>
       )}
@@ -291,17 +352,17 @@ export function CatalogView({
       {/* Acciones */}
       <div className="grid grid-cols-2 gap-2 pt-1">
         <button
-          onClick={resetAndLoad}
+          onClick={() => void loadFirstPage()}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
         >
-          <Search size={15} /> Aplicar
+          <Search size={15} /> {t('catalog.apply')}
         </button>
         <button
           onClick={clearFilters}
           disabled={activeFilterCount === 0}
           className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
         >
-          <RotateCcw size={14} /> Limpiar
+          <RotateCcw size={14} /> {t('catalog.clear')}
         </button>
       </div>
     </div>
@@ -323,16 +384,18 @@ export function CatalogView({
             >
               <div className="flex items-center gap-2">
                 <SlidersHorizontal size={16} className="text-brand-strong" />
-                <h2 className="font-semibold">Filtros</h2>
+                <h2 className="font-semibold">{t('catalog.filters')}</h2>
                 {activeFilterCount > 0 && (
                   <span className="grid size-5 place-items-center rounded-full bg-brand text-[10px] font-bold text-brand-foreground">
                     {activeFilterCount}
                   </span>
                 )}
               </div>
-              <span className="text-xs text-muted-foreground lg:hidden">{filtersOpen ? 'Ocultar' : 'Mostrar'}</span>
+              <span className="text-xs text-muted-foreground lg:hidden">{filtersOpen ? t('catalog.hide') : t('catalog.show')}</span>
             </button>
-            <p className="mt-1 text-xs text-muted-foreground">{totalCount} producto{totalCount !== 1 ? 's' : ''}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {totalCount === 1 ? t('catalog.resultsOne', { count: totalCount }) : t('catalog.resultsMany', { count: totalCount })}
+            </p>
           </div>
 
           {/* Cuerpo del panel */}
@@ -345,13 +408,74 @@ export function CatalogView({
           </div>
         </aside>
 
-        {/* Cuadrícula de productos */}
+        {/* Resultados */}
         <section>
+          {/* Barra superior: orden (conversión) + chips de filtros activos */}
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {activeChips.length > 0 ? (
+                <>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t('catalog.activeFilters')}
+                  </span>
+                  {activeChips.map((chip) => (
+                    <span
+                      key={chip.key}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium"
+                    >
+                      <span className="max-w-[12rem] truncate">{chip.label}</span>
+                      <button
+                        type="button"
+                        onClick={chip.onRemove}
+                        aria-label={t('catalog.removeFilter', { label: chip.label })}
+                        className="grid size-4 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="text-xs font-medium text-brand-strong underline underline-offset-4 transition-colors hover:text-brand"
+                  >
+                    {t('catalog.clearAll')}
+                  </button>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {totalCount === 1 ? t('catalog.resultsOne', { count: totalCount }) : t('catalog.resultsMany', { count: totalCount })}
+                </span>
+              )}
+            </div>
+
+            {/* Orden: el control de mayor impacto en la conversión */}
+            <div className="inline-flex items-center gap-2">
+              <label htmlFor="catalog-sort" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('catalog.sortLabel')}
+              </label>
+              <div className="relative">
+                <select
+                  id="catalog-sort"
+                  value={sort}
+                  onChange={(e) => handleSortChange(e.target.value as CatalogSortValue)}
+                  className="cursor-pointer appearance-none rounded-full border border-border bg-card py-2 pl-3 pr-9 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+                >
+                  {CATALOG_SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
+                  ))}
+                </select>
+                <ArrowUpDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
           {loading && products.length === 0 ? (
             <ProductGridSkeleton count={6} />
           ) : (
             <>
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {/* La grilla se atenúa durante el refetch en vez de parpadear con skeletons */}
+              <div className={`grid gap-5 sm:grid-cols-2 xl:grid-cols-3 transition-opacity ${loading ? 'pointer-events-none opacity-60' : ''}`}>
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={add} onViewDetails={setSelected} />
                 ))}
@@ -363,19 +487,35 @@ export function CatalogView({
                 </div>
               )}
               {!hasMore && products.length > 0 && (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Has visto todos los productos de ilumaX.
-                </p>
+                <p className="py-8 text-center text-sm text-muted-foreground">{t('catalog.endOfResults')}</p>
               )}
               {!hasMore && products.length === 0 && (
-                <div className="grid place-items-center py-24 text-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">No encontramos productos con esos filtros.</p>
+                <div className="grid place-items-center py-20 text-center">
+                  <div className="max-w-md">
+                    <div className="mx-auto grid size-14 place-items-center rounded-full bg-muted">
+                      <SearchX size={24} className="text-muted-foreground" />
+                    </div>
+                    <p className="mt-4 font-medium">{t('catalog.emptyTitle')}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t('catalog.emptyHint')}</p>
+                    {categories.length > 0 && (
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        {categories.slice(0, CATALOG_EMPTY_STATE_CATEGORY_SUGGESTIONS).map((category) => (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => applyCategorySuggestion(category.id)}
+                            className="rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-medium transition-colors hover:border-brand hover:text-brand-strong"
+                          >
+                            {category.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <button
                       onClick={clearFilters}
-                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
+                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-medium text-navy-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
                     >
-                      <RotateCcw size={14} /> Limpiar filtros
+                      <RotateCcw size={14} /> {t('catalog.clearFilters')}
                     </button>
                   </div>
                 </div>

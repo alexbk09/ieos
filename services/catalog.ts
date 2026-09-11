@@ -3,10 +3,12 @@ import { createPublicClient } from '@/lib/supabase/public'
 import {
   CATALOG_PAGE_SIZE,
   CATEGORY_NAV_LIMIT,
+  DEFAULT_CATALOG_SORT,
   DEFAULT_LOCALE,
   FEATURED_PRODUCTS_LIMIT,
   RELATED_PRODUCTS_LIMIT,
   SOURCE_LOCALE,
+  type CatalogSortValue,
 } from '@/lib/constants'
 // Resolución de traducciones JSONB (lógica pura compartida) y base de idioma.
 import { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations } from '@/lib/i18n-content'
@@ -279,6 +281,8 @@ export type CatalogFilters = {
   categoryIds?: string[]
   marcaIds?: string[]
   featuredOnly?: boolean
+  /** Orden de los resultados (ver CATALOG_SORT_OPTIONS). Por defecto: curaduría. */
+  sort?: CatalogSortValue
 }
 
 export const PRODUCT_SELECT =
@@ -392,6 +396,32 @@ async function getProductIdsByCategories(categoryIds: string[]) {
 }
 
 /**
+ * Aplica el ordenamiento elegido a la consulta del catálogo.
+ * Centraliza el mapeo UI→columnas para que la API/rutas no conozcan columnas.
+ * - relevance: curaduría manual del equipo + novedad (comportamiento histórico).
+ * - rating: mejor valorados primero; los productos SIN valoración van al final.
+ * - price-asc/desc: por precio USD, con el orden manual como desempate estable.
+ * - newest: publicados más recientemente.
+ */
+function applyCatalogOrdering(query: any, sort: CatalogSortValue = DEFAULT_CATALOG_SORT) {
+  switch (sort) {
+    case 'price-asc':
+      return query.order('price_usd', { ascending: true }).order('sort_order', { ascending: true })
+    case 'price-desc':
+      return query.order('price_usd', { ascending: false }).order('sort_order', { ascending: true })
+    case 'newest':
+      return query.order('created_at', { ascending: false })
+    case 'rating':
+      return query
+        .order('rating_average', { ascending: false, nullsFirst: false })
+        .order('rating_count', { ascending: false, nullsFirst: false })
+    case 'relevance':
+    default:
+      return query.order('sort_order', { ascending: true }).order('created_at', { ascending: false })
+  }
+}
+
+/**
  * Devuelve una página del catálogo con filtros aplicados.
  * Pensado para infinite scroll: entrega 10 productos por llamada.
  * Cliente público → SSG+ISR.
@@ -403,9 +433,9 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0, loc
     .from('products')
     .select(PRODUCT_SELECT, { count: 'exact' })
     .eq('is_available', true)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false })
-    .range(from, from + CATALOG_PAGE_SIZE - 1)
+
+  query = applyCatalogOrdering(query, filters.sort)
+  query = query.range(from, from + CATALOG_PAGE_SIZE - 1)
 
   if (filters.search) query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
   if (filters.slug) query = query.ilike('slug', `%${filters.slug}%`)
