@@ -182,7 +182,7 @@ export const SCRAPER_ALIEXPRESS_MODULE_SLUG = 'scraper_aliexpress'
 
 /** Slug del módulo admin "Pipeline AliExpress" (automatización integral) para permisos RBAC. */
 export const ALI_PIPELINE_MODULE_SLUG = 'ali_pipeline'
-
+ 
 /** Slug del módulo admin "SEO de Categorías" (hubs pSEO) para permisos RBAC. */
 export const CATEGORY_SEO_MODULE_SLUG = 'categorias_seo'
 
