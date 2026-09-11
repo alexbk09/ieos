@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth'
 import { getProfile } from '@/services/profiles'
 import { getUserRole } from '@/services/auth-server'
+import { getSiteSettings } from '@/services/site-settings'
 import { ProfileForm } from '@/components/profile-form'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationsBell } from '@/components/notifications-bell'
@@ -15,8 +16,11 @@ import Link from 'next/link'
  */
 export default async function ProfilePage() {
   const { user } = await requireUser()
-  const role = await getUserRole(user)
-  const profile = await getProfile(user)
+  const [role, profile, { settings }] = await Promise.all([
+    getUserRole(user),
+    getProfile(user),
+    getSiteSettings(),
+  ])
 
   const isAdmin = role === 'admin'
 
@@ -27,7 +31,7 @@ export default async function ProfilePage() {
         <header className="flex items-center justify-between gap-3 py-5">
           <div className="flex items-center gap-3">
             <Link href="/" className="inline-flex items-center gap-2 text-sm text-slate-500">
-              <ArrowLeft size={16} /> Volver a ilumaX
+              <ArrowLeft size={16} /> Volver a {settings.company_name}
             </Link>
             {isAdmin && (
               <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-slate-500">

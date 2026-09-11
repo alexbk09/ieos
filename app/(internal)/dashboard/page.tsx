@@ -3,6 +3,7 @@ import { getUserRole } from '@/services/auth-server'
 import { redirect } from 'next/navigation'
 import { getRequestsByUser } from '@/services/requests'
 import { getOfficialExchangeRate } from '@/services/exchange-rate'
+import { getSiteSettings } from '@/services/site-settings'
 import { formatBolivars, moneyUsd, formatRate } from '@/lib/currency'
 import { ArrowLeft, BadgeDollarSign, ClipboardList } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -18,16 +19,17 @@ import { NotificationsBell } from '@/components/notifications-bell'
 export default async function DashboardPage() {
   const { user } = await requireUser()
   if (await getUserRole(user) === 'admin') redirect('/admin')
-  const [{ data: orders }, { rate }] = await Promise.all([
+  const [{ data: orders }, { rate }, { settings }] = await Promise.all([
     getRequestsByUser(user.id),
     getOfficialExchangeRate(),
+    getSiteSettings(),
   ])
 
   return (
     <main className="min-h-screen bg-slate-50 p-5 text-slate-950 dark:bg-slate-950 dark:text-white">
       <div className="mx-auto max-w-5xl">
         <header className="flex items-center justify-between gap-3 py-5">
-          <a href="/" className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} /> ilumaX</a>
+          <a href="/" className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} /> {settings.company_name}</a>
           <div className="flex items-center gap-2">
             <NotificationsBell />
             <ThemeToggle />

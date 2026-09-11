@@ -66,6 +66,12 @@ export const IVA_RATE = 0.16
 /** Slug del módulo "Ajuste de Margen y Control de Pérdidas" para permisos. */
 export const MARGIN_ADJUSTMENT_MODULE_SLUG = 'ajustes_precios'
 
+/**
+ * Longitud mínima de contraseña aceptada por los formularios de registro/login.
+ * Se usa en el atributo nativo `minLength` para no quemar el número en la UI.
+ */
+export const AUTH_MIN_PASSWORD_LENGTH = 6
+
 // ---------- Slugs de módulos nuevos (Logística, Finanzas, Contabilidad) ----------
 
 /** Slug del módulo "Almacenes" (multi-almacén) para permisos. */
