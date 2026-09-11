@@ -10,6 +10,7 @@ const {
   validarCalidadSeo,
   buildBreadcrumbSchema,
   buildFaqSchema,
+  separarSeccionFichaTecnica,
 } = await import('../lib/seo-rules.mjs')
 
 // Configuración de reglas inyectada por parámetro (fuente: lib/constants.ts).
@@ -127,4 +128,40 @@ test('buildFaqSchema construye mainEntity y limpia el HTML de las respuestas', (
   assert.equal(schema.mainEntity[0]['@type'], 'Question')
   assert.equal(schema.mainEntity[0].name, '¿Incluye control?')
   assert.equal(schema.mainEntity[0].acceptedAnswer.text, 'Si, incluye control.')
+})
+
+// ---------- Separación de la ficha técnica (pestañas) ----------
+
+test('separarSeccionFichaTecnica aísla el párrafo de la ficha del resto', () => {
+  const html =
+    '<h2>Características principales</h2><ul><li>RGB</li></ul>' +
+    '<h2>Especificaciones físicas</h2><p>Entrega 15W y un puerto USB-C universal.</p>' +
+    '<h2>Preguntas Frecuentes</h2><h3>¿Es resistente?</h3><p>Si.</p>'
+  const { descripcion, fichaTecnica } = separarSeccionFichaTecnica(html, 'Especificaciones físicas')
+
+  assert.equal(fichaTecnica, '<p>Entrega 15W y un puerto USB-C universal.</p>')
+  assert.ok(descripcion.includes('Características principales'))
+  assert.ok(descripcion.includes('Preguntas Frecuentes'))
+  assert.ok(!descripcion.includes('Especificaciones físicas'))
+})
+
+test('separarSeccionFichaTecnica tolera atributos y mayúsculas en el <h2>', () => {
+  const html = '<h2 class="titulo">ESPECIFICACIONES FÍSICAS</h2><p>Texto.</p>'
+  const { descripcion, fichaTecnica } = separarSeccionFichaTecnica(html, 'Especificaciones físicas')
+  assert.equal(fichaTecnica, '<p>Texto.</p>')
+  assert.equal(descripcion, '')
+})
+
+test('separarSeccionFichaTecnica toma hasta el final si no hay otro <h2>', () => {
+  const html = '<h2>Características principales</h2><p>A</p><h2>Especificaciones físicas</h2><p>Fluido.</p>'
+  const { descripcion, fichaTecnica } = separarSeccionFichaTecnica(html, 'Especificaciones físicas')
+  assert.equal(fichaTecnica, '<p>Fluido.</p>')
+  assert.equal(descripcion, '<h2>Características principales</h2><p>A</p>')
+})
+
+test('separarSeccionFichaTecnica devuelve la descripción intacta si no hay sección', () => {
+  const html = '<h2>Características principales</h2><p>A</p>'
+  const { descripcion, fichaTecnica } = separarSeccionFichaTecnica(html, 'Especificaciones físicas')
+  assert.equal(descripcion, html)
+  assert.equal(fichaTecnica, '')
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { ImagePlus, Plus, ShieldCheck, Star, Truck, ExternalLink } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { RichDescription } from '@/components/rich-description'
@@ -16,7 +16,12 @@ import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
 import { moneyUsd, moneyEur, formatBolivars, formatRate } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
-import { AFFILIATE_LINK_REL } from '@/lib/constants'
+import { AFFILIATE_LINK_REL, SEO_OPTIONAL_SPECS_SECTION } from '@/lib/constants'
+// Aísla el párrafo de la ficha técnica (redactado por la IA) del resto de la
+// descripción, para mostrarlo en su propia pestaña sin tocar la BD.
+import { separarSeccionFichaTecnica } from '@/lib/seo-rules'
+// Molécula de pestañas accesible y "SEO-safe" (mantiene ambos paneles en el DOM).
+import { Tabs } from '@/components/ui/tabs'
 
 // ---------- Tipos serializables (Server Component → Client) ----------
 export type DetailProductImage = {
@@ -187,6 +192,44 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   const especificaciones = Object.entries(product.specifications ?? {}).filter(
     ([clave], i, arr) => arr.findIndex(([k]) => k.toLowerCase() === clave.toLowerCase()) === i,
   )
+
+  // --- Pestañas de contenido largo (Descripción / Ficha técnica) ---
+  // La IA redacta el párrafo FLUIDO de la ficha técnica DENTRO de la descripción
+  // (bajo <h2>Especificaciones físicas</h2>); aquí se aísla en cliente, sin
+  // volver a consultar la BD, para mostrarlo en su propia pestaña.
+  const { descripcion, fichaTecnica: fichaTecnicaHtml } = useMemo(
+    () => separarSeccionFichaTecnica(product.description ?? '', SEO_OPTIONAL_SPECS_SECTION),
+    [product.description],
+  )
+
+  // Panel de la FICHA TÉCNICA: párrafo de la IA + datos físicos + tabla de specs.
+  const panelFichaTecnica = (
+    <div className="space-y-6">
+      {fichaTecnicaHtml && <RichDescription html={fichaTecnicaHtml} />}
+      {fichaTecnica.length > 0 && (
+        <div>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Datos del producto</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+            {fichaTecnica.map((dato) => (
+              <DetailChip key={dato.label} label={dato.label} value={dato.value} />
+            ))}
+          </div>
+        </div>
+      )}
+      {especificaciones.length > 0 && (
+        <div>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+            {especificaciones.map(([key, value]) => (
+              <DetailChip key={key} label={key} value={value} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+  // La pestaña de ficha técnica solo existe si hay algo que mostrar en ella.
+  const tieneFichaTecnica = Boolean(fichaTecnicaHtml) || fichaTecnica.length > 0 || especificaciones.length > 0
   const ctaLabel = product.url_afiliado_ali ? 'Ver Oferta en AliExpress' : market.shortLabel === 'Amazon' ? 'Ver Oferta en Amazon' : market.shortLabel === 'Tienda' ? 'Ver Oferta en la Tienda Oficial' : 'Ver Oferta en AliExpress'
 
   // Producto listo para el carrito híbrido (image_url siempre string en runtime).
@@ -312,9 +355,8 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
               </p>
             )}
 
-            {/* Descripción: se renderiza como HTML semántico (h2, p, ul…) con
-                estilos tipográficos y sanitización anti-XSS (RichDescription). */}
-            {product.description && <RichDescription html={product.description} className="mt-6" />}
+            {/* La descripción y la ficha técnica se agrupan más abajo en PESTAÑAS
+                (ver el bloque <Tabs>), después del selector de color/variante. */}
 
             {/* Selector de color: muta la imagen principal */}
             {product.colors.length > 0 && (
@@ -351,29 +393,29 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
               </div>
             )}
 
-            {/* Ficha técnica (peso / tamaño / peso unitario). Se OCULTA por
-                completo si no hay ningún dato, para no dejar un bloque vacío. */}
-            {fichaTecnica.length > 0 && (
+            {/* Contenido largo en PESTAÑAS (Descripción / Ficha técnica).
+                Ambos paneles quedan en el DOM (el inactivo con `hidden`), así
+                Google indexa también el párrafo de la ficha técnica. */}
+            {(descripcion || tieneFichaTecnica) && (
               <div className="mt-7">
-                <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</h2>
-                <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-                  {fichaTecnica.map((dato) => (
-                    <DetailChip key={dato.label} label={dato.label} value={dato.value} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Especificaciones reales del producto (<h2> semántico). Se oculta
-                cuando está vacía, igual que la ficha técnica. */}
-            {especificaciones.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</h2>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {especificaciones.map(([key, value]) => (
-                    <DetailChip key={key} label={key} value={value} />
-                  ))}
-                </div>
+                {descripcion && tieneFichaTecnica ? (
+                  <Tabs
+                    ariaLabel="Detalle del producto"
+                    items={[
+                      { id: 'descripcion', label: 'Descripción', content: <RichDescription html={descripcion} /> },
+                      {
+                        id: 'ficha-tecnica',
+                        label: 'Ficha técnica',
+                        badge: especificaciones.length > 0 ? especificaciones.length : undefined,
+                        content: panelFichaTecnica,
+                      },
+                    ]}
+                  />
+                ) : descripcion ? (
+                  <RichDescription html={descripcion} />
+                ) : (
+                  panelFichaTecnica
+                )}
               </div>
             )}
 

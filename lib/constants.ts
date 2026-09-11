@@ -201,6 +201,64 @@ export const SCRAPER_MAX_IMAGES_PER_COLOR = 8
 /** Número máximo de reseñas crudas que el scraper recoge (se depuran después). */
 export const SCRAPER_MAX_RAW_REVIEWS = 20
 
+// ---------- Especificaciones técnicas (tabla de la ficha) ----------
+// AliExpress cambia las clases con hash (ej: specification--name--Ab12) y ya no
+// hidrata `window.runParams`, así que la extracción se centraliza en constantes:
+// selectores agnósticos ([class*=...]) + rutas del JSON + topes de saneamiento.
+
+/** Máximo de especificaciones técnicas guardadas por producto. */
+export const SCRAPER_MAX_SPEC_ENTRIES = 60
+
+/** Longitud máxima de la CLAVE de una especificación (evita ruido/etiquetas basura). */
+export const SCRAPER_MAX_SPEC_KEY_LENGTH = 60
+
+/** Longitud máxima del VALOR de una especificación (evita bloques de texto). */
+export const SCRAPER_MAX_SPEC_VALUE_LENGTH = 180
+
+/** Marcadores de <script> que pueden hidratar el producto como JSON embebido. */
+export const SCRAPER_JSON_SCRIPT_MARKERS: string[] = [
+  'window.runParams',
+  '_init_data_',
+  '_d_c_.DCData',
+  '__NEXT_DATA__',
+  '__APOLLO_STATE__',
+]
+
+/**
+ * Rutas del JSON donde AliExpress expone la tabla de especificaciones.
+ * Varían según la versión del frontend; se prueban en orden hasta acertar.
+ */
+export const SCRAPER_SPEC_JSON_ROOTS: string[][] = [
+  ['data', 'productPropComponent'],
+  ['data', 'productProps'],
+  ['data', 'specification'],
+  ['data', 'specifications'],
+  ['data', 'productProperties'],
+]
+
+/** Filas de la tabla de especificaciones en el DOM (selectores CSS agnósticos). */
+export const SCRAPER_SPEC_ROW_SELECTORS: string[] = [
+  'li[class*="specification--prop"]',
+  '[class*="product-specs"] li',
+  '[class*="specification--item"]',
+  '[class*="specs"] table tr',
+  'table[class*="specification"] tbody tr',
+]
+
+/** Sub-selectores del NOMBRE (etiqueta) dentro de una fila de especificaciones. */
+export const SCRAPER_SPEC_NAME_SELECTORS: string[] = [
+  '[class*="specification--name"]',
+  '[class*="prop--name"]',
+  '[class*="spec-name"]',
+]
+
+/** Sub-selectores del VALOR dentro de una fila de especificaciones. */
+export const SCRAPER_SPEC_VALUE_SELECTORS: string[] = [
+  '[class*="specification--value"]',
+  '[class*="prop--value"]',
+  '[class*="spec-value"]',
+]
+
 // ---------- AliExpress Open Platform (API oficial afiliados — Fase 2.2) ----------
 
 /**

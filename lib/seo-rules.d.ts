@@ -34,3 +34,13 @@ export function buildBreadcrumbSchema(
 
 /** Construye el JSON-LD FAQPage (o null si no hay preguntas válidas). */
 export function buildFaqSchema(faq: SeoFaqItemLike[] | null | undefined): Record<string, unknown> | null
+
+/**
+ * Separa la sección de la ficha técnica del resto de la descripción HTML.
+ * Determinista: localiza el <h2> con el título dado y toma hasta el siguiente <h2>.
+ */
+export function separarSeccionFichaTecnica(
+  html: string,
+  titulo: string,
+): { descripcion: string; fichaTecnica: string }
+

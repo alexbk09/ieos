@@ -69,13 +69,24 @@ AliExpress bloquea bots, así que se usa un **proxy con renderizado JS**:
 - **ScraperAPI** (respaldo si ZenRows da 429) → `SCRAPERAPI_API_KEY`.
 
 El scraper abre la URL del producto, espera a que el JS cargue y extrae del
-`window.runParams` (JSON embebido) y del DOM:
+JSON embebido (`window.runParams`, `_init_data_`, `_d_c_.DCData`, `__NEXT_DATA__`…)
+y del DOM:
 
 - `titulo_original` (título de fábrica, desordenado).
 - `precio_base` (mínimo/máximo en USD).
-- `metadatos_fisicos` (peso, dimensiones, materiales) → se guarda como JSONB.
+- `metadatos_fisicos` (**tabla de especificaciones técnicas**) → se guarda como
+  JSONB (`products.specifications`).
 - `galeria_imagenes` (variantes de imagen por color/ownerItemId).
 - `descripcion` (HTML de la descripción).
+
+La **tabla de especificaciones** se extrae con una *cascada*
+(`extraerEspecificacionesDom` + `extraerMetadatosRunParams`): primero las filas de
+props con selectores agnósticos (`[class*="specification--*"]`), luego listas
+`<dl><dt><dd>` y, por último, cualquier `<table>` de dos columnas; en paralelo se
+recorren las rutas del JSON (`productPropComponent`, `productProps`…). El
+resultado siempre se sanea (dedupe por clave + topes de longitud/cantidad) con
+`lib/spec-normalizer.mjs`. Si AliExpress no expone la tabla, el pipeline degrada
+derivando marca/specs del título con IA (`services/aliMeta.ts`).
 
 > El scraper es **frío** (sin IA): solo captura datos crudos. La traducción y
 > el SEO los hace DeepSeek en el paso 5.
@@ -143,7 +154,7 @@ El scraper abre la URL del producto, espera a que el JS cargue y extrae del
 | Precio / imágenes / ventas | ✅ API oficial | `productdetail.get` |
 | Valoración | ⚠️ parcial (~75%) | `evaluate_rate` solo en `product.query` |
 | Marca | ⚠️ derivada | NO viene en API ni HTML; se extrae del título |
-| Especificaciones | ⚠️ derivada | Idem; se derivan del título (literal) |
+| Especificaciones | ⚠️ best-effort | DOM/tabla + JSON; si faltan, se derivan del título (literal) |
 | Opiniones (reseñas) | ❌ no disponible | No hay fuente: ni API ni HTML público |
 
 > Consecuencia: la sección "Opiniones" se queda con el enlace al marketplace
@@ -184,6 +195,13 @@ independiente: si uno falla, el resto continúa.
   la guía de compra y la FAQ del hub en `categories.seo_*`.
 - **Sitemap al instante:** `lib/sitemap-revalidate.ts` revalida `/sitemap.xml`
   y las rutas afectadas tras cada alta/edición/baja, sin esperar el ISR de 1 h.
+- **Párrafo fluido + pestaña "Ficha técnica":** `seo-content` redacta, bajo
+  `<h2>Especificaciones físicas</h2>`, **un párrafo fluido** que traduce la tabla
+  de specs crudas a beneficios de compra. La ficha pública lo aísla en cliente
+  (`lib/seo-rules.separarSeccionFichaTecnica`) y lo muestra en la pestaña
+  *Ficha técnica* (`components/ui/tabs.tsx`) junto a los datos físicos y la tabla
+  de especificaciones. Ambos paneles permanecen en el DOM (`hidden` al estar
+  inactivos), así Google indexa también el contenido de las pestañas cerradas.
 
 ---
 

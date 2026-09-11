@@ -6,8 +6,18 @@ import {
   SCRAPER_MAX_RETRIES,
   SCRAPER_MAX_IMAGES_PER_COLOR,
   SCRAPER_MAX_RAW_REVIEWS,
+  SCRAPER_MAX_SPEC_ENTRIES,
+  SCRAPER_MAX_SPEC_KEY_LENGTH,
+  SCRAPER_MAX_SPEC_VALUE_LENGTH,
+  SCRAPER_JSON_SCRIPT_MARKERS,
+  SCRAPER_SPEC_JSON_ROOTS,
+  SCRAPER_SPEC_ROW_SELECTORS,
+  SCRAPER_SPEC_NAME_SELECTORS,
+  SCRAPER_SPEC_VALUE_SELECTORS,
   REVIEWS_MIN_TEXT_LENGTH,
 } from '@/lib/constants'
+// Normalizador puro (testeable) de la tabla de especificaciones técnicas.
+import { normalizarEspecificaciones } from '@/lib/spec-normalizer'
 
 /**
  * Servicio de scraping tradicional para AliExpress (Fase 2.1).
@@ -232,11 +242,10 @@ function extraerRunParams($: ReturnType<typeof load>): unknown {
   const textos: string[] = []
   $('script').each((_, elemento) => {
     const contenido = $(elemento).text() || $(elemento).html() || ''
-    if (
-      contenido.includes('window.runParams') ||
-      contenido.includes('_init_data_') ||
-      contenido.includes('_d_c_.DCData')
-    ) {
+    // Se aceptan los marcadores conocidos de AliExpress y, además, cualquier
+    // <script type="application/json"> (NEXT_DATA / estados embebidos).
+    const esJsonEmbebido = ($(elemento).attr('type') || '').includes('application/json')
+    if (esJsonEmbebido || SCRAPER_JSON_SCRIPT_MARKERS.some((marcador) => contenido.includes(marcador))) {
       textos.push(contenido)
     }
   })
@@ -408,7 +417,11 @@ function extraerGaleriaRunParams(runParams: unknown): AliScraperImagenColor[] {
   return resultado.slice(0, SCRAPER_MAX_IMAGES_PER_COLOR * 4)
 }
 
-/** Reune especificaciones atributo/valor desde runParams (varios formatos). */
+/**
+ * Reúne la tabla de especificaciones (etiqueta → valor) desde el JSON hidratado.
+ * AliExpress expone las props en rutas distintas según la versión, por eso se
+ * recorren varias raíces conocidas antes de caer al árbol `data` completo.
+ */
 function extraerMetadatosRunParams(runParams: unknown): Record<string, string> {
   const metadatos: Record<string, string> = {}
   const agregar = (nombre: unknown, valor: unknown): void => {
@@ -446,9 +459,84 @@ function extraerMetadatosRunParams(runParams: unknown): Record<string, string> {
     for (const valor of Object.values(nodo)) visitar(valor, prof + 1)
   }
 
-  visitar(obtenerRuta(runParams, ['data', 'productPropComponent']))
+  // Rutas conocidas del JSON (varían con la versión del frontend de Ali).
+  for (const ruta of SCRAPER_SPEC_JSON_ROOTS) visitar(obtenerRuta(runParams, ruta))
+  // Último recurso: recorrer todo el árbol `data` buscando pares attr/valor.
   if (Object.keys(metadatos).length === 0) visitar(obtenerRuta(runParams, ['data']))
-  return Object.fromEntries(Object.entries(metadatos).slice(0, 60))
+
+  return normalizarEspecificaciones(metadatos, {
+    maxEntries: SCRAPER_MAX_SPEC_ENTRIES,
+    maxKeyLength: SCRAPER_MAX_SPEC_KEY_LENGTH,
+    maxValueLength: SCRAPER_MAX_SPEC_VALUE_LENGTH,
+  })
+}
+
+/** Devuelve el texto del primer sub-selector (dentro de una fila) con contenido. */
+function primerTextoDeFila(
+  $fila: ReturnType<ReturnType<typeof load>>,
+  selectores: string[],
+): string {
+  for (const selector of selectores) {
+    const texto = $fila.find(selector).first().text().replace(/\s+/g, ' ').trim()
+    if (texto) return texto
+  }
+  return ''
+}
+
+/**
+ * Extrae la TABLA DE ESPECIFICACIONES TÉCNICAS del DOM renderizado.
+ * Estrategia en cascada (la primera que devuelva datos gana):
+ *   1. Filas de especificaciones con nombre/valor (AliExpress cambia las clases
+ *      con hash → selectores agnósticos [class*=...]).
+ *   2. Listas de definición <dl><dt><dd>.
+ *   3. Cualquier <table> de dos columnas (th/td o td/td).
+ * El resultado siempre se sanea (dedupe + topes) con normalizarEspecificaciones.
+ */
+function extraerEspecificacionesDom($: ReturnType<typeof load>): Record<string, string> {
+  const filas: Record<string, string> = {}
+  const registrar = (nombreCrudo: unknown, valorCrudo: unknown): void => {
+    const nombre = String(nombreCrudo ?? '').replace(/\s+/g, ' ').trim()
+    const valor = String(valorCrudo ?? '').replace(/\s+/g, ' ').trim()
+    if (!nombre || !valor) return
+    if (nombre in filas) return
+    filas[nombre] = valor
+  }
+
+  // 1) Listas de especificaciones (nombre/valor explícitos).
+  for (const selectorFila of SCRAPER_SPEC_ROW_SELECTORS) {
+    const nodos = $(selectorFila)
+    if (nodos.length === 0) continue
+    nodos.each((_, fila) => {
+      const $fila = $(fila)
+      const nombre = primerTextoDeFila($fila, SCRAPER_SPEC_NAME_SELECTORS)
+      const valor = primerTextoDeFila($fila, SCRAPER_SPEC_VALUE_SELECTORS)
+      if (nombre && valor) registrar(nombre, valor)
+    })
+    if (Object.keys(filas).length > 0) break
+  }
+
+  // 2) Listas de definición <dt>/<dd>.
+  if (Object.keys(filas).length === 0) {
+    $('dl').each((_, lista) => {
+      const $lista = $(lista)
+      $lista.find('dt').each((__, dt) => registrar($(dt).text(), $(dt).next('dd').text()))
+    })
+  }
+
+  // 3) Tablas genéricas de dos columnas.
+  if (Object.keys(filas).length === 0) {
+    $('table tr').each((_, fila) => {
+      const celdas = $(fila).children('th, td')
+      if (celdas.length !== 2) return
+      registrar(celdas.eq(0).text(), celdas.eq(1).text())
+    })
+  }
+
+  return normalizarEspecificaciones(filas, {
+    maxEntries: SCRAPER_MAX_SPEC_ENTRIES,
+    maxKeyLength: SCRAPER_MAX_SPEC_KEY_LENGTH,
+    maxValueLength: SCRAPER_MAX_SPEC_VALUE_LENGTH,
+  })
 }
 
 /** Precio desde runParams: rutas oficiales primero, deep search despues. */
@@ -744,12 +832,8 @@ function parsearDesdeDom($: ReturnType<typeof load>): Partial<AliScraperProducto
     .trim()
   const precio = parsearPrecioTexto(textoPrecio)
 
-  const metadatos: Record<string, string> = {}
-  $('li[class*="specification--prop"]').each((_, fila) => {
-    const nombreFila = $(fila).find('[class*="specification--name"]').first().text().trim()
-    const valorFila = $(fila).find('[class*="specification--value"]').first().text().trim()
-    if (nombreFila && valorFila && !(nombreFila in metadatos)) metadatos[nombreFila] = valorFila
-  })
+  // Tabla de especificaciones técnicas (cascada de selectores + soporte dl/table).
+  const metadatos = extraerEspecificacionesDom($)
 
   // MARCA desde el DOM: meta tags de producto (og:brand / product:brand) o el
   // elemento itemprop="brand". Si no aparece, se busca en las especificaciones
@@ -930,10 +1014,19 @@ export async function scrapearProductoAliExpress(urlProduct: string) {
       // Marca: prioriza el JSON hidratado (runParams) y cae al DOM si falta.
       marca: delJson.marca || delDom.marca || null,
       precio_base: delJson.precio_base || delDom.precio_base || null,
-      metadatos_fisicos: {
-        ...(delDom.metadatos_fisicos || {}),
-        ...(delJson.metadatos_fisicos || {}),
-      },
+      // Especificaciones: se unen las fuentes (DOM + JSON) y se sanean (dedupe
+      // por clave y topes de longitud/cantidad antes de persistir).
+      metadatos_fisicos: normalizarEspecificaciones(
+        {
+          ...(delDom.metadatos_fisicos || {}),
+          ...(delJson.metadatos_fisicos || {}),
+        },
+        {
+          maxEntries: SCRAPER_MAX_SPEC_ENTRIES,
+          maxKeyLength: SCRAPER_MAX_SPEC_KEY_LENGTH,
+          maxValueLength: SCRAPER_MAX_SPEC_VALUE_LENGTH,
+        },
+      ),
       galeria_imagenes:
         delJson.galeria_imagenes && delJson.galeria_imagenes.length > 0
           ? delJson.galeria_imagenes
