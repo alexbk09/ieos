@@ -8,6 +8,7 @@ import { categoryFor, colorImagesFor, isAffiliateProduct, type CardProduct } fro
 import { trackProductView } from '@/lib/analytics-client'
 import { formatBolivars, moneyUsd, moneyForProduct, formatRate } from '@/lib/currency'
 import { toGrams, formatWeight } from '@/lib/price-calculator'
+import { useTranslations } from '@/hooks/use-translations'
 
 /**
  * Modal de detalle de producto.
@@ -26,6 +27,9 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
   onClose: () => void
   onAdd: (product: CardProduct, unit?: string, quantity?: number, colorName?: string) => void
 }) {
+  // Traductor de la interfaz (idioma activo de la página).
+  const t = useTranslations()
+
   // Imágenes generales (sin color) y mapa de imagen por color
   const generalImages = (product.images ?? []).filter((img) => !img.color_name)
   const imageByColor = colorImagesFor(product)
@@ -60,9 +64,9 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
 
   // Datos de la ficha técnica (peso y tamaño) solo si existen
   const details = [
-    product.peso ? { label: 'Peso', value: product.peso } : null,
-    product.tamaño ? { label: 'Tamaño', value: product.tamaño } : null,
-    product.weight_grams != null ? { label: 'Peso unitario', value: `${product.weight_grams} g` } : null,
+    product.peso ? { label: t('product.labelWeight'), value: product.peso } : null,
+    product.tamaño ? { label: t('product.labelSize'), value: product.tamaño } : null,
+    product.weight_grams != null ? { label: t('product.labelUnitWeight'), value: `${product.weight_grams} g` } : null,
   ].filter(Boolean) as { label: string; value: string }[]
 
   // ---- Cálculo para productos por PESO ----
@@ -100,7 +104,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
           bloque de compra quedan fijos; solo la descripción (zona central) hace
           scroll para una estética más limpia. */}
       <div onClick={(e) => e.stopPropagation()} className="relative grid h-[92vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-card md:grid-cols-2">
-        <button onClick={onClose} aria-label="Cerrar" className="absolute right-4 top-4 z-20 grid size-10 place-items-center rounded-full bg-card/90 text-foreground shadow"><X size={19} /></button>
+        <button onClick={onClose} aria-label={t('common.close')} className="absolute right-4 top-4 z-20 grid size-10 place-items-center rounded-full bg-card/90 text-foreground shadow"><X size={19} /></button>
 
         {/* Columna izquierda: imagen fija que rellena el alto disponible.
             En móvil (una sola columna) se fija una altura razonable; en
@@ -126,7 +130,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
             {colors.length > 0 && (
               <div className="mt-6">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                  Colores {selectedColor && <span className="text-brand-strong">· {selectedColor}</span>}
+                  {t('product.colors')} {selectedColor && <span className="text-brand-strong">· {selectedColor}</span>}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {colors.map((color) => {
@@ -154,7 +158,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                   })}
                 </div>
                 {selectedColor && !imageByColor.has(selectedColor) && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">La imagen general se mantiene para este color.</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t('product.colorNoImage')}</p>
                 )}
               </div>
             )}
@@ -162,7 +166,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
             {/* Ficha técnica con peso y tamaño (solo si existen) */}
             {details.length > 0 && (
               <div className="mt-6">
-                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.specsTitle')}</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {details.map((d) => (
                     <div key={d.label} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
@@ -177,7 +181,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
             {/* Especificaciones adicionales */}
             {Object.keys(product.specifications ?? {}).length > 0 && (
               <div className="mt-6">
-                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.specsExtra')}</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {Object.entries(product.specifications ?? {}).map(([key, value]) => (
                     <div key={key} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
@@ -195,7 +199,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
             {/* Selector de cantidad: PESO (g/kg) o UNIDAD */}
             <div>
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                {isWeight ? 'Cantidad (peso)' : 'Cantidad'}
+                {isWeight ? t('product.qtyWeight') : t('product.qty')}
               </p>
 
               {isWeight ? (
@@ -212,7 +216,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        {u === 'g' ? 'Gramos (g)' : 'Kilos (kg)'}
+                        {u === 'g' ? t('product.grams') : t('product.kilos')}
                       </button>
                     ))}
                   </div>
@@ -221,7 +225,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                   <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background p-2">
                     <button
                       onClick={() => stepWeight(-1)}
-                      aria-label="Reducir peso"
+                      aria-label={t('product.decreaseWeight')}
                       className="grid size-9 shrink-0 place-items-center rounded-lg border border-border transition hover:bg-muted disabled:opacity-40"
                       disabled={grams <= minGrams}
                     >
@@ -245,7 +249,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                     </div>
                     <button
                       onClick={() => stepWeight(1)}
-                      aria-label="Aumentar peso"
+                      aria-label={t('product.increaseWeight')}
                       className="grid size-9 shrink-0 place-items-center rounded-lg border border-border transition hover:bg-muted disabled:opacity-40"
                       disabled={grams >= maxGrams}
                     >
@@ -254,11 +258,11 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    Mínimo: {formatWeight(minGrams)} · Disponible: {formatWeight(maxGrams)}
+                    {t('product.minMax', { min: formatWeight(minGrams), max: formatWeight(maxGrams) })}
                   </p>
                   {minGrams > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Precio: {moneyUsd(perGramPrice)}/g = {moneyUsd(perGramPrice * 1000)}/kg
+                      {t('product.pricePerGramKilo', { gram: moneyUsd(perGramPrice), kilo: moneyUsd(perGramPrice * 1000) })}
                     </p>
                   )}
                 </div>
@@ -266,7 +270,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                 <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-background p-2">
                   <button
                     onClick={() => setUnitQty(Math.max(1, unitQty - 1))}
-                    aria-label="Reducir cantidad"
+                    aria-label={t('product.decreaseQty')}
                     className="grid size-9 shrink-0 place-items-center rounded-lg border border-border transition hover:bg-muted disabled:opacity-40"
                     disabled={unitQty <= 1}
                   >
@@ -278,7 +282,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                   </div>
                   <button
                     onClick={() => setUnitQty(Math.min(product.stock, unitQty + 1))}
-                    aria-label="Aumentar cantidad"
+                    aria-label={t('product.increaseQty')}
                     className="grid size-9 shrink-0 place-items-center rounded-lg border border-border transition hover:bg-muted disabled:opacity-40"
                     disabled={unitQty >= product.stock}
                   >
@@ -294,7 +298,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                     Moneda REAL: € para afiliados (precio de AliExpress), $ locales. */}
                 <p className="text-3xl font-semibold">{moneyForProduct(displayPrice, isAffiliateProduct(product))}</p>
                 {/* Referencia en bolívares (tasa oficial USD→Bs). */}
-                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
+                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} <span className="text-xs text-slate-400">· {t('cart.rate', { rate: formatRate(rate) })}</span></p>
                 {isWeight && (
                   <p className="mt-1 text-xs text-slate-400">
                     {formatWeight(grams)} · {moneyUsd(perGramPrice)}/g
@@ -302,7 +306,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                 )}
               </div>
               <span className={`rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${isWeight ? (grams >= maxGrams ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') : (product.stock < 20 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')}`}>
-                {isWeight ? `${formatWeight(maxGrams)} disponibles` : `${product.stock} ${product.unit_label || 'u'} disponibles`}
+                {isWeight ? t('product.availableWeight', { weight: formatWeight(maxGrams) }) : t('product.availableUnits', { count: product.stock, unit: product.unit_label || 'u' })}
               </span>
             </div>
             <button
@@ -310,7 +314,7 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
               disabled={isWeight ? grams < minGrams || grams > maxGrams || grams <= 0 : unitQty < 1}
               className="mt-5 w-full rounded-full bg-navy px-5 py-3.5 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Agregar a solicitud
+              {t('product.addRequest')}
             </button>
           </div>
         </div>

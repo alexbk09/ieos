@@ -8,6 +8,7 @@ import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
 import { marketplaceForUrl } from '@/lib/affiliate'
 import { trackAffiliateClick } from '@/lib/analytics-client'
+import { useTranslations } from '@/hooks/use-translations'
 
 /**
  * Modal de confirmación de compra segura para afiliados.
@@ -28,24 +29,27 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
   /** Limpia el carrito tras confirmar que el cliente fue redirigido. */
   onClearCheckout: () => void
 }) {
+  // Traductor de la interfaz (idioma activo de la página).
+  const t = useTranslations()
+
   /** Abre una URL de afiliado en pestaña nueva (gesto directo = nunca bloqueado). */
   function openAffiliate(item: CartItem) {
     const url = bestUrl(item)
     if (!url) {
-      toast.error('Este producto no tiene enlace de afiliado todavía')
+      toast.error(t('cart.toastNoLink'))
       return
     }
     window.open(url, '_blank', 'noopener,noreferrer')
     // Analítica: registro del clic real de salida al marketplace de afiliado.
     trackAffiliateClick(item.id, url)
-    toast.success('Abriendo AliExpress / Amazon en otra pestaña')
+    toast.success(t('cart.toastOpening'))
   }
 
   /** Limpia la selección y cierra el modal (el cliente ya fue a los marketplaces). */
   function handleDone() {
     onClearCheckout()
     onClose()
-    toast.success('¡Gracias! Vuelve cuando quieras para completar tu compra.')
+    toast.success(t('cart.toastThanks'))
   }
 
   /** Precio por línea visible dentro del modal (peso o unidad). */
@@ -78,8 +82,8 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
       open={open}
       onClose={onClose}
       size="lg"
-      title="Compra segura en AliExpress"
-      description="El pago se procesa 100% en AliExpress / Amazon. Aún no pagas aquí."
+      title={t('cart.secureTitle')}
+      description={t('cart.secureDesc')}
       icon={<ShieldCheck size={18} />}
       preventBackdropClose
       footer={
@@ -88,13 +92,13 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
             onClick={onClose}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted"
           >
-            Seguir revisando
+            {t('cart.reviewLater')}
           </button>
           <button
             onClick={handleDone}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-strong"
           >
-            ¡Listo, ya compré! <ArrowUpRight size={15} />
+            {t('cart.doneBuying')} <ArrowUpRight size={15} />
           </button>
         </>
       }
@@ -102,15 +106,16 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
       <div className="grid gap-3">
         {withoutLinks > 0 && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
-            {withoutLinks} producto{withoutLinks !== 1 ? 's' : ''} de tu selección aún no tiene enlace de afiliado.
-            Se muestran solo las compras disponibles.
+            {withoutLinks === 1
+              ? t('cart.withoutLinksOne', { count: withoutLinks })
+              : t('cart.withoutLinksMany', { count: withoutLinks })}
           </p>
         )}
 
         {items.length === 0 ? (
           <div className="grid place-items-center gap-3 py-10 text-center">
             <div className="grid size-14 place-items-center rounded-full bg-muted"><ShoppingBag size={24} className="text-muted-foreground" /></div>
-            <p className="text-sm text-muted-foreground">Tu selección está vacía.</p>
+            <p className="text-sm text-muted-foreground">{t('cart.emptySelection')}</p>
           </div>
         ) : (
           items.map((item) => {
@@ -125,7 +130,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
                   const displayImage = colorImage ?? item.image_url
                   return displayImage
                     ? <img src={displayImage} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
-                    : <div className="grid size-14 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">Sin img</div>
+                    : <div className="grid size-14 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">{t('product.noImage')}</div>
                 })()}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
@@ -138,7 +143,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {qtyLabel(item)} · {moneyForProduct(lineAmount(item), Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store))} · {formatBolivars(lineAmount(item), rate)} <span className="opacity-60">(ref)</span>
+                    {qtyLabel(item)} · {moneyForProduct(lineAmount(item), Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store))} · {formatBolivars(lineAmount(item), rate)} <span className="opacity-60">{t('cart.ref')}</span>
                   </p>
                 </div>
                 <button
@@ -146,7 +151,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
                   disabled={!url}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-navy px-3.5 py-2 text-xs font-semibold text-navy-foreground transition hover:bg-brand hover:text-brand-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ExternalLink size={13} /> Ir a comprar
+                  <ExternalLink size={13} /> {t('cart.goBuy')}
                 </button>
               </div>
             )
@@ -154,7 +159,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
         )}
 
         <p className="mt-1 text-center text-xs text-muted-foreground">
-          Toca “Ir a comprar” en cada producto: el enlace te lleva directo al producto real de AliExpress/Amazon con precios finales en USD.
+          {t('cart.goBuyNote')}
         </p>
       </div>
     </Modal>

@@ -110,10 +110,10 @@ function DetailChip({ label, value }: { label: string; value: string }) {
  * Estrellas de valoración (0-5). Renderiza 5 iconos rellenos según la media
  * redondeada. Accesible (aria-label con el valor exacto).
  */
-function StarRating({ value, size = 14 }: { value: number; size?: number }) {
+function StarRating({ value, size = 14, label }: { value: number; size?: number; label?: string }) {
   const redondeada = Math.round(Math.min(Math.max(Number(value) || 0, 0), 5))
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`Valoración ${Number(value).toFixed(1)} de 5`}>
+    <span className="inline-flex items-center gap-0.5" aria-label={label ?? `Valoración ${Number(value).toFixed(1)} de 5`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
@@ -188,9 +188,9 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   // Ficha técnica (peso/tamaño/peso unitario). Si NO hay ningún dato, la
   // sección se OCULTA por completo para no dejar un bloque vacío en la ficha.
   const fichaTecnica = [
-    product.peso ? { label: 'Peso', value: product.peso } : null,
-    product.tamaño ? { label: 'Tamaño', value: product.tamaño } : null,
-    product.weight_grams != null ? { label: 'Peso unitario', value: `${product.weight_grams} g` } : null,
+    product.peso ? { label: t('product.labelWeight'), value: product.peso } : null,
+    product.tamaño ? { label: t('product.labelSize'), value: product.tamaño } : null,
+    product.weight_grams != null ? { label: t('product.labelUnitWeight'), value: `${product.weight_grams} g` } : null,
   ].filter((d): d is { label: string; value: string } => d !== null)
 
   // Especificaciones sin duplicados por mayúsculas/minúsculas (se conserva la 1ª).
@@ -213,7 +213,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
       {fichaTecnicaHtml && <RichDescription html={fichaTecnicaHtml} />}
       {fichaTecnica.length > 0 && (
         <div>
-          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Datos del producto</h2>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.dataTitle')}</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {fichaTecnica.map((dato) => (
               <DetailChip key={dato.label} label={dato.label} value={dato.value} />
@@ -223,7 +223,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
       )}
       {especificaciones.length > 0 && (
         <div>
-          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</h2>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.specsExtra')}</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {especificaciones.map(([key, value]) => (
               <DetailChip key={key} label={key} value={value} />
@@ -235,7 +235,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   )
   // La pestaña de ficha técnica solo existe si hay algo que mostrar en ella.
   const tieneFichaTecnica = Boolean(fichaTecnicaHtml) || fichaTecnica.length > 0 || especificaciones.length > 0
-  const ctaLabel = product.url_afiliado_ali ? 'Ver Oferta en AliExpress' : market.shortLabel === 'Amazon' ? 'Ver Oferta en Amazon' : market.shortLabel === 'Tienda' ? 'Ver Oferta en la Tienda Oficial' : 'Ver Oferta en AliExpress'
+  const ctaLabel = product.url_afiliado_ali ? t('product.ctaAli') : market.shortLabel === 'Amazon' ? t('product.ctaAmazon') : market.shortLabel === 'Tienda' ? t('product.ctaStore') : t('product.ctaAli')
 
   // Producto listo para el carrito híbrido (image_url siempre string en runtime).
   const cartProduct: CartProduct = { ...product, image_url: product.image_url ?? '' }
@@ -255,10 +255,10 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
       ? (product.min_order_grams > 0 && product.stock_grams < product.min_order_grams * 10)
       : product.stock < threshold
   const stockBadge = isAffiliate
-    ? 'Disponible · Envío 7-15 días'
+    ? t('product.affiliateAvailability')
     : isWeight
-      ? `${stockValue} disponibles`
-      : `${stockValue} en stock`
+      ? t('product.availableWeight', { weight: stockValue })
+      : t('product.stockInStock', { label: stockValue })
 
 
 
@@ -319,7 +319,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                     className={`overflow-hidden rounded-xl border-2 transition ${i === safeActive ? 'border-brand' : 'border-transparent opacity-70 hover:opacity-100'}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={`${product.name} — vista ${i + 1}`} className="aspect-square w-full object-cover" loading="lazy" />
+                    <img src={img.url} alt={t('product.galleryView', { name: product.name, index: i + 1 })} className="aspect-square w-full object-cover" loading="lazy" />
                   </button>
                 ))}
               </div>
@@ -328,12 +328,12 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
 
           {/* ===== Info + CTA ===== */}
           <div className="flex flex-col">
-            <CategoryPill>{product.categories[0]?.name ?? 'General'}</CategoryPill>
+            <CategoryPill>{product.categories[0]?.name ?? t('product.general')}</CategoryPill>
             <h1 className="mt-4 text-3xl font-semibold tracking-[-.05em] sm:text-4xl">{product.name}</h1>
 
             {product.marca?.nombre && (
               <p className="mt-2 text-sm text-muted-foreground">
-                Marca <span className="font-medium text-foreground">{product.marca.nombre}</span>
+                {t('product.marca')} <span className="font-medium text-foreground">{product.marca.nombre}</span>
               </p>
             )}
 
@@ -352,11 +352,11 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
             </div>
             {/* Referencia en bolívares (tasa oficial USD→Bs) + aviso de variación. */}
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· tasa {formatRate(exchangeRate)}</span>
+              {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· {t('cart.rate', { rate: formatRate(exchangeRate) })}</span>
             </p>
             {esAfiliado && (
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Precio de referencia al momento de publicar. Puede variar en AliExpress según tu país, cupones, moneda y envío.
+                {t('product.priceReferenceNote')}
               </p>
             )}
 
@@ -367,7 +367,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
             {product.colors.length > 0 && (
               <div className="mt-7">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                  Color / Variante {selectedColor && <span className="text-brand-strong">· {selectedColor}</span>}
+                  {t('product.colorVariant')} {selectedColor && <span className="text-brand-strong">· {selectedColor}</span>}
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   {product.colors.map((color) => {
@@ -393,7 +393,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                   })}
                 </div>
                 {selectedColor && !colorImageMap.has(selectedColor) && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">La imagen general se mantiene para esta variante.</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t('product.variantNoImage')}</p>
                 )}
               </div>
             )}
@@ -405,12 +405,12 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
               <div className="mt-7">
                 {descripcion && tieneFichaTecnica ? (
                   <Tabs
-                    ariaLabel="Detalle del producto"
+                    ariaLabel={t('product.tabsAria')}
                     items={[
-                      { id: 'descripcion', label: 'Descripción', content: <RichDescription html={descripcion} /> },
+                      { id: 'descripcion', label: t('product.tabDescription'), content: <RichDescription html={descripcion} /> },
                       {
                         id: 'ficha-tecnica',
-                        label: 'Ficha técnica',
+                        label: t('product.specsTitle'),
                         badge: especificaciones.length > 0 ? especificaciones.length : undefined,
                         content: panelFichaTecnica,
                       },
@@ -428,14 +428,14 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                 Nunca se inventan reseñas: si no hay dato real, se invita a
                 consultar las valoraciones directamente en el marketplace. */}
             <section className="mt-7">
-              <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Opiniones</h2>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.reviews')}</h2>
 
               {typeof product.rating_average === 'number' && (
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <StarRating value={product.rating_average} size={16} />
+                  <StarRating value={product.rating_average} size={16} label={t('product.ratingAria', { value: product.rating_average.toFixed(1) })} />
                   <span className="text-sm font-semibold">{product.rating_average.toFixed(1)} / 5</span>
                   {typeof product.rating_count === 'number' && product.rating_count > 0 && (
-                    <span className="text-xs text-muted-foreground">{product.rating_count} valoraciones</span>
+                    <span className="text-xs text-muted-foreground">{t('product.ratingCount', { count: product.rating_count })}</span>
                   )}
                 </div>
               )}
@@ -448,8 +448,8 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                       className="rounded-2xl border border-border bg-card p-4"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{resena.autor || 'Comprador'}</span>
-                        {typeof resena.valoracion === 'number' && <StarRating value={resena.valoracion} />}
+                        <span className="text-sm font-medium">{resena.autor || t('product.buyer')}</span>
+                        {typeof resena.valoracion === 'number' && <StarRating value={resena.valoracion} label={t('product.ratingAria', { value: Number(resena.valoracion).toFixed(1) })} />}
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{resena.texto}</p>
                       {resena.fecha && (
@@ -462,22 +462,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                 </ul>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {affiliateUrl ? (
-                    <>
-                      Consulta las valoraciones y opiniones reales de compradores en{' '}
-                      <a
-                        href={affiliateUrl}
-                        target="_blank"
-                        rel={AFFILIATE_LINK_REL}
-                        className="text-brand-strong underline underline-offset-2"
-                      >
-                        {market.label}
-                      </a>
-                      .
-                    </>
-                  ) : (
-                    'Muy pronto habilitaremos las opiniones de nuestros clientes.'
-                  )}
+                  {affiliateUrl ? t('product.reviewsOn', { market: market.label }) : t('product.reviewsSoon')}
                 </p>
               )}
             </section>
@@ -499,27 +484,27 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
                 }}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-strong active:scale-[0.99]"
               >
-                {affiliateUrl ? <><ExternalLink size={16} /> {ctaLabel}</> : <>Agregar a mi selección <Plus size={16} /></>}
+                {affiliateUrl ? <><ExternalLink size={16} /> {ctaLabel}</> : <>{t('product.addToSelection')} <Plus size={16} /></>}
               </a>
               <button
                 onClick={() => add(cartProduct, 'u', 1, selectedColor ?? undefined)}
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground transition hover:bg-muted"
               >
-                <Plus size={15} /> Agregar a solicitud
+                <Plus size={15} /> {t('product.addRequest')}
               </button>
             </div>
 
             {affiliateUrl && (
               <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
                 <ShieldCheck size={14} className="mt-0.5 shrink-0 text-brand-strong" />
-                Serás redirigido a {market.label} en una pestaña nueva para finalizar tu compra de forma 100% segura.
+                {t('product.redirectNote', { market: market.label })}
               </p>
             )}
             <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-muted-foreground">
               <Truck size={14} className="shrink-0 text-brand-strong" />
               {affiliateUrl
-                ? `Compra internacional con seguimiento vía ${market.label}.`
-                : `Envíos a toda Venezuela vía ${brand.name}.`}
+                ? t('product.shipInternational', { market: market.label })
+                : t('product.shipLocal', { brand: brand.name })}
             </p>
           </div>
         </div>
@@ -534,7 +519,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
           <CategoryNav
             items={categories}
             currentSlug={product.categories[0]?.slug}
-            title="Explora más categorías"
+            title={t('product.exploreMoreCategories')}
           />
         </div>
       </main>

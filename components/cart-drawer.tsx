@@ -100,7 +100,7 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
                   {item.pricing_type === 'weight'
                     ? `${moneyForProduct(Number(item.price_per_gram_usd) || 0, esItemAfiliado(item))} /g`
                     : moneyForProduct(item.price_usd, esItemAfiliado(item))}
-                  {' · '}{moneyForProduct(lineAmount(item), esItemAfiliado(item))} <span className="opacity-60">(ref)</span>
+                  {' · '}{moneyForProduct(lineAmount(item), esItemAfiliado(item))} <span className="opacity-60">{t('cart.ref')}</span>
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <button onClick={() => onChange(item.cartItemId, -1)} className="grid size-6 place-items-center rounded-full border border-border"><Minus size={12} /></button>
@@ -116,18 +116,18 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
           {/* Total de REFERENCIA: nunca es un cobro local */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Total estimado<span className="text-muted-foreground/70"> (referencia)</span></p>
-              <p className="text-xs text-muted-foreground/70">El cobro final lo hace AliExpress/Amazon en USD.</p>
+              <p className="text-sm text-muted-foreground">{t('cart.estimatedTotal')}<span className="text-muted-foreground/70"> {t('cart.reference')}</span></p>
+              <p className="text-xs text-muted-foreground/70">{t('cart.finalChargeNote')}</p>
             </div>
             <div className="text-right">
               <p className="font-semibold">{moneyForProduct(total, totalEsAfiliado)}</p>
-              <p className="text-xs text-muted-foreground">{formatBolivars(total, exchangeRate)} · tasa {formatRate(exchangeRate)}</p>
+              <p className="text-xs text-muted-foreground">{formatBolivars(total, exchangeRate)} · {t('cart.rate', { rate: formatRate(exchangeRate) })}</p>
             </div>
           </div>
 
           {hasNonAffiliate && (
             <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
-              Algunos productos aún no tienen enlace de afiliado. Se te notificará al finalizar.
+              {t('cart.nonAffiliateNote')}
             </p>
           )}
 
@@ -138,13 +138,13 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#e62e04] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShieldCheck size={17} />
-            Finalizar Compra Segura en AliExpress
+            {t('cart.checkout')}
             <ArrowUpRight size={16} />
           </button>
 
           <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
-            No solicitamos tarjetas ni direcciones de envío aquí.<br />
-            Te redirigimos al producto oficial para que pagues protegido en el marketplace.
+            {t('cart.noCardsLine1')}<br />
+            {t('cart.noCardsLine2')}
           </p>
         </div>
       </aside>
