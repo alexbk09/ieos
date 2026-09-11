@@ -9,7 +9,11 @@ export const SUPPORTED_LOCALES: readonly string[]
 /** Idioma por defecto del sitio (UI + x-default de hreflang). */
 export const DEFAULT_LOCALE: string
 
-/** Idioma raíz/puente de los datos (API de AliExpress). Nunca el visible por defecto. */
+/**
+ * Idioma raíz/puente de los datos: idioma en el que el pipeline redacta el
+ * contenido base (coincide con DEFAULT_LOCALE en esta instalación). Nunca se
+ * traduce a sí mismo; el resto de locales se traducen DESDE él.
+ */
 export const SOURCE_LOCALE: string
 
 /** Etiqueta hreflang de la versión por defecto. */

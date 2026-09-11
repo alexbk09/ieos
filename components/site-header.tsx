@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { UserMenu } from '@/components/user-menu'
 import { useTranslations } from '@/hooks/use-translations'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 
 type SessionRole = 'admin' | 'client' | null
 
@@ -48,6 +49,8 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
   const [sessionRole, setSessionRole] = useState<SessionRole>(null)
   // Traductor de la interfaz (idioma activo de la página, vía contexto).
   const t = useTranslations()
+  // Enlaces internos del header (logo + navegación) en el idioma activo.
+  const localizedPath = useLocalizedPath()
 
   // Combina la marca actual con los valores por defecto.
   const currentBrand: HeaderBrand = { ...DEFAULT_BRAND, ...(brand ?? {}) }
@@ -68,7 +71,7 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-        <a href="/" className="flex items-center gap-2">
+        <a href={localizedPath('/')} className="flex items-center gap-2">
           {currentBrand.logoUrl ? (
             <img src={currentBrand.logoUrl} alt={`${currentBrand.name} — logo`} className="h-9 w-auto object-contain" />
           ) : currentBrand.iconUrl ? (
@@ -86,7 +89,7 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
 
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           {links.map((link) => (
-            <a key={link.href + link.label} href={link.href} className={link.highlight ? 'font-semibold text-brand-strong' : ''}>{link.label}</a>
+            <a key={link.href + link.label} href={localizedPath(link.href)} className={link.highlight ? 'font-semibold text-brand-strong' : ''}>{link.label}</a>
           ))}
         </nav>
 

@@ -13,6 +13,8 @@
     "supabase:verify": "node supabase/run.mjs --verify",
     "i18n:backfill": "node scripts/backfill-category-i18n.mjs",
     "i18n:backfill:dry": "node scripts/backfill-category-i18n.mjs --dry-run",
+    "i18n:products": "node scripts/backfill-product-i18n.mjs",
+    "i18n:products:dry": "node scripts/backfill-product-i18n.mjs --dry-run",
     "brands:backfill": "node scripts/backfill-product-brands.mjs",
     "brands:backfill:dry": "node scripts/backfill-product-brands.mjs --dry-run"
   },

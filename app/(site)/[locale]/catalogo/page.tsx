@@ -46,7 +46,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ locale
 
   const [{ products, total }, { items: categoriesData }, { data: marcas }, { settings }] =
     await Promise.all([
-      getCatalogPage({}, 0),
+      getCatalogPage({}, 0, locale),
       // Solo categorías CON productos: filtrar por una categoría vacía da 0 resultados.
       getCategoryNav(100, locale),
       getMarcasActivas(),

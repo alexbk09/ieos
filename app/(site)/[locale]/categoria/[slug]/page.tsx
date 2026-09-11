@@ -84,6 +84,7 @@ function toCardProduct(product: Product): CardProduct {
       id: c.id,
       name: c.name,
       slug: c.slug,
+      slug_localizado: c.slug_localizado,
       description: c.description ?? null,
     })),
     images: (product.images ?? []).map((img) => ({

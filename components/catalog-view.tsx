@@ -15,6 +15,7 @@ import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { SearchableMultiSelect } from '@/components/ui/select-search'
 import { ProductGridSkeleton } from '@/components/ui/skeleton'
+import { useLocale } from '@/components/i18n-provider'
 
 type CatalogCategory = { id: string; name: string; slug: string }
 type CatalogMarca = { id: string; nombre: string }
@@ -45,6 +46,8 @@ function buildParams(filters: {
   maxPrice: string
   categories: string[]
   marcas: string[]
+  /** Idioma activo: el API resuelve nombre/título SEO traducidos. */
+  locale?: string
 }) {
   const params = new URLSearchParams({ from: String(filters.from) })
   if (filters.search) params.set('search', filters.search)
@@ -53,6 +56,7 @@ function buildParams(filters: {
   if (filters.maxPrice) params.set('maxPrice', filters.maxPrice)
   if (filters.categories.length > 0) params.set('categories', filters.categories.join(','))
   if (filters.marcas.length > 0) params.set('marcas', filters.marcas.join(','))
+  if (filters.locale) params.set('locale', filters.locale)
   return params
 }
 
@@ -107,6 +111,8 @@ export function CatalogView({
 
   // Estado compartido con la portada: carrito híbrido de afiliados.
   const exchangeRate = useExchangeRate()
+  // Idioma activo: el infinite scroll debe pedir los textos en su idioma.
+  const locale = useLocale()
   const { cart, add, change, total: cartTotal, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
 
   // Escucha el Asistente IA: agrega al carrito si el agente emite agregarAlCarrito.
@@ -132,6 +138,7 @@ export function CatalogView({
       maxPrice,
       categories: selectedCategories,
       marcas: selectedMarcas,
+      locale,
     })
 
     const res = await fetch(`/api/catalog?${params}`)
@@ -146,7 +153,7 @@ export function CatalogView({
     if (search.trim().length >= 2) {
       trackSearchLog(search.trim(), SEARCH_LOG_SOURCES.CATALOG_FILTER, data.total ?? 0)
     }
-  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas])
+  }, [search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, locale])
 
   /** Carga la siguiente página (infinite scroll). */
   const loadMore = useCallback(async () => {
@@ -161,6 +168,7 @@ export function CatalogView({
       maxPrice,
       categories: selectedCategories,
       marcas: selectedMarcas,
+      locale,
     })
 
     const res = await fetch(`/api/catalog?${params}`)
@@ -169,7 +177,7 @@ export function CatalogView({
     setHasMore(data.hasMore ?? false)
     pageRef.current = next
     setLoading(false)
-  }, [loading, hasMore, search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas])
+  }, [loading, hasMore, search, slug, minPrice, maxPrice, selectedCategories, selectedMarcas, locale])
 
   // Debounce de los filtros: recarga al escribir.
   useEffect(() => {

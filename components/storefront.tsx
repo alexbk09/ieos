@@ -17,6 +17,7 @@ import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig } from '@/lib/homepage-config'
 import { HomepageHero, type SegmentData } from '@/components/homepage-sections'
 
@@ -99,6 +100,8 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
 
   // El Asistente IA agrega productos al carrito cuando ejecuta agregarAlCarrito.
   useAgentAddToCart(add)
+  // Enlaces internos del inicio (CTA a catálogo, etc.) en el idioma activo.
+  const localizedPath = useLocalizedPath()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Todos')
   const [selected, setSelected] = useState<Product | null>(null)
@@ -234,7 +237,7 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
           ))}
         </div>
         <div className="mt-10 text-center">
-          <a href="/catalogo" className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground hover:bg-brand hover:text-brand-foreground">Ver catálogo completo <ArrowUpRight size={16} /></a>
+          <a href={localizedPath('/catalogo')} className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground hover:bg-brand hover:text-brand-foreground">Ver catálogo completo <ArrowUpRight size={16} /></a>
         </div>
       </section>
 

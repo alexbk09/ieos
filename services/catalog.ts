@@ -9,7 +9,7 @@ import {
   SOURCE_LOCALE,
 } from '@/lib/constants'
 // Resolución de traducciones JSONB (lógica pura compartida) y base de idioma.
-import { resolveLocalizedValue, resolveLocalizedList } from '@/lib/i18n-content'
+import { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations } from '@/lib/i18n-content'
 import { baseLanguage } from '@/lib/i18n-config'
 import type { SeoFaqItem } from '@/lib/seo-types'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
@@ -102,6 +102,9 @@ export type Product = {
   asin?: string | null
   /** Título optimizado para SEO/Google. Fallback = name. */
   titulo_seo?: string | null
+  // ---------- Internacionalización (migración 0050) ----------
+  /** Traducciones por idioma del nombre y título SEO: { fr: { name, titulo_seo } }. */
+  translations?: Record<string, { name?: string; titulo_seo?: string }> | null
   /** Precio original/referencia en USD (para mostrar oferta). */
   precio_original?: number | null
   /** TRUE = incluir en sitemap / indexación de Google. Default FALSE. */
@@ -279,7 +282,7 @@ export type CatalogFilters = {
 }
 
 export const PRODUCT_SELECT =
-  '*, product_categories(categories(id,name,slug,description)), product_images(id,url,alt_text,sort_order,color_name), marcas(id,nombre,activa), proveedores(id,nombre,rif,activo)'
+  '*, product_categories(categories(id,name,slug,description,name_i18n,slug_i18n,description_i18n)), product_images(id,url,alt_text,sort_order,color_name), marcas(id,nombre,activa), proveedores(id,nombre,rif,activo)'
 
 /** Convierte una fila de Supabase en Product tipado. */
 export function mapProduct(row: any): Product {
@@ -316,6 +319,8 @@ export function mapProduct(row: any): Product {
     url_afiliado_store: row.url_afiliado_store ?? null,
     asin: row.asin ?? null,
     titulo_seo: row.titulo_seo ?? null,
+    // Traducciones por idioma (migración 0050): las resuelve localizarProducto.
+    translations: row.translations ?? null,
     precio_original: row.precio_original != null ? Number(row.precio_original) : null,
     // Tri-estado SEO: `true` = indexar, `false` = noindex, `undefined` =
     // la migración 0042 aún no creó la columna → indexar (comportamiento histórico).
@@ -365,7 +370,7 @@ export async function getProductsWithCategories() {
 }
 
 /** Obtiene los productos destacados (favoritos) para la portada. Cliente público → SSG+ISR. */
-export async function getFeaturedProducts() {
+export async function getFeaturedProducts(locale?: string) {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('products')
@@ -376,7 +381,7 @@ export async function getFeaturedProducts() {
     .order('created_at', { ascending: false })
     .limit(FEATURED_PRODUCTS_LIMIT)
   if (error) return { products: null, error }
-  return { products: (data ?? []).map(mapProduct), error: null }
+  return { products: (data ?? []).map((row) => localizarProducto(row, locale)), error: null }
 }
 
 /** Obtiene los IDs de productos que pertenecen a las categorías dadas. */
@@ -391,7 +396,7 @@ async function getProductIdsByCategories(categoryIds: string[]) {
  * Pensado para infinite scroll: entrega 10 productos por llamada.
  * Cliente público → SSG+ISR.
  */
-export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
+export async function getCatalogPage(filters: CatalogFilters = {}, from = 0, locale?: string) {
   const supabase = createPublicClient()
 
   let query = supabase
@@ -413,7 +418,7 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
   const { data, error, count } = await query
   if (error) return { products: null, total: 0, hasMore: false, error }
 
-  const products = (data ?? []).map(mapProduct)
+  const products = (data ?? []).map((row) => localizarProducto(row, locale))
   const total = count ?? 0
   return { products, total, hasMore: from + products.length < total, error: null }
 }
@@ -422,8 +427,9 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0) {
  * Obtiene un producto público por slug exacto (página /productos/[slug]).
  * Cliente público → SSG+ISR. Reutiliza PRODUCT_SELECT + mapProduct del módulo.
  * Solo devuelve productos visibles para mantener coherencia con el catálogo.
+ * `locale` resuelve el nombre/título SEO traducidos (migración 0050).
  */
-export async function getPublicProductBySlug(slug: string) {
+export async function getPublicProductBySlug(slug: string, locale?: string) {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('products')
@@ -432,7 +438,7 @@ export async function getPublicProductBySlug(slug: string) {
     .eq('slug', slug)
     .maybeSingle()
   if (error) return { product: null, error }
-  return { product: data ? mapProduct(data) : null, error: null }
+  return { product: data ? localizarProducto(data, locale) : null, error: null }
 }
 
 /**
@@ -874,6 +880,34 @@ function localizarCategoria(row: any, locale?: string): Category {
   } as Category
 }
 
+/**
+ * Aplica las traducciones del idioma pedido a una fila de producto.
+ * - `name`/`titulo_seo` se resuelven con fallback (pedido → defecto → raíz).
+ * - Las categorías anidadas se localizan también (nombre + slug localizado), de
+ *   modo que los enlaces internos desde la card apunten a la URL del idioma.
+ * Si no se pasa `locale`, devuelve el producto tal cual (cero cambios visibles).
+ */
+function localizarProducto(row: any, locale?: string): Product {
+  const producto = mapProduct(row)
+  if (!locale) return producto
+
+  const { name, titulo_seo } = resolveProductTranslations(
+    row?.translations,
+    { name: row?.name, titulo_seo: row?.titulo_seo },
+    locale,
+    I18N_RESOLVE_OPTIONS,
+  )
+
+  return {
+    ...producto,
+    name: name || producto.name,
+    titulo_seo: titulo_seo || producto.titulo_seo,
+    categories: (producto.categories ?? []).map((categoria) =>
+      localizarCategoria(categoria as any, locale),
+    ),
+  }
+}
+
 /** Obtiene todas las categorías ordenadas por nombre. Cliente público → SSG+ISR. */
 export async function getCategories() {
   const supabase = createPublicClient()
@@ -1104,7 +1138,7 @@ export async function getProductsByCategorySlug(slug: string, from = 0, locale?:
     .range(from, from + CATALOG_PAGE_SIZE - 1)
   if (error) return { products: [], total: 0, hasMore: false, error }
 
-  const products = (data ?? []).map(mapProduct)
+  const products = (data ?? []).map((row) => localizarProducto(row, locale))
   const total = count ?? 0
   return { products, total, hasMore: from + products.length < total, error: null }
 }
@@ -1120,6 +1154,8 @@ export async function getRelatedProducts(input: {
   productId: string
   categoryIds: string[]
   limit?: number
+  /** Idioma de los textos resueltos (nombre/título SEO). */
+  locale?: string
 }) {
   const limit = Math.min(
     Math.max(Number(input.limit) || RELATED_PRODUCTS_LIMIT, 1),
@@ -1142,11 +1178,11 @@ export async function getRelatedProducts(input: {
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) return { products: [] as Product[], error }
-  return { products: (data ?? []).map(mapProduct), error: null }
+  return { products: (data ?? []).map((row) => localizarProducto(row, input.locale)), error: null }
 }
 /**
  * Crea una nueva categoría sembrando su traducción base.
- * El idioma raíz (inglés, el `name`/`slug` introducidos) queda SIEMPRE presente,
+ * El idioma raíz (español, el `name`/`slug` introducidos) queda SIEMPRE presente,
  * de modo que cualquier locale resuelve por fallback hasta que el pipeline o el
  * backfill rellenen el resto de traducciones.
  */

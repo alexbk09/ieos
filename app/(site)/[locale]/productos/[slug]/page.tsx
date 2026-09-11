@@ -74,6 +74,7 @@ function toDetailProduct(product: NonNullable<Awaited<ReturnType<typeof getPubli
       id: c.id,
       name: c.name,
       slug: c.slug,
+      slug_localizado: c.slug_localizado,
       description: c.description ?? null,
     })),
     images: (product.images ?? []).map((img) => ({
@@ -125,6 +126,7 @@ function toCardProduct(product: Product): CardProduct {
       id: c.id,
       name: c.name,
       slug: c.slug,
+      slug_localizado: c.slug_localizado,
       description: c.description ?? null,
     })),
     images: (product.images ?? []).map((img) => ({
@@ -141,7 +143,7 @@ function toCardProduct(product: Product): CardProduct {
 /** Metadatos SEO dinámicos (title, description, OG, canonical, robots). */
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params
-  const [{ product }, { settings }] = await Promise.all([getPublicProductBySlug(slug), getSiteSettings()])
+  const [{ product }, { settings }] = await Promise.all([getPublicProductBySlug(slug, locale), getSiteSettings()])
 
   if (!product) {
     return { title: 'Producto no encontrado' }
@@ -207,7 +209,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
  */
 export default async function ProductDetailPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params
-  const [{ product }, { settings }] = await Promise.all([getPublicProductBySlug(slug), getSiteSettings()])
+  const [{ product }, { settings }] = await Promise.all([getPublicProductBySlug(slug, locale), getSiteSettings()])
 
   // 404 real (status 404) si no existe o no está visible en el catálogo.
   if (!product) notFound()
@@ -224,6 +226,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     getRelatedProducts({
       productId: product.id,
       categoryIds: (product.categories ?? []).map((c) => c.id),
+      locale,
     }),
     getCategoryNav(undefined, locale),
   ])

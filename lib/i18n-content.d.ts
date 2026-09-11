@@ -31,6 +31,17 @@ export function resolveLocalizedList<T = unknown>(
   options?: LocalizedResolveOptions,
 ): T[]
 
+/**
+ * Resuelve los campos traducibles de un producto (name/titulo_seo) inyectando
+ * el dato base como idioma raíz para que el fallback no caiga en otro idioma.
+ */
+export function resolveProductTranslations(
+  translations: Record<string, { name?: string; titulo_seo?: string }> | null | undefined,
+  base: { name?: string | null; titulo_seo?: string | null },
+  locale: string,
+  options?: LocalizedResolveOptions,
+): { name: string; titulo_seo: string }
+
 /** Genera el slug localizado a partir del nombre traducido del idioma pedido. */
 export function buildLocalizedSlug(
   namesI18n: Record<string, string> | null | undefined,

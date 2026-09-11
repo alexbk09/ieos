@@ -71,6 +71,20 @@ export async function insertAutomatedProduct(data: ProductInput) {
     const { createProduct } = await import('@/services/catalog')
     const r = await createProduct(data)
     if (r.error || !r.data) return { success: false as const, error: r.error?.message ?? 'No insertado.' }
+
+    // i18n: al CREAR el producto se traduce la ficha (nombre + título SEO) a los
+    // idiomas soportados que falten (migración 0050). Es idempotente y de coste
+    // cero si ya está traducida. Un fallo aquí NO revierte la inserción: el
+    // producto queda en su idioma raíz y el backfill (`npm run i18n:products`)
+    // puede reintentar. Así el catálogo nace internacional desde el primer momento.
+    try {
+      const { traducirProducto } = await import('@/services/i18n-translate')
+      const traduccion = await traducirProducto(r.data.id)
+      if (!traduccion.success) console.error('[aliProducts] i18n producto:', traduccion.error)
+    } catch (i18nError: any) {
+      console.error('[aliProducts] i18n producto inesperado:', i18nError?.message)
+    }
+
     return { success: true as const, data: r.data }
   } catch (e: any) {
     return { success: false as const, error: e?.message ?? 'Error insertando.' }

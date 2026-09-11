@@ -21,7 +21,7 @@ const {
   publishedLocales,
 } = await import('../lib/i18n-config.mjs')
 
-const { resolveLocalizedValue, resolveLocalizedList, buildLocalizedSlug } = await import(
+const { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations, buildLocalizedSlug } = await import(
   '../lib/i18n-content.mjs'
 )
 const { slugify } = await import('../lib/slug.mjs')
@@ -169,7 +169,7 @@ test('resolveLocalizedValue devuelve la traducción exacta del idioma pedido', (
 test('resolveLocalizedValue aplica la cadena de fallback pedido → default → raíz', () => {
   // "de" no existe → cae al idioma por defecto (es).
   assert.equal(resolveLocalizedValue(NAME_I18N, 'de', RESOLVE_OPTIONS), 'Ratones Gamer')
-  // Sin "es" ni "de" → cae a la raíz (en).
+  // Sin "es" ni "de" → cae a la raíz (es) y, si tampoco, al primer valor.
   assert.equal(resolveLocalizedValue({ en: 'Gaming Mice' }, 'de', RESOLVE_OPTIONS), 'Gaming Mice')
   // JSONB inválido, vacío o con texto en blanco → ''.
   assert.equal(resolveLocalizedValue(null, 'de', RESOLVE_OPTIONS), '')
@@ -191,6 +191,33 @@ test('buildLocalizedSlug genera el slug desde el nombre traducido', () => {
   assert.equal(buildLocalizedSlug(NAME_I18N, 'fr', RESOLVE_OPTIONS), 'souris-gamer')
   assert.equal(buildLocalizedSlug({ es: 'Ratones Gamer' }, 'pl', RESOLVE_OPTIONS), 'ratones-gamer')
   assert.equal(buildLocalizedSlug(null, 'fr', RESOLVE_OPTIONS), '')
+})
+
+test('resolveProductTranslations resuelve name/titulo_seo del idioma pedido', () => {
+  const translations = {
+    en: { name: 'Gaming Mouse', titulo_seo: 'Wireless Gaming Mouse' },
+    fr: { name: 'Souris Gamer', titulo_seo: 'Souris Gamer sans fil' },
+  }
+  const base = { name: 'Ratón Gamer', titulo_seo: 'Ratón Gamer Inalámbrico' }
+  assert.deepEqual(resolveProductTranslations(translations, base, 'en', RESOLVE_OPTIONS), {
+    name: 'Gaming Mouse',
+    titulo_seo: 'Wireless Gaming Mouse',
+  })
+  assert.equal(resolveProductTranslations(translations, base, 'fr', RESOLVE_OPTIONS).name, 'Souris Gamer')
+})
+
+test('resolveProductTranslations NO cae en otro idioma: usa el dato base (raíz)', () => {
+  const base = { name: 'Ratón Gamer', titulo_seo: null }
+  // Sin traducción de "de" → devuelve la base (es), NUNCA "en" ni "fr".
+  assert.equal(
+    resolveProductTranslations({ en: { name: 'Gaming Mouse' } }, base, 'de', RESOLVE_OPTIONS).name,
+    'Ratón Gamer',
+  )
+  // Sin traducciones ni base → cadena vacía (no inventa texto).
+  assert.deepEqual(resolveProductTranslations(null, { name: null, titulo_seo: null }, 'fr', RESOLVE_OPTIONS), {
+    name: '',
+    titulo_seo: '',
+  })
 })
 
 // ---------- Coherencia de la configuración de locales ----------
@@ -256,17 +283,17 @@ test('parseTranslationResponse limpia cercas ```json y valida la forma', () => {
 })
 
 test('mergeCategoryTranslations conserva el idioma raíz y genera slugs en local', () => {
-  const row = { name: 'Gaming Mice', slug: 'gaming-mice', name_i18n: null, slug_i18n: null }
+  const row = { name: 'Ratones Gamer', slug: 'ratones-gamer', name_i18n: null, slug_i18n: null }
   const mapas = mergeCategoryTranslations(row, {
-    es: { name: 'Ratones Gamer', description: 'Desc es' },
+    en: { name: 'Gaming Mice', description: 'Desc en' },
     fr: { name: 'Souris Gamer', description: 'Desc fr' },
     // "de" se omite a propósito: no debe crear una clave vacía.
   })
-  // El idioma raíz se hereda del dato base: URL indexada intacta.
-  assert.equal(mapas.name_i18n.en, 'Gaming Mice')
-  assert.equal(mapas.slug_i18n.en, 'gaming-mice')
+  // El idioma raíz (es) se hereda del dato base: URL indexada intacta.
   assert.equal(mapas.name_i18n.es, 'Ratones Gamer')
   assert.equal(mapas.slug_i18n.es, 'ratones-gamer')
+  assert.equal(mapas.name_i18n.en, 'Gaming Mice')
+  assert.equal(mapas.slug_i18n.en, 'gaming-mice')
   assert.equal(mapas.slug_i18n.fr, 'souris-gamer')
   assert.equal(mapas.description_i18n.fr, 'Desc fr')
   assert.equal(mapas.name_i18n.de, undefined)
@@ -274,14 +301,14 @@ test('mergeCategoryTranslations conserva el idioma raíz y genera slugs en local
 
 test('mergeCategoryTranslations preserva traducciones existentes al añadir idiomas', () => {
   const row = {
-    name: 'Gaming Mice',
-    slug: 'gaming-mice',
-    name_i18n: { es: 'Ratones Gamer' },
-    slug_i18n: { es: 'ratones-gamer' },
-    description_i18n: { es: 'Desc es' },
+    name: 'Ratones Gamer',
+    slug: 'ratones-gamer',
+    name_i18n: { en: 'Gaming Mice' },
+    slug_i18n: { en: 'gaming-mice' },
+    description_i18n: { en: 'Desc en' },
   }
   const mapas = mergeCategoryTranslations(row, { de: { name: 'Gaming Mäuse' } })
-  assert.equal(mapas.name_i18n.es, 'Ratones Gamer')
+  assert.equal(mapas.name_i18n.en, 'Gaming Mice')
   assert.equal(mapas.name_i18n.de, 'Gaming Mäuse')
   assert.equal(mapas.slug_i18n.de, 'gaming-mause')
 })
@@ -291,18 +318,18 @@ test('mergeProductTranslations fusiona nombre y título SEO por idioma', () => {
     { fr: { name: 'Souris', titulo_seo: 'Viejo' } },
     {
       fr: { name: 'Souris Gamer', titulo_seo: 'Souris Gamer sans fil' },
-      es: { name: 'Ratón Gamer' },
+      en: { name: 'Gaming Mouse' },
     },
   )
   assert.deepEqual(resultado.fr, { name: 'Souris Gamer', titulo_seo: 'Souris Gamer sans fil' })
-  assert.deepEqual(resultado.es, { name: 'Ratón Gamer' })
+  assert.deepEqual(resultado.en, { name: 'Gaming Mouse' })
   // Idiomas no solicitados no se crean.
   assert.equal(resultado.de, undefined)
 })
 
 test('mergeProductTranslations ignora entradas vacías y normaliza JSONB inválido', () => {
-  assert.deepEqual(mergeProductTranslations(null, { es: { name: '   ' } }), {})
-  assert.deepEqual(mergeProductTranslations([1, 2], { es: {} }), {})
+  assert.deepEqual(mergeProductTranslations(null, { en: { name: '   ' } }), {})
+  assert.deepEqual(mergeProductTranslations([1, 2], { en: {} }), {})
 })
 
 // ---------- Mensajes de interfaz (lib/i18n-messages.mjs) ----------

@@ -22,6 +22,8 @@ import { AFFILIATE_LINK_REL, SEO_OPTIONAL_SPECS_SECTION } from '@/lib/constants'
 import { separarSeccionFichaTecnica } from '@/lib/seo-rules'
 // Molécula de pestañas accesible y "SEO-safe" (mantiene ambos paneles en el DOM).
 import { Tabs } from '@/components/ui/tabs'
+import { useTranslations } from '@/hooks/use-translations'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 
 // ---------- Tipos serializables (Server Component → Client) ----------
 export type DetailProductImage = {
@@ -66,7 +68,7 @@ export type DetailProduct = {
   url_afiliado_ali: string | null
   url_afiliado_amazon: string | null
   url_afiliado_store: string | null
-  categories: { id: string; name: string; slug: string; description: string | null }[]
+  categories: { id: string; name: string; slug: string; slug_localizado?: string; description: string | null }[]
   images: DetailProductImage[]
   marca?: { id: string; nombre: string; activa: boolean } | null
   /** Valoración media real en escala 0-5 (migración 0052). */
@@ -143,6 +145,9 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
+  // Idioma activo: la miga de pan y los enlaces internos conservan el idioma.
+  const t = useTranslations()
+  const localizedPath = useLocalizedPath()
 
   // Analítica: la página /productos/[slug] cuenta como una vista de detalle
   // del producto (el carrito exporta el id del producto real).
@@ -265,15 +270,15 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
         {/* Miga de pan semántica (UX + SEO) */}
         <nav aria-label="Ruta" className="mx-auto max-w-7xl">
           <ol className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            <li><a href="/" className="transition-colors hover:text-brand-strong">Inicio</a></li>
+            <li><a href={localizedPath('/')} className="transition-colors hover:text-brand-strong">{t('nav.home')}</a></li>
             <li aria-hidden="true">/</li>
-            <li><a href="/catalogo" className="transition-colors hover:text-brand-strong">Catálogo</a></li>
+            <li><a href={localizedPath('/catalogo')} className="transition-colors hover:text-brand-strong">{t('nav.catalog')}</a></li>
             {product.categories[0] && (
               <>
                 <li aria-hidden="true">/</li>
                 {/* La categoría enlaza a su página indexable /categoria/[slug]
                     (pSEO) en lugar de /catalogo, reforzando el enlazado interno. */}
-                <li><a href={`/categoria/${product.categories[0].slug}`} className="transition-colors hover:text-brand-strong">{product.categories[0].name}</a></li>
+                <li><a href={localizedPath(`/categoria/${product.categories[0].slug_localizado ?? product.categories[0].slug}`)} className="transition-colors hover:text-brand-strong">{product.categories[0].name}</a></li>
               </>
             )}
 

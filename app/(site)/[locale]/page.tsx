@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   const [{ products }, { settings }, { items: activeCategories }] = await Promise.all([
-    getFeaturedProducts(),
+    getFeaturedProducts(locale),
     getSiteSettings(),
     // Solo categorías CON productos: evita que el cliente caiga en páginas vacías.
     // Se pasa el idioma para servir el nombre del nicho traducido (con fallback).

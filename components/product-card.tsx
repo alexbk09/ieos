@@ -7,6 +7,9 @@ import { LOW_STOCK_ALERT, PRODUCT_EVENT_TYPES } from '@/lib/constants'
 import { trackProductEvent } from '@/lib/analytics-client'
 import { formatBolivars, moneyEur, moneyUsd } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
+import { useTranslations } from '@/hooks/use-translations'
+import type { Translator } from '@/lib/i18n-messages'
 
 /** Tipo mínimo de producto que recibe la card. */
 export type CardProduct = {
@@ -41,7 +44,7 @@ export type CardProduct = {
   low_stock_threshold?: number
   /** Peso en gramos de una unidad (ficha técnica). */
   weight_grams?: number | null
-  categories?: { id: string; name: string; slug: string; description: string | null }[]
+  categories?: { id: string; name: string; slug: string; slug_localizado?: string; description: string | null }[]
   images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[]
   /** URL de afiliado de AliExpress (con tag de seguimiento). Opcional. */
   url_afiliado_ali?: string | null
@@ -112,13 +115,13 @@ function priceLabel(product: CardProduct) {
  * inventario). En su lugar se comunica disponibilidad + envío estimado,
  * que es lo que de verdad decide la compra en dropshipping.
  */
-function availabilityLabel(product: CardProduct): string {
-  if (isAffiliateProduct(product)) return 'Disponible · Envío 7-15 días'
+function availabilityLabel(product: CardProduct, t: Translator): string {
+  if (isAffiliateProduct(product)) return t('product.affiliateAvailability')
   // Producto propio (sin afiliado): se conserva el stock real si existe.
   const isWeight = product.pricing_type === 'weight'
-  if (isWeight) return `${formatWeight(product.stock_grams ?? 0)} disponibles`
+  if (isWeight) return t('product.availableWeight', { weight: formatWeight(product.stock_grams ?? 0) })
   const unit = product.unit_label || 'u'
-  return `${product.stock} ${unit} en stock`
+  return t('product.inStockUnits', { count: product.stock, unit })
 }
 
 /** Es stock bajo (solo aplica a productos propios sin afiliado). */
@@ -144,6 +147,10 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
   onAdd: (product: CardProduct) => void
   onViewDetails: (product: CardProduct) => void
 }) {
+  // Idioma activo de la página: TODOS los enlaces internos deben conservarlo
+  // (grafo de idiomas consistente para Google + hreflang coherente).
+  const t = useTranslations()
+  const localizedPath = useLocalizedPath()
   const image = product.images?.[0]?.url ?? product.image_url
 
   /**
@@ -155,8 +162,8 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
     trackProductEvent(product.id, PRODUCT_EVENT_TYPES.CARD_CLICK)
   }
 
-  // URL canónica de la página de producto (crawlable por Google).
-  const productUrl = `/productos/${product.slug}`
+  // URL canónica de la página de producto (crawlable por Google), en su idioma.
+  const productUrl = localizedPath(`/productos/${product.slug}`)
 
   return (
     <article className="group overflow-hidden rounded-3xl border border-border bg-card">
@@ -164,16 +171,16 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           El modal de "vista rápida" se mantiene como acción secundaria en el
           botón "+" y en "Ver detalles", pero el enlace principal (imagen +
           título) navega a /productos/[slug] para que Google pueda indexar. */}
-      <a href={productUrl} aria-label={`Ver ${product.name}`} className="relative block w-full overflow-hidden bg-muted">
+      <a href={productUrl} aria-label={t('product.viewDetailsNamed', { name: product.name })} className="relative block w-full overflow-hidden bg-muted">
         {image ? (
           <Image src={image} alt={productImageAlt(product)} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
-          <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">Sin imagen</div>
+          <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">{t('product.noImage')}</div>
         )}
-        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{availabilityLabel(product)}</span>
+        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{availabilityLabel(product, t)}</span>
         {Number(product.bulk_discount_percent ?? 0) > 0 && (
           <span className="absolute right-4 top-4 rounded-full bg-emerald-500/90 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
-            -{product.bulk_discount_percent}% mayoreo
+            -{product.bulk_discount_percent}% {t('product.wholesale')}
           </span>
         )}
       </a>
@@ -184,7 +191,7 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
                 (pSEO). Si el producto no trae slug de categoría, se muestra
                 como texto plano para no generar enlaces rotos. */}
             {product.categories?.[0]?.slug ? (
-              <a href={`/categoria/${product.categories[0].slug}`} className="text-xs text-brand-strong transition-colors hover:underline">
+              <a href={localizedPath(`/categoria/${product.categories[0].slug_localizado ?? product.categories[0].slug}`)} className="text-xs text-brand-strong transition-colors hover:underline">
                 {categoryFor(product)}
               </a>
             ) : (
@@ -213,7 +220,7 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
                 onAdd(product)
               }
             }}
-            aria-label={`Agregar ${product.name}`}
+            aria-label={t('product.addToCart', { name: product.name })}
             className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground transition hover:bg-navy hover:text-navy-foreground"
           >
             <Plus size={17} />
@@ -275,7 +282,7 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           {/* "Ver detalles" navega a la página real (crawlable) en lugar de
               abrir solo el modal, reforzando el enlazado interno hacia el
               producto indexable. */}
-          <a href={productUrl} className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-brand-strong">Ver detalles</a>
+          <a href={productUrl} className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-brand-strong">{t('product.viewDetails')}</a>
         </div>
       </div>
     </article>

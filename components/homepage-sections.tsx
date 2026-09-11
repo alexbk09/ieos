@@ -5,6 +5,8 @@ import { ArrowUpRight, BadgeCheck, ChevronRight, Mail, PackageCheck, ShieldCheck
 import type { HomepageConfig, HomepageSegment } from '@/lib/homepage-config'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { hexLuminance } from '@/lib/theme'
+import { useTranslations } from '@/hooks/use-translations'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 
 /** Aplica el fondo (sólido / imagen / gradiente). */
 function bgStyle(bg: { backgroundType: string; backgroundSolid?: string; backgroundImage?: string; backgroundGradientFrom?: string; backgroundGradientTo?: string }) {
@@ -55,7 +57,7 @@ function Stars({ rating }: { rating?: number }) {
 
 /** Datos externos que alimentan los segmentos dinámicos (categorías/productos). */
 export type SegmentData = {
-  categories?: { id: string; name: string; slug: string; description?: string | null }[]
+  categories?: { id: string; name: string; slug: string; slug_localizado?: string; description?: string | null }[]
   products?: CardProduct[]
   rate?: number
   onAdd?: (product: CardProduct) => void
@@ -64,6 +66,9 @@ export type SegmentData = {
 
 /** Segmento renderizado en el inicio público. */
 function RenderSegment({ segment, data }: { segment: HomepageSegment; data?: SegmentData }) {
+  // Idioma activo: los enlaces internos de los segmentos conservan el idioma.
+  const t = useTranslations()
+  const localizedPath = useLocalizedPath()
   const style = bgStyle(segment)
   const isDark = isDarkBackground(segment)
   const textColor = segment.textColor || (isDark ? '#f8fafc' : '')
@@ -121,7 +126,7 @@ function RenderSegment({ segment, data }: { segment: HomepageSegment; data?: Seg
               {categories.map((cat) => (
                 <a
                   key={cat.id}
-                  href={`/categoria/${cat.slug}`}
+                  href={localizedPath(`/categoria/${cat.slug_localizado ?? cat.slug}`)}
                   className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-brand hover:bg-brand/5"
                 >
                   <div>
@@ -132,7 +137,7 @@ function RenderSegment({ segment, data }: { segment: HomepageSegment; data?: Seg
                 </a>
               ))}
               {categories.length === 0 && (
-                <p className="col-span-full text-sm text-muted-foreground">Aún no hay categorías publicadas.</p>
+                <p className="col-span-full text-sm text-muted-foreground">{t('home.noCategories')}</p>
               )}
             </div>
           )}
@@ -312,6 +317,9 @@ export function HomepageHero({ config, hero, heroImage, brandTagline, data }: {
   data?: SegmentData
 }) {
   const hc = config.hero
+  // Idioma activo: los enlaces internos del hero conservan el idioma.
+  const t = useTranslations()
+  const localizedPath = useLocalizedPath()
   const showImage = hc.showImage && hc.layout !== 'text-only' && hc.layout !== 'text-center'
   const align = hc.contentAlign === 'center' ? 'text-center items-center' : hc.contentAlign === 'right' ? 'text-right items-end' : 'text-left items-start'
   const gridCols = showImage && hc.layout === 'text-right-image-left' ? 'lg:grid-cols-[.95fr_1.05fr]' : 'lg:grid-cols-[1.05fr_.95fr]'
@@ -340,7 +348,7 @@ export function HomepageHero({ config, hero, heroImage, brandTagline, data }: {
             {(hero.primaryButton || hero.secondaryButton) && (
               <div className="flex flex-wrap gap-3">
                 {hero.primaryButton && <a href={hero.primaryHref ?? '#catalogo'} className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground transition hover:bg-brand hover:text-brand-foreground">{hero.primaryButton} <ArrowUpRight size={16} /></a>}
-                {hero.secondaryButton && <a href={hero.secondaryHref ?? '/catalogo'} className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium">{hero.secondaryButton} <ArrowUpRight size={16} /></a>}
+                {hero.secondaryButton && <a href={hero.secondaryHref ?? localizedPath('/catalogo')} className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium">{hero.secondaryButton} <ArrowUpRight size={16} /></a>}
               </div>
             )}
             {hc.showStats && hero.stats && hero.stats.length > 0 && (
@@ -357,7 +365,7 @@ export function HomepageHero({ config, hero, heroImage, brandTagline, data }: {
               {heroImage ? (
                 <Image src={heroImage} alt={hero.imageAlt ?? 'Portada'} width={600} height={600} priority className="aspect-square w-full rounded-[1.5rem] object-cover opacity-90" />
               ) : (
-                <div className="grid aspect-square w-full place-items-center rounded-[1.5rem] bg-muted text-navy-muted">Sin imagen</div>
+                <div className="grid aspect-square w-full place-items-center rounded-[1.5rem] bg-muted text-navy-muted">{t('home.noImage')}</div>
               )}
               <div className="absolute bottom-10 left-10"><p className="font-mono text-xs uppercase tracking-widest text-brand-light">{hero.imagePosition ?? '01 / 03'}</p><p className="mt-2 text-xl font-medium">{hero.imageCaption ?? brandTagline}</p></div>
             </div>

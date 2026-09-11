@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getCatalogPage } from '@/services/catalog'
 import { CATALOG_PAGE_SIZE } from '@/lib/constants'
+import { isPublishedLocale } from '@/lib/i18n-config'
 
 /**
  * API pública del catálogo con paginación (infinite scroll).
- * Filtros: from, search, slug, minPrice, maxPrice, categories (csv), featured.
+ * Filtros: from, search, slug, minPrice, maxPrice, categories (csv), featured, locale.
+ * `locale` (validado contra los idiomas PUBLICADOS) resuelve los textos traducidos;
+ * al viajar en la query, la caché de CDN se segmenta por idioma automáticamente.
  * Cacheada en CDN por 60s con stale-while-revalidate (300s).
  */
 export async function GET(request: Request) {
@@ -16,6 +19,9 @@ export async function GET(request: Request) {
   const maxPriceRaw = url.searchParams.get('maxPrice')
   const categoriesRaw = url.searchParams.get('categories')
   const marcasRaw = url.searchParams.get('marcas')
+  // Solo idiomas publicados: evita cache poisoning con valores arbitrarios.
+  const localeRaw = url.searchParams.get('locale')?.trim() || ''
+  const locale = isPublishedLocale(localeRaw) ? localeRaw : undefined
   const minPrice = minPriceRaw ? Number(minPriceRaw) : undefined
   const maxPrice = maxPriceRaw ? Number(maxPriceRaw) : undefined
   const categoryIds = categoriesRaw ? categoriesRaw.split(',').filter(Boolean) : undefined
@@ -29,7 +35,7 @@ export async function GET(request: Request) {
     categoryIds,
     marcaIds,
     featuredOnly: url.searchParams.get('featured') === 'true',
-  }, from)
+  }, from, locale)
 
   if (result.error) {
     return NextResponse.json({ error: result.error.message }, { status: 400 })

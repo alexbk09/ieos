@@ -14,6 +14,7 @@ import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { useTranslations } from '@/hooks/use-translations'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 
 /**
  * Vista cliente de la página /categoria/[slug].
@@ -61,6 +62,8 @@ export function CategoryPageView({
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
   const t = useTranslations()
+  // Enlaces internos de la miga de pan en el idioma activo.
+  const localizedPath = useLocalizedPath()
 
   const [selected, setSelected] = useState<CardProduct | null>(null)
 
@@ -77,9 +80,9 @@ export function CategoryPageView({
         {/* Miga de pan semántica (UX + SEO) */}
         <nav aria-label="Ruta">
           <ol className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            <li><a href="/" className="transition-colors hover:text-brand-strong">Inicio</a></li>
+            <li><a href={localizedPath('/')} className="transition-colors hover:text-brand-strong">{t('nav.home')}</a></li>
             <li aria-hidden="true">/</li>
-            <li><a href="/catalogo" className="transition-colors hover:text-brand-strong">Catálogo</a></li>
+            <li><a href={localizedPath('/catalogo')} className="transition-colors hover:text-brand-strong">{t('nav.catalog')}</a></li>
             <li aria-hidden="true">/</li>
             <li className="text-brand-strong">{category.name}</li>
           </ol>
@@ -87,13 +90,15 @@ export function CategoryPageView({
 
         {/* Encabezado de la categoría (H1 largo del hub si existe) */}
         <header className="mt-7 border-b border-border pb-7">
-          <p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Categoría</p>
+          <p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">{t('category.eyebrow')}</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-.05em] sm:text-4xl">{category.seo_title?.trim() || category.name}</h1>
           {category.description && (
             <p className="mt-4 max-w-3xl leading-7 text-muted-foreground">{category.description}</p>
           )}
           <p className="mt-3 text-sm text-muted-foreground">
-            {products.length} producto{products.length !== 1 ? 's' : ''} disponible{products.length !== 1 ? 's' : ''}
+            {products.length === 1
+              ? t('category.availableSingular', { count: products.length })
+              : t('category.availablePlural', { count: products.length })}
           </p>
         </header>
 

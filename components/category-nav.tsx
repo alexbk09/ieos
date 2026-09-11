@@ -2,12 +2,15 @@
 
 import { ArrowUpRight, Package } from 'lucide-react'
 import { useTranslations } from '@/hooks/use-translations'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 
 /** Item de navegación de categoría (con conteo de productos visibles). */
 export type CategoryNavItem = {
   id: string
   name: string
   slug: string
+  /** Slug traducido del idioma activo (URL localizada). Fallback = slug base. */
+  slug_localizado?: string
   description?: string | null
   count: number
 }
@@ -35,6 +38,8 @@ export function CategoryNav({
   subtitle?: string
 }) {
   const t = useTranslations()
+  // Enlaces internos en el idioma activo (grafo de idiomas consistente).
+  const localizedPath = useLocalizedPath()
   const resolvedTitle = title ?? t('category.exploreOthers')
   const resolvedSubtitle = subtitle ?? t('category.exploreOthersSubtitle')
 
@@ -52,7 +57,7 @@ export function CategoryNav({
           {resolvedSubtitle && <p className="mt-1 text-sm text-muted-foreground">{resolvedSubtitle}</p>}
         </div>
         <a
-          href="/catalogo"
+          href={localizedPath('/catalogo')}
           className="hidden shrink-0 items-center gap-1 text-sm font-medium text-brand-strong transition hover:underline sm:inline-flex"
         >
           {t('category.viewFullCatalog')} <ArrowUpRight size={14} />
@@ -63,7 +68,7 @@ export function CategoryNav({
         {others.map((c) => (
           <a
             key={c.id}
-            href={`/categoria/${c.slug}`}
+            href={localizedPath(`/categoria/${c.slug_localizado ?? c.slug}`)}
             className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand hover:shadow-lg hover:shadow-brand/10"
           >
             {/* Halo decorativo que se intensifica al pasar el cursor. */}

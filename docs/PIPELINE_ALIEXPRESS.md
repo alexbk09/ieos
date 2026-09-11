@@ -177,7 +177,14 @@ en tiempo real:
 | 4 | **Extraer** detalle físico + imágenes por color | `aliScraper.scrapearProductoAliExpress` |
 | 5 | **Generar** enlace de afiliado oficial con tracking | `aliApi.generarEnlaceAfiliado` |
 | 6 | **SEO único** con DeepSeek (título optimizado + HTML H2/H3 + FAQ + keywords) con control anti-duplicado | `seo-content.generateSeoContent` + `seoDedupe.existeTituloSimilar` |
-| 7 | **Guardar** en Supabase (incluye `seo_faq` y `seo_keywords`) y **revalidar el sitemap** al instante | `aliProducts.insertAutomatedProduct` → `catalog.createProduct` |
+| 7 | **Guardar** en Supabase (incluye `seo_faq` y `seo_keywords`), **traducir la ficha** (nombre + título SEO a los idiomas soportados) y **revalidar el sitemap** al instante | `aliProducts.insertAutomatedProduct` → `catalog.createProduct` + `i18n-translate.traducirProducto` |
+| 8 | **Traducir el nicho** (categoría: nombre, slug, descripción y SEO por idioma) | `i18n-translate.traducirCategoria` |
+
+**Internacional (i18n):** cada producto nuevo se traduce al guardarse (paso 7) y el
+nicho se completa una vez por ejecución (paso 8). Ambos son **idempotentes**: si
+ya está traducido, no vuelven a llamar al modelo (coste cero). Los idiomas
+publicados en la web se controlan con `PUBLISHED_LOCALES` (lib/i18n-config.mjs);
+un producto sin traducción usa el fallback de su idioma raíz.
 
 **Defensivo:** procesa máximo 5 productos nuevos por ejecución para no agotar
 créditos del proxy ni de DeepSeek. Cada producto se procesa en un `try-catch`
