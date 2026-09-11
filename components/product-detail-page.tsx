@@ -172,6 +172,8 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   const market = marketplaceForUrl(affiliateUrl)
   // Reseñas reales del producto (migración 0052); [] si aún no hay opiniones.
   const reviews = product.reviews ?? []
+  // Producto de afiliado: su precio está en EUR (AliExpress), no en USD.
+  const esAfiliado = Boolean(affiliateUrl)
   const ctaLabel = product.url_afiliado_ali ? 'Ver Oferta en AliExpress' : market.shortLabel === 'Amazon' ? 'Ver Oferta en Amazon' : market.shortLabel === 'Tienda' ? 'Ver Oferta en la Tienda Oficial' : 'Ver Oferta en AliExpress'
 
   // Producto listo para el carrito híbrido (image_url siempre string en runtime).
@@ -275,18 +277,27 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
             )}
 
             <div className="mt-5 flex items-center gap-3">
-              <p className="text-3xl font-semibold">{moneyUsd(product.price_usd)}</p>
+              {/* Moneda REAL: los afiliados guardan el precio de AliExpress en EUR
+                  (target_currency=EUR); los locales, en USD. */}
+              <p className="text-3xl font-semibold">{esAfiliado ? moneyEur(product.price_usd) : moneyUsd(product.price_usd)}</p>
               {product.precio_original && product.precio_original > product.price_usd && (
-                <p className="text-lg text-muted-foreground line-through">{moneyUsd(product.precio_original)}</p>
+                <p className="text-lg text-muted-foreground line-through">
+                  {esAfiliado ? moneyEur(product.precio_original) : moneyUsd(product.precio_original)}
+                </p>
               )}
               <span className={`ml-auto rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${lowStock ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
                 {stockBadge}
               </span>
             </div>
-            {/* Bs (tasa oficial) + EUR real del producto importado de AliExpress. */}
+            {/* Referencia en bolívares (tasa oficial USD→Bs) + aviso de variación. */}
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {formatBolivars(product.price_usd, exchangeRate)} · {moneyEur(product.price_usd)} <span className="text-xs opacity-70">· tasa {formatRate(exchangeRate)}</span>
+              {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· tasa {formatRate(exchangeRate)}</span>
             </p>
+            {esAfiliado && (
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Precio de referencia al momento de publicar. Puede variar en AliExpress según tu país, cupones, moneda y envío.
+              </p>
+            )}
 
             {/* Descripción: se renderiza como HTML semántico (h2, p, ul…) con
                 estilos tipográficos y sanitización anti-XSS (RichDescription). */}

@@ -236,11 +236,45 @@ export const ALI_ENRICH_BATCH_SIZE = 5
 export const ALI_ENRICH_MAX_PRODUCTS = 20
 
 /**
+ * Máximo de IDs que se piden por llamada a `productdetail.get`.
+ * Verificado: la API acepta 20 IDs de una vez, así que el re-enriquecimiento
+ * completo (ej. 140 productos) se resuelve en pocas llamadas.
+ */
+export const ALI_DETAIL_BATCH_SIZE = 20
+
+/**
+ * Nº de productos que se procesan en paralelo (marca/specs con IA + update).
+ * La IA por producto es lo más lento del re-enriquecimiento; paralelizar en
+ * grupos pequeños permite actualizar TODO el catálogo dentro del tiempo máximo
+ * de la función sin sobrecargar al modelo.
+ */
+export const ALI_ENRICH_CONCURRENCY = 5
+
+/**
+ * Espaciado mínimo entre llamadas a la API de AliExpress (ms).
+ * La API responde con "ApiCallLimit ... ban will last 1 seconds" si se llama
+ * demasiadas veces seguidas, así que se espera algo más de 1s entre peticiones.
+ */
+export const ALI_API_MIN_INTERVAL_MS = 1200
+
+/**
  * Método oficial de AliExpress Open Platform para obtener el DETALLE ampliado
  * de un producto conocido su ID (incluye marca y propiedades técnicas).
  * Se usa como enriquecimiento cuando `product.query` no trae el campo `brand`.
  */
 export const ALI_DETAIL_METHOD = 'aliexpress.affiliate.productdetail.get'
+
+/**
+ * Moneda en la que se solicitan los precios a la API oficial (EUR: coincide con
+ * el precio que el usuario ve en el navegador, sin conversiones manuales).
+ */
+export const ALI_TARGET_CURRENCY = 'EUR'
+
+/**
+ * País de destino usado en las consultas de afiliado. Afecta a precios y
+ * disponibilidad devueltos por la API (se usa un mercado soportado con EUR).
+ */
+export const ALI_SHIP_TO_COUNTRY = 'ES'
 
 /**
  * Claves candidatas donde la API de AliExpress puede exponer el nombre de
@@ -303,6 +337,21 @@ export const REVIEWS_TARGET_LANGUAGE = 'es'
  * de pipeline. FALSE (por defecto) = se conservan las URLs del CDN de AliExpress.
  */
 export const MIRROR_AFFILIATE_IMAGES = false
+
+/** Máximo de especificaciones extraídas del título por producto. */
+export const META_MAX_SPECS = 12
+
+/** Longitud máxima aceptada para un nombre de marca derivado del título. */
+export const META_MAX_MARCA_LENGTH = 40
+
+/** Temperatura del LLM al extraer marca/specs (fidelidad literal al título). */
+export const META_EXTRACTION_TEMPERATURE = 0.1
+
+/** Máximo de tokens de salida de la extracción de metadatos. */
+export const META_EXTRACTION_MAX_TOKENS = 700
+
+/** Modelo del motor de extracción de metadatos. */
+export const META_EXTRACTION_MODEL = 'deepseek-chat'
 
 // ---------- Motor de contenido SEO (DeepSeek) ----------
 // Centraliza la configuración del cerebro de contenido para no quemar

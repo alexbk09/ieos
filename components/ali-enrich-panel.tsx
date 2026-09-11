@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { ALI_ENRICH_BATCH_SIZE, ALI_ENRICH_MAX_PRODUCTS } from '@/lib/constants'
 import { FormInput, FormSubmitButton } from '@/components/ui/form-field'
 
 /**
@@ -110,7 +109,8 @@ async function consumirSSE(
 }
 
 export function AliEnrichPanel() {
-  const [limite, setLimite] = useState(String(ALI_ENRICH_BATCH_SIZE))
+  // Vacío (o 0) = actualizar TODOS los productos publicados.
+  const [limite, setLimite] = useState('')
   const [ejecutando, setEjecutando] = useState(false)
   const [credenciales, setCredenciales] = useState<{ zenrowsConfigurado: boolean; scraperApiConfigurada: boolean } | null>(null)
   const [logEnVivo, setLogEnVivo] = useState<NotificacionEtapa[]>([])
@@ -146,7 +146,7 @@ export function AliEnrichPanel() {
       const respuesta = await fetch('/api/admin/ali-pipeline/enrich', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ limit: Number(limite) || ALI_ENRICH_BATCH_SIZE }),
+        body: JSON.stringify({ limit: limite.trim() === '' ? 0 : Number(limite) || 0 }),
       })
 
       // Si responde JSON (no SSE) es un error temprano (403/400/500).
@@ -200,8 +200,8 @@ export function AliEnrichPanel() {
           <div>
             <h2 className="font-semibold">Actualizar precios y datos</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Re-extrae el detalle real de los últimos productos publicados: precio, stock, especificaciones,
-              marca, valoración y opiniones. No modifica el SEO ya generado.
+              Re-extrae el detalle real de <strong>todos</strong> los productos publicados (o de los que indiques):
+              precio, stock, especificaciones, marca, valoración y opiniones. No modifica el SEO ya generado.
             </p>
           </div>
         </div>
@@ -221,14 +221,14 @@ export function AliEnrichPanel() {
 
         <div className="mt-5 flex flex-wrap items-end gap-4">
           <FormInput
-            label="Cantidad a actualizar"
+            label="Productos a actualizar"
             type="number"
-            min={1}
-            max={ALI_ENRICH_MAX_PRODUCTS}
+            min={0}
             value={limite}
             onChange={(e) => setLimite(e.target.value)}
-            hint={`Entre 1 y ${ALI_ENRICH_MAX_PRODUCTS} productos por ejecución.`}
-            className="w-44"
+            placeholder="Todos"
+            hint="Déjalo vacío (o 0) para actualizar TODOS los productos. También puedes limitarlo a un número."
+            className="w-48"
             disabled={ejecutando}
           />
           <FormSubmitButton

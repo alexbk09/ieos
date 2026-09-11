@@ -23,7 +23,10 @@ import {
   ALIEXPRESS_OPEN_API_ENDPOINT,
   ALI_SEARCH_METHOD,
   ALI_LINK_METHOD,
+  ALI_DETAIL_METHOD,
   ALI_BRAND_FIELD_CANDIDATES,
+  ALI_TARGET_CURRENCY,
+  ALI_SHIP_TO_COUNTRY,
 } from '@/lib/constants'
 
 // ---------- Tipos ----------
@@ -298,6 +301,94 @@ export async function buscarProductosMasVendidos(
 
   return { success: true as const, data: productosValidos }
 }
+
+/** Detalle enriquecido de un producto obtenido por ID (precio, imágenes, ventas). */
+export type AliProductoDetalle = {
+  ali_product_id: string
+  /** Precio de venta actual (el más bajo) en la moneda objetivo. */
+  precio_min_venta: number | null
+  /** Precio original/referencia (tachado), si lo hay. */
+  precio_original: number | null
+  /** Imagen principal vigente. */
+  imagen_principal: string | null
+  /** Galería de imágenes vigente (CDN). */
+  imagenes: string[]
+  /** Título real actual del producto. */
+  titulo: string | null
+  /** Volumen de ventas reportado. */
+  ventas_recientes: number | null
+}
+
+/** Localiza el array de productos dentro del "envelope" de productdetail.get. */
+function extraerProductosDetalle(nodo: any, profundidad = 0): any[] {
+  if (!nodo || typeof nodo !== 'object' || profundidad > 8) return []
+  if (Array.isArray(nodo)) return nodo
+  // Ruta documentada: resp_result.result.products.product
+  const candidato = nodo?.resp_result?.result?.products?.product
+  if (Array.isArray(candidato)) return candidato
+  if (candidato && typeof candidato === 'object') return [candidato]
+  for (const valor of Object.values(nodo)) {
+    const hallado = extraerProductosDetalle(valor, profundidad + 1)
+    if (hallado.length > 0) return hallado
+  }
+  return []
+}
+
+/**
+ * Obtiene el DETALLE actualizado de varios productos por su ID en UNA sola
+ * llamada a `aliexpress.affiliate.productdetail.get` (precio, imágenes, ventas).
+ * Es la fuente FIABLE para el re-enriquecimiento: a diferencia del scraper (que
+ * devuelve el HTML sin `runParams`), esta API sí entrega datos reales.
+ *
+ * ⚠️ La API limita la frecuencia (~1 llamada/seg): el llamador debe espaciar
+ * los lotes.
+ *
+ * @param ids IDs de producto AliExpress (se limpian a dígitos).
+ */
+export async function obtenerDetalleProductosPorIds(ids: string[]) {
+  const limpios = [...new Set((ids ?? []).map((id) => String(id).replace(/\D/g, '')).filter(Boolean))]
+  if (limpios.length === 0) return { success: false as const, error: 'No hay IDs de AliExpress para consultar.' }
+
+  const resultado = await llamarApiAliExpress(ALI_DETAIL_METHOD, {
+    product_ids: limpios.join(','),
+    tracking_id: ALI_TRACKING_ID,
+    target_currency: ALI_TARGET_CURRENCY,
+    target_language: ALI_LOCALE,
+    ship_to_country: ALI_SHIP_TO_COUNTRY,
+  })
+  if (!resultado.success) return { success: false as const, error: resultado.error }
+
+  const crudos = extraerProductosDetalle(resultado.data)
+  const detalles: AliProductoDetalle[] = crudos
+    .map((p: any) => {
+      const precioVenta = Number(p?.target_sale_price ?? p?.sale_price ?? p?.app_sale_price ?? 0)
+      const precioOriginal = Number(p?.target_original_price ?? p?.original_price ?? 0)
+      const galeriaCruda = p?.product_small_image_urls?.string ?? p?.product_small_image_urls ?? []
+      const galeria = (Array.isArray(galeriaCruda) ? galeriaCruda : [galeriaCruda])
+        .map((u: any) => String(u ?? '').trim())
+        .filter(Boolean)
+      return {
+        ali_product_id: String(p?.product_id ?? '').trim(),
+        precio_min_venta: Number.isFinite(precioVenta) && precioVenta > 0 ? precioVenta : null,
+        precio_original: Number.isFinite(precioOriginal) && precioOriginal > 0 ? precioOriginal : null,
+        imagen_principal: String(p?.product_main_image_url ?? '').trim() || null,
+        imagenes: galeria,
+        titulo: String(p?.product_title ?? '').trim() || null,
+        ventas_recientes: Number(p?.lastest_volume ?? 0) || null,
+      }
+    })
+    .filter((d) => d.ali_product_id)
+
+  if (detalles.length === 0) {
+    const claves = Object.keys(resultado.data ?? {})
+    return {
+      success: false as const,
+      error: `AliExpress no devolvió el detalle. Claves: ${claves.join(', ') || '(vacío)'}`,
+    }
+  }
+  return { success: true as const, data: detalles }
+}
+
 
 /**
  * Recorre el JSON de respuesta de AliExpress buscando el array de productos

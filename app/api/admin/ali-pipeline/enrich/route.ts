@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { hasPermission } from '@/services/roles'
-import { ALI_PIPELINE_MODULE_SLUG, ALI_ENRICH_MAX_PRODUCTS } from '@/lib/constants'
+import { ALI_PIPELINE_MODULE_SLUG } from '@/lib/constants'
 import { ejecutarEnriquecimientoLote } from '@/services/aliEnrich'
 import { estadoCredencialesScraper } from '@/services/aliScraper'
 
@@ -28,11 +28,14 @@ function eventoSSE(evento: string, payload: unknown): string {
   return `event: ${evento}\ndata: ${JSON.stringify(payload)}\n\n`
 }
 
-/** Normaliza el límite recibido en el body (defensivo, con tope). */
+/**
+ * Normaliza el límite recibido en el body.
+ * `0`, vacío o ausente = TODOS los productos (modo completo).
+ */
 function parsearLimite(body: { limit?: unknown }): number | undefined {
   const crudo = Number(body?.limit)
   if (!Number.isFinite(crudo) || crudo <= 0) return undefined
-  return Math.min(Math.floor(crudo), ALI_ENRICH_MAX_PRODUCTS)
+  return Math.floor(crudo)
 }
 
 export async function POST(request: Request) {

@@ -3,7 +3,7 @@
 import { ArrowUpRight, ExternalLink, ShieldCheck, ShoppingBag } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { toast } from 'sonner'
-import { moneyUsd, formatBolivars } from '@/lib/currency'
+import { moneyForProduct, formatBolivars } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
 import { marketplaceForUrl } from '@/lib/affiliate'
@@ -138,7 +138,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {qtyLabel(item)} · {moneyUsd(lineAmount(item))} · {formatBolivars(lineAmount(item), rate)} <span className="opacity-60">(ref)</span>
+                    {qtyLabel(item)} · {moneyForProduct(lineAmount(item), Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store))} · {formatBolivars(lineAmount(item), rate)} <span className="opacity-60">(ref)</span>
                   </p>
                 </div>
                 <button

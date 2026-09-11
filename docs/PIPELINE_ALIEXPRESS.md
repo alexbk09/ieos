@@ -119,19 +119,35 @@ El scraper abre la URL del producto, espera a que el JS cargue y extrae del
   productos antiguos detectando la marca en `specifications`.
 
 ### Re-enriquecimiento (Fase 2.6 — botón "Actualizar precios y datos")
-- Los precios, la disponibilidad y las valoraciones cambian con el tiempo. El
-  panel `/admin/ali-pipeline` incluye un segundo módulo que vuelve a extraer el
-  detalle real de los **últimos N productos publicados**.
-- `services/aliEnrich.ts` → `ejecutarEnriquecimientoLote({ limit }, notificar)`:
-  recalcula y ACTUALIZA **solo campos volátiles** (precio, `precio_original`,
-  stock/disponibilidad, `specifications`, `marca_id`, `rating_average` y
-  `reviews`), comparando con el valor actual para escribir únicamente lo que
-  cambió. **Nunca** toca `name`, `slug`, `description`, `seo_faq`, `seo_keywords`
-  ni los enlaces de afiliado (así no se pierde el SEO ya indexado).
-- Reglas defensivas: si el scraper no devuelve un dato, se CONSERVA el actual; no
-  se borran reseñas ni se pisa una marca puesta a mano.
-- La API route `/api/admin/ali-pipeline/enrich` (SSE, RBAC `ali_pipeline`) emite
-  el progreso y revalida la ficha + el sitemap de cada producto actualizado.
+- Los precios, la disponibilidad y las especificaciones cambian con el tiempo.
+  El panel `/admin/ali-pipeline` incluye un módulo que refresca los **últimos N
+  productos publicados**.
+- `services/aliEnrich.ts` → `ejecutarEnriquecimientoLote({ limit }, notificar)`.
+- **Fuente de datos (v2, tras el diagnóstico):** el scraper ya NO sirve para
+  esto, porque AliExpress devuelve el HTML con `window.runParams = { }` (vacío)
+  y sin `specification--name`. Por eso el enriquecimiento usa la **API oficial**:
+  - `obtenerDetalleProductosPorIds(ids)` → UNA llamada a
+    `aliexpress.affiliate.productdetail.get` (por lote) con el **precio real**,
+    precio original, imagen principal y galería.
+  - `extraerMarcaYSpecs(titulo)` (IA) → **marca y especificaciones derivadas del
+    título**, verificando que cada valor aparezca LITERALMENTE en él.
+  - Valoración: best-effort vía `product.query` (solo si coincide el ID).
+- Solo actualiza **campos volátiles** (precio, `precio_original`, `image_url`,
+  `specifications`, `marca_id`, `rating_average`, stock/disponibilidad). **Nunca**
+  toca `name`, `slug`, `description`, `seo_faq`, `seo_keywords` ni los enlaces.
+- Respeta el límite de la API (~1 llamada/seg) con `ALI_API_MIN_INTERVAL_MS`.
+
+### ⚠️ Límites reales de la fuente (verificado a fondo)
+| Dato | Disponibilidad | Nota |
+|------|----------------|------|
+| Precio / imágenes / ventas | ✅ API oficial | `productdetail.get` |
+| Valoración | ⚠️ parcial (~75%) | `evaluate_rate` solo en `product.query` |
+| Marca | ⚠️ derivada | NO viene en API ni HTML; se extrae del título |
+| Especificaciones | ⚠️ derivada | Idem; se derivan del título (literal) |
+| Opiniones (reseñas) | ❌ no disponible | No hay fuente: ni API ni HTML público |
+
+> Consecuencia: la sección "Opiniones" se queda con el enlace al marketplace
+> cuando no hay reseñas reales; nunca se inventan.
 
 ---
 

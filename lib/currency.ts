@@ -28,3 +28,19 @@ export function formatBolivars(amountUsd: number, rate: number): string {
 export function formatRate(rate: number): string {
   return rate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+/**
+ * Formatea un precio en la MONEDA REAL del producto.
+ *
+ * POR QUÉ: los productos de AFILIADO guardan el precio tal cual lo entrega
+ * AliExpress en EUR (la API se consulta con `target_currency: 'EUR'`), mientras
+ * que los productos LOCALES se manejan en USD. Rotular ambos como "$" hacía que
+ * el precio de la web no coincidiera con el que el usuario ve en AliExpress.
+ *
+ * @param amount Monto numérico guardado en `products.price_usd`.
+ * @param isAffiliate TRUE si el producto tiene enlace de afiliado.
+ * @returns Cadena formateada en € (afiliado) o $ (local).
+ */
+export function moneyForProduct(amount: number, isAffiliate: boolean): string {
+  return isAffiliate ? moneyEur(amount) : moneyUsd(amount)
+}

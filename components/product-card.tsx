@@ -87,7 +87,14 @@ export function productImageAlt(product: CardProduct): string {
 }
 
 
-/** Formatea el precio de un producto por peso: "$X.XX /g · $Y /kg". */
+/**
+ * Formatea el precio de un producto por peso: "$X.XX /g · $Y /kg".
+ *
+ * ⚠️ MONEDA: los productos de AFILIADO guardan el precio REAL de AliExpress en
+ * EUR (la API se consulta con `target_currency: 'EUR'`), por lo que se muestra
+ * con `moneyEur` (€). Los productos LOCALES sí usan USD. Mostrar el valor EUR
+ * como "$" era el motivo de que no coincidiera con el precio de AliExpress.
+ */
 function priceLabel(product: CardProduct) {
   const isWeight = product.pricing_type === 'weight'
   if (isWeight) {
@@ -96,7 +103,7 @@ function priceLabel(product: CardProduct) {
     if (perGram > 0) return `${moneyUsd(perGram)} /g`
     if (perKilo > 0) return `${moneyUsd(perKilo)} /kg`
   }
-  return moneyUsd(product.price_usd)
+  return isAffiliateProduct(product) ? moneyEur(product.price_usd) : moneyUsd(product.price_usd)
 }
 
 /**
@@ -259,10 +266,10 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           <div>
             {/* Precio según tipo (por unidad o por gramo/kilo) */}
             <p className="font-semibold">{priceLabel(product)}</p>
-            {/* Doble referencia de moneda: Bs (tasa oficial) + EUR real del
-                precio importado, para que el cliente compare de un vistazo. */}
+            {/* Referencia en bolívares (tasa oficial USD→Bs). El precio base ya
+                se rotula en su moneda real arriba (€ para afiliados, $ locales). */}
             <p className="text-xs text-muted-foreground">
-              {formatBolivars(product.price_usd, rate)} · {moneyEur(product.price_usd)}
+              {formatBolivars(product.price_usd, rate)}
             </p>
           </div>
           {/* "Ver detalles" navega a la página real (crawlable) en lugar de

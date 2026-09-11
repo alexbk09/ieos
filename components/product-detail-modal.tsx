@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
 import { ProductCarousel } from '@/components/product-carousel'
 import { RichDescription } from '@/components/rich-description'
-import { categoryFor, colorImagesFor, type CardProduct } from '@/components/product-card'
+import { categoryFor, colorImagesFor, isAffiliateProduct, type CardProduct } from '@/components/product-card'
 import { trackProductView } from '@/lib/analytics-client'
-import { formatBolivars, moneyEur, moneyUsd, formatRate } from '@/lib/currency'
+import { formatBolivars, moneyUsd, moneyForProduct, formatRate } from '@/lib/currency'
 import { toGrams, formatWeight } from '@/lib/price-calculator'
 
 /**
@@ -290,10 +290,11 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
 
             <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
               <div>
-                {/* Precio por línea (peso calculado o cantidad × unitario) */}
-                <p className="text-3xl font-semibold">{moneyUsd(displayPrice)}</p>
-                {/* Precio en Bs (tasa oficial) + EUR real del producto importado. */}
-                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} · {moneyEur(displayPrice)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
+                {/* Precio por línea (peso calculado o cantidad × unitario).
+                    Moneda REAL: € para afiliados (precio de AliExpress), $ locales. */}
+                <p className="text-3xl font-semibold">{moneyForProduct(displayPrice, isAffiliateProduct(product))}</p>
+                {/* Referencia en bolívares (tasa oficial USD→Bs). */}
+                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} <span className="text-xs text-slate-400">· tasa {formatRate(rate)}</span></p>
                 {isWeight && (
                   <p className="mt-1 text-xs text-slate-400">
                     {formatWeight(grams)} · {moneyUsd(perGramPrice)}/g

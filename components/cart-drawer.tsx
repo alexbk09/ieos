@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUpRight, Minus, Plus, ShieldCheck, X } from 'lucide-react'
-import { formatBolivars, formatRate, moneyUsd } from '@/lib/currency'
+import { formatBolivars, formatRate, moneyForProduct } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
 
@@ -29,6 +29,17 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
   hasNonAffiliate?: boolean
 }) {
   if (!open) return null
+
+  /**
+   * TRUE si el ítem es de afiliado → su precio está en EUR (AliExpress).
+   * Se usa para rotular el precio con la moneda correcta (€ en vez de $).
+   */
+  function esItemAfiliado(item: CartItem): boolean {
+    return Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store)
+  }
+
+  /** El total solo se rotula en EUR si TODOS los ítems son de afiliado. */
+  const totalEsAfiliado = cart.length > 0 && cart.every(esItemAfiliado)
 
   /** Precio por línea según el tipo (peso o unidad). */
   function lineAmount(item: CartItem): number {
@@ -83,9 +94,9 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
                 )}
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {item.pricing_type === 'weight'
-                    ? `${moneyUsd(Number(item.price_per_gram_usd) || 0)} /g`
-                    : moneyUsd(item.price_usd)}
-                  {' · '}{moneyUsd(lineAmount(item))} <span className="opacity-60">(ref)</span>
+                    ? `${moneyForProduct(Number(item.price_per_gram_usd) || 0, esItemAfiliado(item))} /g`
+                    : moneyForProduct(item.price_usd, esItemAfiliado(item))}
+                  {' · '}{moneyForProduct(lineAmount(item), esItemAfiliado(item))} <span className="opacity-60">(ref)</span>
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <button onClick={() => onChange(item.cartItemId, -1)} className="grid size-6 place-items-center rounded-full border border-border"><Minus size={12} /></button>
@@ -105,7 +116,7 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
               <p className="text-xs text-muted-foreground/70">El cobro final lo hace AliExpress/Amazon en USD.</p>
             </div>
             <div className="text-right">
-              <p className="font-semibold">{moneyUsd(total)}</p>
+              <p className="font-semibold">{moneyForProduct(total, totalEsAfiliado)}</p>
               <p className="text-xs text-muted-foreground">{formatBolivars(total, exchangeRate)} · tasa {formatRate(exchangeRate)}</p>
             </div>
           </div>

@@ -11,6 +11,7 @@ import { existeTituloSimilar } from '@/services/seoDedupe'
 import { generateHubContent } from '@/services/seo-hub'
 import { getCategorySeo, updateCategorySeo, slugify } from '@/services/catalog'
 import { traducirResenas } from '@/services/aliReviews'
+import { extraerMarcaYSpecs } from '@/services/aliMeta'
 import { espejarImagenesExternas } from '@/services/aliImages'
 // Traducción del nicho (idiomas soportados) hacia categories.*_i18n.
 import { traducirCategoria } from '@/services/i18n-translate'
@@ -159,7 +160,19 @@ async function procesarUnProducto(params: {
     // trae el campo brand; si no, usamos la marca que detectó el scraper en el
     // HTML (runParams/DOM). Se resuelve/crea en la tabla `marcas` para que el
     // producto quede filtrable por marca en el catálogo público.
-    const marcaNombre = params.marcaApi || dataScraper?.marca || null
+    // Marca y especificaciones REALES derivadas del título de fábrica.
+    // POR QUÉ: la API oficial NO expone marca (`brand` = 0/20) ni specs
+    // (`product_props` ausente), y el HTML público ya no las sirve
+    // (`window.runParams = { }`). El título sí es una fuente real: la IA solo
+    // extrae lo que aparece LITERALMENTE en él (ver services/aliMeta.ts).
+    const metaTitulo = await extraerMarcaYSpecs(params.tituloFabrica || '')
+    const metaData = metaTitulo.success
+      ? metaTitulo.data
+      : { marca: null, specs: {} as Record<string, string> }
+
+    // Marca: API oficial → scraper → título (derivada por IA). Se resuelve/crea
+    // en `marcas` para que el producto sea filtrable por marca en el catálogo.
+    const marcaNombre = params.marcaApi || dataScraper?.marca || metaData.marca || null
     const marcaResuelta = await obtenerMarcaAliExpress(marcaNombre)
     // Si resolver la marca falla (red/DB), NO abortamos el producto: se guarda
     // sin marca (marca_id null) y se registra el fallo en consola.
@@ -186,7 +199,9 @@ async function procesarUnProducto(params: {
     // del producto. El scraper puede devolver un titulo generico ("Aliexpress")
     // o fallar, asi que SOLO usamos el del scraper si la API no trae titulo.
     const tituloFinal = params.tituloFabrica || dataScraper?.titulo_original || ''
-    const specsFinal = dataScraper?.metadatos_fisicos ?? {}
+    // Specs: se combinan las DERIVADAS del título (IA) con las del scraper
+    // (si alguna vez las trae); las del scraper tienen prioridad por ser exactas.
+    const specsFinal = { ...metaData.specs, ...(dataScraper?.metadatos_fisicos ?? {}) }
     // Galeria: si el scraper no logro extraer imagenes (AliExpress bloquea
     // proxies), usamos la imagen principal que ya trae la API oficial.
     const imagenesScraper = dataScraper?.galeria_imagenes ?? []
