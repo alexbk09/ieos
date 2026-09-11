@@ -19,6 +19,12 @@ export const SOURCE_LOCALE: string
 /** Etiqueta hreflang de la versión por defecto. */
 export const HREFLANG_X_DEFAULT: string
 
+/** Nombre en inglés de cada idioma (instrucciones del LLM). */
+export const LOCALE_LLM_NAMES: Record<string, string>
+
+/** Devuelve el nombre en inglés del idioma (para prompts del LLM). */
+export function localeLlmName(code: string | null | undefined): string
+
 /**
  * Idiomas PUBLICADOS (live): solo estos generan rutas, hreflang y sitemap.
  * Subconjunto de SUPPORTED_LOCALES; debe incluir DEFAULT_LOCALE.

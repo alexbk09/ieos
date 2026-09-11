@@ -1,11 +1,16 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { createPublicClient } from '@/lib/supabase/public'
+// Localización de los textos de producto/categoría devueltos al asistente.
+import { resolveProductTranslations, resolveLocalizedValue } from '@/lib/i18n-content'
+import { localeLlmName } from '@/lib/i18n-config'
 import {
   AGENT_BRAND_NAME,
   AGENT_MAX_CATEGORY_RESULTS,
   AGENT_MAX_PRODUCT_RESULTS,
   AGENT_MIN_QUERY_LENGTH,
+  DEFAULT_LOCALE,
+  SOURCE_LOCALE,
 } from '@/lib/constants'
 
 /** Envuelve una promesa sin esperarla: tracking fire-and-forget del agente. */
@@ -41,14 +46,17 @@ function trackAgentSearchInBackground(query: string, productIds: string[], resul
  */
 
 const AGENT_PRODUCT_SELECT =
-  'id,name,slug,description,price_usd,stock,image_url,colors,pricing_type,' +
+  'id,name,slug,description,titulo_seo,translations,price_usd,stock,image_url,colors,pricing_type,' +
   'price_per_kilo_usd,price_per_gram_usd,stock_grams,min_order_grams,unit_label,' +
   'bulk_discount_percent,category_id,featured,specifications,' +
   'url_afiliado_ali,url_afiliado_amazon,url_afiliado_store,' +
-  'product_categories(categories(id,name,slug)),product_images(id,url,alt_text,sort_order,color_name)'
+  'product_categories(categories(id,name,slug,name_i18n,slug_i18n)),product_images(id,url,alt_text,sort_order,color_name)'
 
 /** Proyeccion ligera de categorias para orientar al cliente por tema. */
-const AGENT_CATEGORY_SELECT = 'id,name,slug,description'
+const AGENT_CATEGORY_SELECT = 'id,name,slug,description,name_i18n,slug_i18n'
+
+/** Opciones de resolución i18n (fuente única: lib/constants.ts). */
+const I18N_RESOLVE_OPTIONS = { sourceLocale: SOURCE_LOCALE, defaultLocale: DEFAULT_LOCALE }
 
 /**
  * Prompt del sistema: define el ALCANCE del asistente.
@@ -57,7 +65,11 @@ const AGENT_CATEGORY_SELECT = 'id,name,slug,description'
  * frase y se reconduce al catalogo: se logra instruyendo el modelo, sin
  * listas negras fragiles de palabras.
  */
-export const AGENT_SYSTEM_PROMPT = [
+export function buildAgentSystemPrompt(locale: string) {
+  // Idioma de respuesta = idioma activo del sitio. El prompt (alcance) es fijo;
+  // solo cambia la instrucción final de idioma.
+  const language = localeLlmName(locale)
+  return [
   `Eres el asistente oficial de ${AGENT_BRAND_NAME}, una tienda que recomienda productos y cierra la compra como afiliado en AliExpress/Amazon.`,
   'ALCANCE PERMITIDO (solo puedes responder sobre esto):',
   '1) Productos del catalogo: caracteristicas, precios, stock, colores y disponibilidad.',
@@ -69,14 +81,25 @@ export const AGENT_SYSTEM_PROMPT = [
   'Si un producto no tiene enlace de afiliado, dilo con claridad y ofrece alternativas del catalogo.',
   'Para agregar al carrito, espera la confirmacion del cliente y pregunta cantidad y color.',
   'Si el producto es por peso (pricing_type=weight), confirma gramos o kilos y respeta min_order_grams.',
-  'Responde en espanol, breve (2 a 4 frases), con tono cercano y profesional.',
-].join(' ')
+  `IDIOMA: responde SIEMPRE en ${language} (el idioma del visitante), breve (2 a 4 frases), con tono cercano y profesional.`,
+  ].join(' ')
+}
+
+/** Prompt del sistema en el idioma por defecto (compatibilidad / uso directo). */
+export const AGENT_SYSTEM_PROMPT = buildAgentSystemPrompt(DEFAULT_LOCALE)
 
 /** Mapea una fila de products al snapshot que el frontend necesita para el carrito. */
-function toCartProduct(p: any) {
+function toCartProduct(p: any, locale: string) {
+  // Textos del idioma activo (con fallback al idioma raíz).
+  const { name } = resolveProductTranslations(
+    p.translations,
+    { name: p.name, titulo_seo: p.titulo_seo },
+    locale,
+    I18N_RESOLVE_OPTIONS,
+  )
   return {
     id: p.id,
-    name: p.name,
+    name: name || p.name,
     slug: p.slug,
     description: p.description,
     price_usd: Number(p.price_usd),
@@ -99,12 +122,20 @@ function toCartProduct(p: any) {
     url_afiliado_amazon: p.url_afiliado_amazon ?? null,
     url_afiliado_store: p.url_afiliado_store ?? null,
     has_affiliate_link: Boolean(p.url_afiliado_ali || p.url_afiliado_amazon || p.url_afiliado_store),
-    categories: (p.product_categories ?? []).map((pc: any) => pc.categories).filter(Boolean),
+    categories: (p.product_categories ?? [])
+      .map((pc: any) => pc.categories)
+      .filter(Boolean)
+      .map((c: any) => ({
+        id: c.id,
+        name: resolveLocalizedValue(c.name_i18n, locale, I18N_RESOLVE_OPTIONS) || c.name,
+        slug: resolveLocalizedValue(c.slug_i18n, locale, I18N_RESOLVE_OPTIONS) || c.slug,
+      })),
     images: p.product_images ?? [],
   }
 }
 
-export const buscarProductosTool = tool({
+export function createBuscarProductosTool(locale: string) {
+  return tool({
   description:
     `Busca productos reales del catalogo ${AGENT_BRAND_NAME} por texto libre y/o por categoria. ` +
     'Devuelve el snapshot completo (precio, stock, colores y enlace de afiliado) ' +
@@ -157,7 +188,7 @@ export const buscarProductosTool = tool({
         trackAgentSearchInBackground(term || catSlug, [], 0)
         return { ok: true, products: [] }
       }
-      const products = (data as any[]).map(toCartProduct)
+      const products = (data as any[]).map((p) => toCartProduct(p, locale))
       // Analitica: registra la busqueda y que productos mostro la IA al cliente.
       trackAgentSearchInBackground(term || catSlug, products.map((p) => p.id), products.length)
       return { ok: true, products }
@@ -165,9 +196,11 @@ export const buscarProductosTool = tool({
       return { ok: false, error: 'Error interno consultando el catalogo' }
     }
   },
-})
+  })
+}
 
-export const buscarCategoriasTool = tool({
+export function createBuscarCategoriasTool(locale: string) {
+  return tool({
   description:
     `Lista o busca las categorias reales del catalogo ${AGENT_BRAND_NAME}. Usala para ` +
     'orientar al cliente por tema y luego buscar productos con su slug.',
@@ -187,8 +220,8 @@ export const buscarCategoriasTool = tool({
       if (error) return { ok: false, error: 'No pudimos consultar las categorias' }
       const categories = (data ?? []).map((c: any) => ({
         id: c.id,
-        name: c.name,
-        slug: c.slug,
+        name: resolveLocalizedValue(c.name_i18n, locale, I18N_RESOLVE_OPTIONS) || c.name,
+        slug: resolveLocalizedValue(c.slug_i18n, locale, I18N_RESOLVE_OPTIONS) || c.slug,
         description: c.description ?? null,
       }))
       // Analitica: la busqueda por categorias tambien cuenta como busqueda del agente.
@@ -198,7 +231,8 @@ export const buscarCategoriasTool = tool({
       return { ok: false, error: 'Error interno consultando las categorias' }
     }
   },
-})
+  })
+}
 
 export const agregarAlCarritoSchema = z.object({
   productId: z.string().describe('ID del producto (UUID) aprobado por el cliente'),
@@ -213,8 +247,15 @@ export const agregarAlCarritoTool = tool({
   parameters: agregarAlCarritoSchema,
 })
 
-export const AGENT_TOOLS = {
-  buscarProductos: buscarProductosTool,
-  buscarCategorias: buscarCategoriasTool,
-  agregarAlCarrito: agregarAlCarritoTool,
+/**
+ * Crea el juego de tools del asistente para un idioma concreto.
+ * Se instancian POR PETICIÓN para que los nombres de producto y categoría se
+ * devuelvan en el idioma activo del visitante (SEO/UX coherentes).
+ */
+export function createAgentTools(locale: string) {
+  return {
+    buscarProductos: createBuscarProductosTool(locale),
+    buscarCategorias: createBuscarCategoriasTool(locale),
+    agregarAlCarrito: agregarAlCarritoTool,
+  }
 }

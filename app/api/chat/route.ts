@@ -1,7 +1,8 @@
 import { streamText, convertToCoreMessages } from 'ai'
-import { AGENT_SYSTEM_PROMPT, AGENT_TOOLS } from '@/services/agent'
+import { buildAgentSystemPrompt, createAgentTools } from '@/services/agent'
 import { createDeepSeekProvider, DEEPSEEK_CHAT_MODEL } from '@/services/ai-provider'
 import { AGENT_MAX_STEPS, AGENT_TEMPERATURE } from '@/lib/constants'
+import { isPublishedLocale, DEFAULT_LOCALE } from '@/lib/i18n-config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -11,17 +12,20 @@ const provider = createDeepSeekProvider()
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json()
+    const { messages, locale: rawLocale } = await req.json()
     if (!Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'messages requerido' }), { status: 400 })
     }
+    // Idioma del visitante: define el idioma de RESPUESTA y el de los nombres de
+    // producto/categoría que devuelven las tools. Solo se aceptan idiomas publicados.
+    const locale = isPublishedLocale(rawLocale) ? String(rawLocale) : DEFAULT_LOCALE
     // El asistente SOLO atiende temas de la tienda: catalogo, categorias y
-    // compras por afiliados (AliExpress/Amazon). El alcance lo impone AGENT_SYSTEM_PROMPT.
+    // compras por afiliados (AliExpress/Amazon). El alcance lo impone el prompt.
     const result = streamText({
       model: provider(DEEPSEEK_CHAT_MODEL),
-      system: AGENT_SYSTEM_PROMPT,
+      system: buildAgentSystemPrompt(locale),
       messages: convertToCoreMessages(messages),
-      tools: AGENT_TOOLS,
+      tools: createAgentTools(locale),
       temperature: AGENT_TEMPERATURE,
       maxSteps: AGENT_MAX_STEPS,
     })

@@ -22,15 +22,13 @@ import { moneyEur, moneyUsd } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
 import { trackAffiliateClick } from '@/lib/analytics-client'
 import { AGENT_BRAND_NAME, AGENT_CATEGORY_PATH_PREFIX, AGENT_MAX_STEPS } from '@/lib/constants'
+import { useLocale } from '@/components/i18n-provider'
+import { useTranslations } from '@/hooks/use-translations'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
 
 
-/** Sugerencias iniciales: SOLO temas de la tienda (catálogo, categorías y compra por afiliado). */
-const SUGGESTIONS = [
-  '¿Qué categorías venden?',
-  'Busca un panel LED',
-  '¿Cómo compro por AliExpress?',
-  'Recomienda algo para un escritorio',
-]
+/** Claves i18n de las sugerencias iniciales (SOLO temas de la tienda). */
+const SUGGESTION_KEYS = ['agent.suggest1', 'agent.suggest2', 'agent.suggest3', 'agent.suggest4']
 
 /** Snapshot del producto tal cual lo devuelve buscarProductos (mismo shape CartProduct). */
 type AgentProduct = {
@@ -77,6 +75,7 @@ function bestAffiliateUrl(prod: AgentProduct): string | null {
  * servicio del agente (services/agent.ts) y no consulta Supabase.
  */
 function AgentProductCard({ prod, onBuy }: { prod: AgentProduct; onBuy: (productId: string, url: string) => void }) {
+  const t = useTranslations()
   const affiliateUrl = bestAffiliateUrl(prod)
   const market = marketplaceForUrl(affiliateUrl)
   const isWeight = prod.pricing_type === 'weight'
@@ -100,7 +99,7 @@ function AgentProductCard({ prod, onBuy }: { prod: AgentProduct; onBuy: (product
               ? `${moneyUsd(Number(prod.price_per_kilo_usd ?? 0))}/kg · mín ${Number(prod.min_order_grams ?? 0)} g`
               : `${moneyUsd(Number(prod.price_usd))} · ${moneyEur(Number(prod.price_usd))}`}
           </p>
-          <p className="text-[10px] text-muted-foreground">Stock: {prod.stock}</p>
+          <p className="text-[10px] text-muted-foreground">{t('agent.stock')}: {prod.stock}</p>
         </div>
       </div>
       {affiliateUrl ? (
@@ -109,10 +108,10 @@ function AgentProductCard({ prod, onBuy }: { prod: AgentProduct; onBuy: (product
           onClick={() => onBuy(prod.id, affiliateUrl)}
           className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-[11px] font-semibold text-navy-foreground transition hover:bg-brand hover:text-brand-foreground"
         >
-          <ExternalLink size={12} /> Comprar en {market.shortLabel}
+          <ExternalLink size={12} /> {t('agent.buyOn', { market: market.shortLabel })}
         </button>
       ) : (
-        <p className="text-[10px] text-amber-600 dark:text-amber-400">Sin enlace de afiliado todavía.</p>
+        <p className="text-[10px] text-amber-600 dark:text-amber-400">{t('agent.noAffiliate')}</p>
       )}
     </div>
   )
@@ -120,12 +119,14 @@ function AgentProductCard({ prod, onBuy }: { prod: AgentProduct; onBuy: (product
 
 /** Chips de categorías navegables (/categoria/[slug]) devueltas por buscarCategorias. */
 function AgentCategoryChips({ categories }: { categories: AgentCategory[] }) {
+  // Enlaces internos en el idioma activo (mismo grafo de idiomas del sitio).
+  const localizedPath = useLocalizedPath()
   return (
     <div className="flex flex-wrap gap-2">
       {categories.map((c) => (
         <a
           key={c.id}
-          href={`${AGENT_CATEGORY_PATH_PREFIX}${c.slug}`}
+          href={localizedPath(`${AGENT_CATEGORY_PATH_PREFIX}${c.slug}`)}
           className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-brand hover:text-brand-strong"
         >
           <Layers size={12} /> {c.name}
@@ -176,18 +177,23 @@ type AddArgs = { productId?: string; quantity?: number; unit?: string; colorName
 
 export function AgentChat() {
   const [open, setOpen] = useState(false)
+  // Idioma activo de la página: se envía a /api/chat para responder y devolver
+  // los nombres de producto/categoría en el idioma del visitante.
+  const locale = useLocale()
+  const t = useTranslations()
   // Cache en ref de los productos vistos en la conversacion (resultado de buscarProductos).
   const cacheRef = useRef<Map<string, AgentProduct>>(new Map())
 
   const { messages, input, setInput, handleSubmit, setMessages, status, error } = useChat({
     api: '/api/chat',
+    body: { locale },
     maxSteps: AGENT_MAX_STEPS,
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === 'agregarAlCarrito') {
         const args = (toolCall.args ?? {}) as AddArgs
         const prod = args.productId ? cacheRef.current.get(args.productId) : undefined
         if (!args.productId || !prod) {
-          return { ok: false, error: 'Producto no encontrado en esta conversacion. Busquemos de nuevo.' }
+          return { ok: false, error: t('agent.notFound') }
         }
         emitAddToCart({
           product: toCartProductR(prod),
@@ -198,7 +204,7 @@ export function AgentChat() {
         return { ok: true }
       }
       const qargs = (toolCall.args ?? {}) as { query?: string }
-      return { ok: false, error: 'Herramienta desconocida: ' + (qargs.query ?? toolCall.toolName) }
+      return { ok: false, error: t('agent.unknownTool', { name: qargs.query ?? toolCall.toolName }) }
     },
   })
 
@@ -257,23 +263,23 @@ export function AgentChat() {
                 <Sparkles size={17} />
               </span>
               <div>
-                <p className="text-sm font-semibold">Asistente {AGENT_BRAND_NAME}</p>
-                <p className="text-xs text-navy-muted">Productos, categorías y afiliados</p>
+                <p className="text-sm font-semibold">{t('agent.title', { brand: AGENT_BRAND_NAME })}</p>
+                <p className="text-xs text-navy-muted">{t('agent.subtitle')}</p>
               </div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="Cerrar"><X size={18} /></button>
+            <button onClick={() => setOpen(false)} aria-label={t('common.close')}><X size={18} /></button>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
             {messages.length === 0 && (
               <div className="grid gap-3 pt-4">
                 <p className="text-sm leading-6 text-muted-foreground">
-                  {`Hola, soy el asistente de ${AGENT_BRAND_NAME}. Te ayudo a encontrar productos y categorías y a resolver dudas de tus compras por afiliados (AliExpress/Amazon). Si preguntas algo fuera de la tienda, no podré ayudarte.`}
+                  {t('agent.greeting', { brand: AGENT_BRAND_NAME })}
                 </p>
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => setInput(s)}
+                {SUGGESTION_KEYS.map((key) => (
+                  <button key={key} onClick={() => setInput(t(key))}
                     className="rounded-full border border-border px-4 py-2 text-left text-xs text-muted-foreground transition-colors hover:border-brand hover:text-brand-strong">
-                    {s}
+                    {t(key)}
                   </button>
                 ))}
               </div>
@@ -298,11 +304,11 @@ export function AgentChat() {
                         if (ti.toolName === 'buscarCategorias') {
                           const res = ti.state === 'result' ? (ti.result as { ok?: boolean; error?: string; categories?: AgentCategory[] } | undefined) : undefined
                           const cats = res?.ok ? (res.categories ?? []) : []
-                          const catError = ti.state === 'result' && !res?.ok ? (res?.error ?? 'Error consultando las categorías') : null
+                          const catError = ti.state === 'result' && !res?.ok ? (res?.error ?? t('agent.errorCategories')) : null
                           return (
                             <div key={idx} className="mt-2 grid gap-2">
                               <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-strong">
-                                {ti.state === 'call' ? 'Buscando categorías...' : catError ? 'No se pudo consultar' : cats.length > 0 ? 'Categorías disponibles:' : 'Sin categorías para esa búsqueda'}
+                                {ti.state === 'call' ? t('agent.searchingCategories') : catError ? t('agent.consultError') : cats.length > 0 ? t('agent.categoriesAvailable') : t('agent.noCategoryResults')}
                               </p>
                               {catError && (
                                 <p className="text-[11px] font-medium text-red-500">{catError}</p>
@@ -314,15 +320,15 @@ export function AgentChat() {
                         if (ti.toolName === 'buscarProductos') {
                           const res = ti.state === 'result' ? (ti.result as { ok?: boolean; error?: string; products?: AgentProduct[] } | undefined) : undefined
                           const items = res?.ok ? (res.products ?? []) : []
-                          const toolError = ti.state === 'result' && !res?.ok ? (res?.error ?? 'Error consultando el catalogo') : null
+                          const toolError = ti.state === 'result' && !res?.ok ? (res?.error ?? t('agent.errorProducts')) : null
                           return (
                             <div key={idx} className="mt-2 grid gap-2">
                               <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-strong">
-                                {ti.state === 'call' ? 'Buscando productos...' : toolError ? 'No se pudo consultar' : items.length > 0 ? 'Estas opciones están disponibles:' : 'Sin resultados para esa búsqueda'}
+                                {ti.state === 'call' ? t('agent.searchingProducts') : toolError ? t('agent.consultError') : items.length > 0 ? t('agent.resultsAvailable') : t('agent.noResults')}
                               </p>
                               {ti.state === 'call' && (
                                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <LoaderCircle size={13} className="animate-spin" /> Consultando...
+                                  <LoaderCircle size={13} className="animate-spin" /> {t('agent.consulting')}
                                 </span>
                               )}
                               {toolError && (
@@ -344,7 +350,7 @@ export function AgentChat() {
                           return (
                             <div key={idx} className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-500/30 dark:bg-emerald-500/10">
                               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                                {ti.state === 'call' ? 'Agregando al carrito...' : done ? 'Producto agregado a tu solicitud' : 'No se pudo agregar'}
+                                {ti.state === 'call' ? t('agent.adding') : done ? t('agent.added') : t('agent.addFailed')}
                               </p>
                             </div>
                           )
@@ -360,7 +366,7 @@ export function AgentChat() {
             {isStreaming && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="grid size-6 place-items-center rounded-full bg-brand/10 text-brand-strong"><Bot size={13} /></span>
-                {status === 'submitted' ? 'Enviando...' : 'Pensando...'}
+                {status === 'submitted' ? t('agent.sending') : t('agent.thinking')}
               </div>
             )}
 
@@ -368,17 +374,17 @@ export function AgentChat() {
               <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-3">
                 <p className="flex items-center gap-2 text-xs font-semibold">
                   <ShoppingBag size={14} className="text-brand-strong" />
-                  Agregar al carrito?
+                  {t('agent.addToCartQuestion')}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {cacheRef.current.get(pendingAddArgs.productId ?? '')?.name ?? 'Producto'} · Cant {pendingAddArgs.quantity ?? '1'} {pendingAddArgs.unit ?? ''}
+                  {cacheRef.current.get(pendingAddArgs.productId ?? '')?.name ?? t('agent.productFallback')} · {t('agent.qtyShort')} {pendingAddArgs.quantity ?? '1'} {pendingAddArgs.unit ?? ''}
                 </p>
               </div>
             )}
 
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
-                Ocurrio un error. Intenta de nuevo.
+                {t('agent.genericError')}
               </div>
             )}
             <div ref={bottomRef} />
@@ -388,11 +394,11 @@ export function AgentChat() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ej: busca paneles LED o pregúntame por AliExpress"
+              placeholder={t('agent.placeholder')}
               className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand disabled:opacity-50"
               disabled={isStreaming}
             />
-            <button type="submit" disabled={isStreaming || !input.trim()} aria-label="Enviar"
+            <button type="submit" disabled={isStreaming || !input.trim()} aria-label={t('agent.send')}
               className="grid size-10 place-items-center rounded-full bg-brand text-brand-foreground transition-colors hover:bg-brand-strong disabled:pointer-events-none disabled:opacity-50">
               {isStreaming ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
             </button>
@@ -402,7 +408,7 @@ export function AgentChat() {
 
       <button onClick={() => setOpen((o) => !o)}
         className="grid size-14 place-items-center rounded-full bg-brand text-brand-foreground shadow-lg shadow-brand/30 transition-transform hover:scale-105"
-        aria-label={open ? 'Cerrar asistente' : 'Abrir asistente de compra'}>
+        aria-label={open ? t('agent.closeAssistant') : t('agent.open')}>
         {open ? <X size={22} /> : <Sparkles size={22} />}
       </button>
     </div>
