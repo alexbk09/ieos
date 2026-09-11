@@ -10,11 +10,19 @@ import { generateSeoContent } from '@/services/seo-content'
 import { existeTituloSimilar } from '@/services/seoDedupe'
 import { generateHubContent } from '@/services/seo-hub'
 import { getCategorySeo, updateCategorySeo, slugify } from '@/services/catalog'
+import { traducirResenas } from '@/services/aliReviews'
+import { espejarImagenesExternas } from '@/services/aliImages'
 // Traducción del nicho (idiomas soportados) hacia categories.*_i18n.
 import { traducirCategoria } from '@/services/i18n-translate'
 import type { SeoFaqItem } from '@/lib/seo-types'
-import type { ProductInput } from '@/services/catalog'
-import { ALI_PIPELINE_MAX_PRODUCTS } from '@/lib/constants'
+import type { ProductInput, ProductReview } from '@/services/catalog'
+import { parsearValoracion } from '@/lib/reviews'
+import {
+  ALI_PIPELINE_MAX_PRODUCTS,
+  AFFILIATE_DEFAULT_STOCK,
+  AFFILIATE_COST_RATIO,
+  MIRROR_AFFILIATE_IMAGES,
+} from '@/lib/constants'
 
 /**
  * Pipeline maestro de automatizacion AliExpress (Fase 2.2).
@@ -67,6 +75,14 @@ function construirProductInput(params: {
   seoFaq: SeoFaqItem[]
   /** Palabras clave long-tail objetivo. */
   seoKeywords: string[]
+  /** Valoración media real en escala 0-5 (migración 0052). */
+  ratingAverage: number | null
+  /** Número de valoraciones reales (migración 0052). */
+  ratingCount: number | null
+  /** Origen de la valoración (ej: 'aliexpress'). */
+  ratingSource: string | null
+  /** Reseñas reales traducidas (migración 0052). */
+  reviews: ProductReview[]
 }): ProductInput {
   const colores = [...new Set(params.imagenes.map((i) => i.color).filter(Boolean) as string[])]
   const imagenesGenerales = params.imagenes.filter((i) => !i.color).map((i) => i.url)
@@ -80,8 +96,8 @@ function construirProductInput(params: {
     description: params.descripcionHtml,
     price_usd: Number(params.precioMinimo) || 0,
     precio_original: params.precioMaximo ?? null,
-    stock: 50,
-    costo_inicial: (Number(params.precioMinimo) || 0) * 0.5,
+    stock: AFFILIATE_DEFAULT_STOCK,
+    costo_inicial: (Number(params.precioMinimo) || 0) * AFFILIATE_COST_RATIO,
     category_ids: [params.categoriaId],
     marca_id: params.marcaId ?? null,
     images: imagenesGenerales,
@@ -98,6 +114,11 @@ function construirProductInput(params: {
     // Contenido SEO estructurado generado por DeepSeek (0047).
     seo_faq: params.seoFaq,
     seo_keywords: params.seoKeywords,
+    // Valoraciones y opiniones reales (0052): dan "peso" SEO a la ficha.
+    rating_average: params.ratingAverage,
+    rating_count: params.ratingCount,
+    rating_source: params.ratingSource,
+    reviews: params.reviews,
   }
 }
 
@@ -120,6 +141,10 @@ async function procesarUnProducto(params: {
   promotionLink?: string | null
   /** Marca detectada por la API oficial (fuente autoritativa si viene). */
   marcaApi?: string | null
+  /** Valoración positiva cruda de la API oficial (ej: "97.6%"). */
+  ratingApiPorcentaje?: string | null
+  /** Número de valoraciones real reportado por la API oficial. */
+  ratingApiCount?: number | null
   /** Keyword del nicho (orienta el título SEO y el anti-duplicado). */
   keyword?: string
 }): Promise<{ data?: { slug?: string; id?: string }; error?: string }> {
@@ -165,12 +190,18 @@ async function procesarUnProducto(params: {
     // Galeria: si el scraper no logro extraer imagenes (AliExpress bloquea
     // proxies), usamos la imagen principal que ya trae la API oficial.
     const imagenesScraper = dataScraper?.galeria_imagenes ?? []
-    const imagenesFinal =
+    const imagenesCrudas =
       imagenesScraper.length > 0
         ? imagenesScraper
         : params.imagenPrincipal
           ? [{ color: null, url: params.imagenPrincipal }]
           : []
+    // Espejado opcional al storage propio: convierte las imágenes del CDN ajeno
+    // en URLs de nuestro dominio (necesarias para el sitemap de imágenes). Se
+    // controla con MIRROR_AFFILIATE_IMAGES para no disparar coste por defecto.
+    const imagenesFinal = MIRROR_AFFILIATE_IMAGES
+      ? await espejarImagenesExternas(imagenesCrudas)
+      : imagenesCrudas
 
     // 2) Enlace de afiliado oficial con tracking ID.
     // La API `product.query` ya devuelve el promotion_link listo por producto
@@ -189,6 +220,19 @@ async function procesarUnProducto(params: {
     if (!enlaceLargo) {
       return { error: 'No se obtuvo un enlace de afiliado para este producto.' }
     }
+
+    // 2.5) Valoraciones y opiniones reales (Fase 2.3).
+    // La API oficial es la fuente AUTORITATIVA de la valoración (porcentaje
+    // positivo); el scraper solo aporta las reseñas textuales. Nunca se
+    // inventan datos: si no hay valoración/reseñas, quedan en null/[].
+    const valoracionCruda = params.ratingApiPorcentaje ?? dataScraper?.valoracion ?? null
+    const valoracion = parsearValoracion(valoracionCruda)
+    const resenasTraducidas = await traducirResenas(dataScraper?.resenas ?? [])
+    if (!resenasTraducidas.success) {
+      // Un fallo de traducción NO aborta el producto: se guarda sin reseñas.
+      console.error('[aliPipeline] reseñas:', resenasTraducidas.error)
+    }
+    const resenas: ProductReview[] = resenasTraducidas.success ? resenasTraducidas.data : []
 
     // 3) Cerebro SEO: DeepSeek traduce el titulo y genera HTML + FAQ + keywords.
     // Anti-duplicado: si ya hay un producto con título similar, se le pasan al
@@ -228,6 +272,11 @@ async function procesarUnProducto(params: {
       // Contenido SEO estructurado (schema FAQPage + enlazado interno).
       seoFaq: seo.data.faq,
       seoKeywords: seo.data.keywords,
+      // Valoraciones y opiniones reales (schema AggregateRating + sección Opiniones).
+      ratingAverage: valoracion ? valoracion.escala05 : null,
+      ratingCount: params.ratingApiCount ?? null,
+      ratingSource: valoracion ? 'aliexpress' : null,
+      reviews: resenas,
     })
 
     // 5) Persistencia final en Supabase.
@@ -380,6 +429,9 @@ export async function ejecutarPipelineAutomatizacion(
         promotionLink: itemProducto.promotion_link,
         // Marca detectada por la API oficial (fuente autoritativa si viene).
         marcaApi: itemProducto.marca,
+        // Valoración real reportada por la API oficial (schema AggregateRating).
+        ratingApiPorcentaje: itemProducto.rating_porcentaje,
+        ratingApiCount: itemProducto.rating_count,
         // Keyword del nicho (orienta título SEO + anti-duplicado).
         keyword: palabra,
       })

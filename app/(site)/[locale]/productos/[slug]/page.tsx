@@ -84,6 +84,15 @@ function toDetailProduct(product: NonNullable<Awaited<ReturnType<typeof getPubli
       color_name: img.color_name ?? null,
     })),
     marca: product.marca ?? null,
+    // Valoraciones y opiniones reales (migración 0052).
+    rating_average: product.rating_average ?? null,
+    rating_count: product.rating_count ?? null,
+    reviews: (product.reviews ?? []).map((r) => ({
+      autor: r.autor,
+      valoracion: r.valoracion,
+      texto: r.texto,
+      fecha: r.fecha,
+    })),
   }
 }
 
@@ -244,6 +253,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       categories: product.categories ?? [],
       marca: product.marca ?? null,
       images: product.images ?? [],
+      // Valoraciones reales: habilitan el AggregateRating del schema.
+      rating_average: product.rating_average ?? null,
+      rating_count: product.rating_count ?? null,
     },
     origin: schemaOrigin,
     organization: { name: settings.company_name || 'ilumaX', url: schemaOrigin },

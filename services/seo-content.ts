@@ -62,7 +62,8 @@ const SYSTEM_PROMPT =
   'REGLAS OBLIGATORIAS: ' +
   '1) "titulo_seo" de ' + SEO_TITLE_MIN_LENGTH + '-' + SEO_TITLE_MAX_LENGTH + ' caracteres que combine marca (si existe) + beneficio principal + tipo de producto + la keyword objetivo. Debe ser llamativo, especifico y distinto entre productos. ' +
   '2) "slug" de 3-8 palabras en minusculas separadas por guiones, sin numeros ni palabras vacias. ' +
-  '3) "descripcion_html" SOLO con <h2>,<h3>,<p>,<ul>,<li>,<strong>: incluye <h2>' + SECCION_1 + '</h2> con bullets, <h2>' + SECCION_2 + '</h2> con 3 preguntas en <h3> y su respuesta en <p>, y si hay datos fisicos <h2>' + SEO_OPTIONAL_SPECS_SECTION + '</h2>. PROHIBIDO usar <h1>. ' +
+  '3) "descripcion_html" SOLO con <h2>,<h3>,<p>,<ul>,<li>,<strong>: incluye <h2>' + SECCION_1 + '</h2> con bullets y <h2>' + SECCION_2 + '</h2> con 3 preguntas en <h3> y su respuesta en <p>. PROHIBIDO usar <h1>. ' +
+  '3.1) Si el campo "specs" NO esta vacio, anade OBLIGATORIAMENTE una seccion <h2>' + SEO_OPTIONAL_SPECS_SECTION + '</h2> que TRADUZCA cada especificacion tecnica a una frase de beneficio en prosa (ej: {"Output":"15W","Interface":"Type-C"} -> "<p>Ofrece una potencia de salida de 15W y conectividad mediante un puerto USB-C moderno.</p>"). NO inventes datos que no esten en "specs". ' +
   '4) "keywords": ' + SEO_MIN_KEYWORDS + '-' + SEO_MAX_KEYWORDS + ' terminos de busqueda reales (long-tail) en minusculas. ' +
   '5) "faq": ' + SEO_MIN_FAQ + '-' + SEO_MAX_FAQ + ' pares pregunta/respuesta coherentes con el producto. ' +
   'PROHIBIDO: usar frases genericas de AliExpress (' + FRASES_PROHIBIDAS + '), inventar peso/tamano/material/resenas, o repetir el mismo texto entre campos. ' +
@@ -82,14 +83,36 @@ const MODEL = 'deepseek-chat'
 /**
  * Valida el FONDO del contenido generado (frases genéricas, longitud del
  * título, secciones H2 obligatorias y ausencia de <h1> duplicado).
+ * @param data Contenido SEO generado.
+ * @param opciones.tieneSpecs TRUE si el producto trae especificaciones físicas:
+ *   en ese caso la sección de especificaciones en prosa pasa a ser obligatoria.
  * @returns { ok, errores } — errores listos para re-prompt o para logging.
  */
-export function validarCalidadSeo(data: SeoContent): { ok: boolean; errores: string[] } {
-  return validarCalidadSeoReglas(data, {
+export function validarCalidadSeo(
+  data: SeoContent,
+  opciones: { tieneSpecs?: boolean } = {},
+): { ok: boolean; errores: string[] } {
+  const resultado = validarCalidadSeoReglas(data, {
     bannedPhrases: [...SEO_BANNED_PHRASES],
     requiredSections: [...SEO_REQUIRED_SECTIONS],
     minTitleLength: SEO_TITLE_MIN_LENGTH,
   })
+
+  // La sección de especificaciones en prosa es obligatoria SOLO cuando hay
+  // datos físicos reales: así la ficha técnica nunca queda en blanco.
+  const faltoEspecificaciones =
+    Boolean(opciones.tieneSpecs) &&
+    !String(data.descripcion_html ?? '')
+      .toLowerCase()
+      .includes(SEO_OPTIONAL_SPECS_SECTION.toLowerCase())
+  if (faltoEspecificaciones) {
+    resultado.errores.push(
+      'Falta la seccion obligatoria "' + SEO_OPTIONAL_SPECS_SECTION + '" (el producto trae especificaciones fisicas).',
+    )
+    resultado.ok = false
+  }
+
+  return resultado
 }
 
 // ---------- Llamada al modelo ----------
@@ -137,6 +160,11 @@ export type GenerateSeoInput = {
   evitarTitulos?: string[]
 }
 
+/** TRUE si hay al menos una especificación física útil para redactar en prosa. */
+function tieneEspecificaciones(specs?: Record<string, string>): boolean {
+  return Object.values(specs ?? {}).some((valor) => String(valor ?? '').trim().length > 0)
+}
+
 /**
  * Genera el contenido SEO único de un producto.
  * Hace hasta 2 intentos: si el primero no pasa la validación de calidad,
@@ -182,7 +210,7 @@ export async function generateSeoContent(input: GenerateSeoInput) {
     const valid = seoContentSchema.safeParse(parsed)
     if (!valid.success) return { success: false as const, error: 'JSON IA no valido contra Zod.' }
 
-    const calidad = validarCalidadSeo(valid.data)
+    const calidad = validarCalidadSeo(valid.data, { tieneSpecs: tieneEspecificaciones(input.specs) })
     if (calidad.ok) return { success: true as const, data: valid.data }
 
     // Reintento único: se le explican los errores para que autocorrija.

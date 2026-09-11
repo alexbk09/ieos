@@ -201,6 +201,9 @@ export const ALIEXPRESS_PRODUCT_ID_REGEX = /\d{5,}/
 /** Número máximo de imágenes por variante de color/ownerItemId devueltas. */
 export const SCRAPER_MAX_IMAGES_PER_COLOR = 8
 
+/** Número máximo de reseñas crudas que el scraper recoge (se depuran después). */
+export const SCRAPER_MAX_RAW_REVIEWS = 20
+
 // ---------- AliExpress Open Platform (API oficial afiliados — Fase 2.2) ----------
 
 /**
@@ -221,6 +224,85 @@ export const ALI_PIPELINE_MAX_PRODUCTS = 10
 
 /** Cantidad por defecto de productos a optimizar por lote. */
 export const ALI_OPTIMIZE_PER_BATCH = 5
+
+// ---------- Re-enriquecimiento de productos publicados (Fase 2.6) ----------
+// Los precios, el stock y las valoraciones cambian con el tiempo; estos topes
+// gobiernan el botón "Actualizar precios y datos" del panel de admin.
+
+/** Cantidad por defecto de productos a re-enriquecer por ejecución. */
+export const ALI_ENRICH_BATCH_SIZE = 5
+
+/** Tope defensivo de productos por ejecución de re-enriquecimiento. */
+export const ALI_ENRICH_MAX_PRODUCTS = 20
+
+/**
+ * Método oficial de AliExpress Open Platform para obtener el DETALLE ampliado
+ * de un producto conocido su ID (incluye marca y propiedades técnicas).
+ * Se usa como enriquecimiento cuando `product.query` no trae el campo `brand`.
+ */
+export const ALI_DETAIL_METHOD = 'aliexpress.affiliate.productdetail.get'
+
+/**
+ * Claves candidatas donde la API de AliExpress puede exponer el nombre de
+ * marca del producto (el "envelope" cambia según la versión del API).
+ * Se prueban en orden: la primera que venga con valor gana.
+ */
+export const ALI_BRAND_FIELD_CANDIDATES = ['brand', 'brand_name', 'brandName'] as const
+
+/**
+ * Valor por defecto de disponibilidad del catálogo de afiliados: los productos
+ * importados no gestionan inventario local, así que se asume disponible.
+ */
+export const AFFILIATE_DEFAULT_STOCK = 50
+
+/**
+ * Proporción del precio de venta usada como costo inicial estimado en los
+ * productos importados por el pipeline (costo = precio × ratio).
+ * Centralizado para no quemar el 0.5 en el orquestador.
+ */
+export const AFFILIATE_COST_RATIO = 0.5
+
+// ---------- Opiniones y valoraciones (peso SEO del producto) ----------
+
+/**
+ * Atributo rel obligatorio en TODOS los enlaces salientes de afiliado.
+ * `sponsored` declara el enlace como patrocinado y `nofollow` evita regalar
+ * autoridad del dominio a AliExpress/Amazon (recomendación de Google).
+ */
+export const AFFILIATE_LINK_REL = 'nofollow sponsored noopener noreferrer'
+
+/** Máximo de reseñas reales que se guardan/traducen por producto. */
+export const REVIEWS_MAX_STORED = 5
+
+/** Longitud mínima de una reseña para considerarla útil (evita "ok", "bien"). */
+export const REVIEWS_MIN_TEXT_LENGTH = 15
+
+/** Longitud máxima de una reseña almacenada (recorte defensivo). */
+export const REVIEWS_MAX_TEXT_LENGTH = 600
+
+/** Temperatura del LLM que traduce las reseñas (fidelidad, sin inventar). */
+export const REVIEWS_TRANSLATION_TEMPERATURE = 0.2
+
+/** Máximo de tokens de salida de la traducción de reseñas. */
+export const REVIEWS_TRANSLATION_MAX_TOKENS = 1600
+
+/** Modelo del motor de traducción/redacción de reseñas. */
+export const REVIEWS_TRANSLATION_MODEL = 'deepseek-chat'
+
+/**
+ * Idioma al que se traducen las reseñas importadas. Coincide con el idioma
+ * en el que la IA redacta las descripciones (español neutro), para que la
+ * sección "Opiniones" sea coherente con el resto de la ficha.
+ */
+export const REVIEWS_TARGET_LANGUAGE = 'es'
+
+/**
+ * Interruptor del espejado de imágenes de AliExpress a nuestro storage.
+ * TRUE = descarga cada imagen y la sube al bucket propio (así el sitemap de
+ * imágenes y las URLs locales funcionan), a coste de almacenamiento y tiempo
+ * de pipeline. FALSE (por defecto) = se conservan las URLs del CDN de AliExpress.
+ */
+export const MIRROR_AFFILIATE_IMAGES = false
 
 // ---------- Motor de contenido SEO (DeepSeek) ----------
 // Centraliza la configuración del cerebro de contenido para no quemar

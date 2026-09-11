@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader } from '@/components/admin-shell'
 import { AliPipelineManager } from '@/components/ali-pipeline-manager'
+import { AliEnrichPanel } from '@/components/ali-enrich-panel'
 
 /**
  * Pagina admin del Pipeline de Automatización AliExpress (Fase 2.2).
@@ -8,7 +9,9 @@ import { AliPipelineManager } from '@/components/ali-pipeline-manager'
  * - requireAdmin() del Layout /admin + requireAdmin() explicito aqui.
  * - El componente cliente AliPipelineManager consume el stream SSE de
  *   /api/admin/ali-pipeline y muestra el progreso en tiempo real.
- * - El acceso RBAC (módulo 'ali_pipeline') se valida en la API route.
+ * - AliEnrichPanel (Fase 2.6) re-extrae precio/valoración/opiniones de los
+ *   productos ya publicados sin tocar su SEO indexado.
+ * - El acceso RBAC (módulo 'ali_pipeline') se valida en las API routes.
  */
 export default async function AliPipelinePage() {
   await requireAdmin()
@@ -18,11 +21,13 @@ export default async function AliPipelinePage() {
       <AdminPageHeader
         eyebrow="Catalogo · AliExpress · Automatizacion"
         title="Pipeline AliExpress"
-        description="Descubre los productos mas vendidos por keyword (API oficial), extrae su detalle fisico (scraper), genera enlace de afiliado y optimiza el SEO con DeepSeek antes de guardarlos en Supabase."
+        description="Descubre los productos mas vendidos por keyword (API oficial), extrae su detalle fisico (scraper), genera enlace de afiliado y optimiza el SEO con DeepSeek antes de guardarlos en Supabase. Ademas, actualiza precios, stock, valoraciones y opiniones de los productos ya publicados."
       />
-      <div className="p-5 sm:p-8">
+      <div className="space-y-8 p-5 sm:p-8">
         <AliPipelineManager />
+        <AliEnrichPanel />
       </div>
     </>
   )
 }
+

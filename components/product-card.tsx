@@ -183,6 +183,13 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
             ) : (
               <p className="text-xs text-brand-strong">{categoryFor(product)}</p>
             )}
+            {/* Marca real del producto (migración 0014/0052): refuerza el filtro
+                por marca del catálogo y da contexto de confianza al comprador. */}
+            {product.marca?.nombre && (
+              <span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-brand-strong">
+                {product.marca.nombre}
+              </span>
+            )}
             {/* Título como <a> crawlable (SEO): Google sigue este enlace a la
                 página de producto. El <h3> se mantiene para jerarquía. */}
             <h3 className="mt-1 font-medium">

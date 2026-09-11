@@ -63,6 +63,13 @@ export type SchemaProduct = {
     color_name?: string | null
   }[]
   sku?: string | null
+  /**
+   * Valoración media real en escala 0-5 (migración 0052). Solo se emite
+   * AggregateRating cuando este dato Y el nº de valoraciones son reales.
+   */
+  rating_average?: number | null
+  /** Número de valoraciones reales reportadas por el marketplace. */
+  rating_count?: number | null
 }
 
 /** Datos de la organización que opera la tienda. */
@@ -380,6 +387,26 @@ function ensureDescription(product: SchemaProduct): string {
 }
 
 /**
+ * Construye el bloque `aggregateRating` del schema.
+ * Devuelve null (y por tanto NO se emite) cuando faltan datos reales, para
+ * cumplir la política de Google: nunca inventar reseñas ni valoraciones.
+ * Requiere AMBOS: media válida (0-5) y nº de valoraciones > 0.
+ */
+export function buildAggregateRating(product: SchemaProduct): Record<string, unknown> | null {
+  const rating = Number(product.rating_average)
+  const count = Number(product.rating_count)
+  if (!Number.isFinite(rating) || rating < 0 || rating > 5) return null
+  if (!Number.isFinite(count) || count <= 0) return null
+  return {
+    '@type': 'AggregateRating',
+    ratingValue: rating.toFixed(1),
+    reviewCount: Math.round(count),
+    bestRating: 5,
+    worstRating: 1,
+  }
+}
+
+/**
  * Construye el objeto JSON-LD completo de Schema.org Product.
  * @param product Metadatos REALES del producto (desde Supabase).
  * @param origin Origin absoluto del deploy (para canonical/robots).
@@ -437,9 +464,14 @@ export function buildProductSchema(input: {
     schema.additionalProperty = physical
   }
 
+  // AggregateRating: SOLO con datos REALES y visibles de valoraciones
+  // (nunca se inventan reseñas → se evita el riesgo de penalización pSEO).
+  const aggregateRating = buildAggregateRating(product)
+  if (aggregateRating) {
+    schema.aggregateRating = aggregateRating
+  }
+
   // Proveedor de la tienda (organización dueña del catálogo).
-  // Nota: NO se agrega aggregateRating/review porque inventar reseñas
-  // viola las políticas de Google (riesgo de penalización pSEO).
   if (organization?.name) {
     schema.provider = { '@type': 'Organization', name: organization.name }
   }

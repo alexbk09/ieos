@@ -5,6 +5,8 @@ import {
   SCRAPER_DEFAULT_TIMEOUT_MS,
   SCRAPER_MAX_RETRIES,
   SCRAPER_MAX_IMAGES_PER_COLOR,
+  SCRAPER_MAX_RAW_REVIEWS,
+  REVIEWS_MIN_TEXT_LENGTH,
 } from '@/lib/constants'
 
 /**
@@ -37,6 +39,14 @@ export type AliScraperPrecio = {
   texto_original: string
 }
 
+/** Reseña cruda detectada en la página (se limpia en /services/aliReviews). */
+export type AliScraperResena = {
+  autor: string | null
+  valoracion: unknown
+  texto: string
+  fecha: string | null
+}
+
 export type AliScraperProductoData = {
   ali_product_id: string | null
   titulo_original: string | null
@@ -46,6 +56,10 @@ export type AliScraperProductoData = {
   metadatos_fisicos: Record<string, string>
   galeria_imagenes: AliScraperImagenColor[]
   descripcion: string | null
+  /** Reseñas crudas del producto (best-effort; [] si no se logran extraer). */
+  resenas: AliScraperResena[]
+  /** Valoración positiva cruda (ej: "97.6%"). Null si no se detecta. */
+  valoracion: string | null
 }
 
 const SCRAPER_API_KEY = process.env.SCRAPERAPI_API_KEY?.trim() || ''
@@ -557,6 +571,115 @@ function extraerMarcaRunParams(runParams: unknown): string | null {
   return visitar(obtenerRuta(runParams, ['data']))
 }
 
+/** Claves habituales donde AliExpress guarda el texto de una reseña. */
+const REVIEW_TEXT_KEYS = ['buyerFeedback', 'reviewContent', 'reviewText', 'content', 'feedback'] as const
+/** Claves habituales del autor/país de una reseña. */
+const REVIEW_AUTHOR_KEYS = ['buyerName', 'author', 'userName', 'buyerCountry', 'country'] as const
+/** Claves habituales de la fecha de una reseña. */
+const REVIEW_DATE_KEYS = ['reviewDate', 'date', 'reviewTime', 'gmtCreate'] as const
+/** Claves habituales de la puntuación individual de una reseña. */
+const REVIEW_RATING_KEYS = ['rating', 'star', 'score', 'evaluation'] as const
+
+/** Devuelve el primer texto no vacío entre varias claves de un objeto. */
+function primerTextoDeClaves(nodo: Record<string, unknown>, claves: readonly string[]): string | null {
+  for (const clave of claves) {
+    const valor = nodo[clave]
+    if (typeof valor === 'string' && valor.trim()) return valor.trim()
+  }
+  return null
+}
+
+/** Devuelve el primer valor (crudo) entre varias claves de un objeto. */
+function primeroDeClaves(nodo: Record<string, unknown>, claves: readonly string[]): unknown {
+  for (const clave of claves) {
+    if (clave in nodo) return nodo[clave]
+  }
+  return null
+}
+
+/**
+ * Recolecta reseñas desde el JSON hidratado buscando objetos con un campo de
+ * texto de reseña reconocible. Es "best-effort": si AliExpress cambia la
+ * estructura devuelve [] y el pipeline sigue funcionando (nunca lanza error).
+ */
+function extraerResenasRunParams(runParams: unknown): AliScraperResena[] {
+  const resenas: AliScraperResena[] = []
+  const vistas = new Set<string>()
+
+  const visitar = (nodo: unknown, prof = 0): void => {
+    if (!nodo || prof > 10 || resenas.length >= SCRAPER_MAX_RAW_REVIEWS) return
+    if (esArreglo(nodo)) {
+      for (const item of nodo) visitar(item, prof + 1)
+      return
+    }
+    if (!esObjeto(nodo)) return
+
+    const texto = primerTextoDeClaves(nodo, REVIEW_TEXT_KEYS)
+    if (texto && texto.length >= REVIEWS_MIN_TEXT_LENGTH) {
+      const huella = texto.slice(0, 80)
+      if (!vistas.has(huella)) {
+        vistas.add(huella)
+        resenas.push({
+          autor: primerTextoDeClaves(nodo, REVIEW_AUTHOR_KEYS),
+          valoracion: primeroDeClaves(nodo, REVIEW_RATING_KEYS),
+          texto,
+          fecha: primerTextoDeClaves(nodo, REVIEW_DATE_KEYS),
+        })
+      }
+    }
+    for (const valor of Object.values(nodo)) visitar(valor, prof + 1)
+  }
+
+  visitar(obtenerRuta(runParams, ['data']))
+  if (resenas.length === 0) visitar(runParams)
+  return resenas.slice(0, SCRAPER_MAX_RAW_REVIEWS)
+}
+
+/**
+ * Extrae la valoración positiva cruda (ej: "97.6%") del JSON hidratado.
+ * Devuelve null si no se detecta (nunca inventa un valor).
+ */
+function extraerValoracionRunParams(runParams: unknown): string | null {
+  if (!esObjeto(runParams)) return null
+
+  const rutasOficiales = [
+    ['data', 'reviewComponent', 'content', 'evaluateRate'],
+    ['data', 'titleComponent', 'content', 'evaluateRate'],
+    ['data', 'productInfoComponent', 'content', 'evaluateRate'],
+  ]
+  for (const ruta of rutasOficiales) {
+    const valor = obtenerRuta(runParams, ruta)
+    if (typeof valor === 'string' || typeof valor === 'number') {
+      const texto = String(valor).trim()
+      if (texto) return texto
+    }
+  }
+
+  // Búsqueda acotada por claves semánticas de valoración.
+  const buscar = (nodo: unknown, prof = 0): string | null => {
+    if (!nodo || prof > 6) return null
+    if (esArreglo(nodo)) {
+      for (const item of nodo) {
+        const hallado = buscar(item, prof + 1)
+        if (hallado) return hallado
+      }
+      return null
+    }
+    if (!esObjeto(nodo)) return null
+    for (const [clave, valor] of Object.entries(nodo)) {
+      if (/evaluate|positiveRate|averageStar|starRating/i.test(clave)) {
+        if ((typeof valor === 'string' || typeof valor === 'number') && /\d/.test(String(valor))) {
+          return String(valor).trim()
+        }
+      }
+      const hallado = buscar(valor, prof + 1)
+      if (hallado) return hallado
+    }
+    return null
+  }
+  return buscar(obtenerRuta(runParams, ['data']))
+}
+
 /** ID de producto desde URL canónica, runParams o regex en HTML. */
 function extraerProductId(url: string, html: string, runParams: unknown, $: ReturnType<typeof load>): string | null {
   const canonica = $('link[rel="canonical"]').attr('href') || url
@@ -659,12 +782,26 @@ function parsearDesdeDom($: ReturnType<typeof load>): Partial<AliScraperProducto
     .slice(0, SCRAPER_MAX_IMAGES_PER_COLOR)
     .map((urlDeImagen) => ({ color: null, url: urlDeImagen }))
 
+  // RESEÑAS desde el DOM (best-effort): AliExpress usa clases con "review" o
+  // "buyer" para los bloques de opinión. Si no aparecen, se devuelve [].
+  const resenasDom: AliScraperResena[] = []
+  $('[class*="buyer-feedback"], [class*="review-content"], [class*="review--content"]').each((_, el) => {
+    if (resenasDom.length >= SCRAPER_MAX_RAW_REVIEWS) return
+    const texto = $(el).text().replace(/\s+/g, ' ').trim()
+    if (texto.length >= REVIEWS_MIN_TEXT_LENGTH) {
+      resenasDom.push({ autor: null, valoracion: null, texto, fecha: null })
+    }
+  })
+
   return {
     titulo_original: titulo,
     marca: marcaDom || marcaDesdeSpecs,
     precio_base: precio,
     metadatos_fisicos: metadatos,
     galeria_imagenes: galeria,
+    resenas: resenasDom,
+    // La valoración DOM no es fiable (requiere JS); se completa desde runParams.
+    valoracion: null,
   }
 }
 
@@ -702,6 +839,18 @@ function construirUrlProxy(proveedor: ScraperProxy, urlAliExpress: string): stri
   // ZenRows rechaza el parámetro `premium` (error REQS004). Solo se envían
   // parámetros válidos: apikey, url y js_render=true (renderizado JS).
   return `${ZENROWS_ENDPOINT}?apikey=${encodeURIComponent(ZENROWS_API_KEY)}&url=${encodeURIComponent(urlAliExpress)}&js_render=true`
+}
+
+/**
+ * Diagnóstico de credenciales del SCRAPER (proxy con render JS).
+ * Se usa para dar feedback temprano al panel de re-enriquecimiento: si no hay
+ * ninguna clave de proxy configurada, no tiene sentido intentar extraer el detalle.
+ */
+export function estadoCredencialesScraper() {
+  return {
+    zenrowsConfigurado: Boolean(ZENROWS_API_KEY),
+    scraperApiConfigurada: Boolean(SCRAPER_API_KEY),
+  }
 }
 
 // ZenRows tiene plan gratuito permanente; es el proveedor principal.
@@ -770,6 +919,8 @@ export async function scrapearProductoAliExpress(urlProduct: string) {
       precio_base: extraerPrecioRunParams(runParams),
       metadatos_fisicos: extraerMetadatosRunParams(runParams),
       galeria_imagenes: extraerGaleriaRunParams(runParams),
+      resenas: extraerResenasRunParams(runParams),
+      valoracion: extraerValoracionRunParams(runParams),
     }
     const delDom = parsearDesdeDom($)
 
@@ -788,6 +939,10 @@ export async function scrapearProductoAliExpress(urlProduct: string) {
           ? delJson.galeria_imagenes
           : delDom.galeria_imagenes || [],
       descripcion: extraerDescripcionMeta($),
+      // Opiniones: prioriza el JSON hidratado (más fiable) y cae al DOM.
+      resenas:
+        delJson.resenas && delJson.resenas.length > 0 ? delJson.resenas : delDom.resenas || [],
+      valoracion: delJson.valoracion || delDom.valoracion || null,
     }
 
     const tieneAlgo =

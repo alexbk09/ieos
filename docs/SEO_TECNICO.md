@@ -76,8 +76,9 @@ avisa al modelo (`evitarTitulos`) para no publicar clones.
 
 - `app/llms.txt/route.ts` expone un índice plano (hubs + productos) para
   ChatGPT/Gemini/Perplexity.
-- Schema JSON-LD consistente con la UI (sin `aggregateRating` inventado, para
-  no violar políticas de Google).
+- Schema JSON-LD consistente con la UI. `aggregateRating` se emite **solo** con
+  valoraciones REALES y visibles (`products.rating_average` + `rating_count`,
+  migración 0052); nunca se inventan reseñas.
 
 ---
 
@@ -86,9 +87,11 @@ avisa al modelo (`evitarTitulos`) para no publicar clones.
 | Archivo | Responsabilidad |
 |---------|-----------------|
 | `lib/seo-rules.mjs` / `.d.ts` | Lógica pura SEO (validación + builders de schema) |
+| `lib/reviews.mjs` / `.d.ts` | Lógica pura de valoraciones y reseñas (parseo + saneo) |
 | `lib/sitemap-revalidate.ts` | Revalidación on-demand del sitemap |
-| `lib/schema/product-schema.ts` | Schema de Product/Offer y re-export de Breadcrumb/FAQ |
+| `lib/schema/product-schema.ts` | Schema de Product/Offer, AggregateRating y re-export de Breadcrumb/FAQ |
 | `services/seo-content.ts` | Generación de contenido con IA |
+| `services/aliReviews.ts` | Limpieza y traducción de las reseñas reales |
 | `services/seo-hub.ts` | Generación del hub de categoría |
 | `services/seoDedupe.ts` | Control anti-duplicado |
 | `services/catalog.ts` | Lectura/escritura + relacionados + revalidación |
@@ -101,3 +104,6 @@ avisa al modelo (`evitarTitulos`) para no publicar clones.
 
 `tests/seo-rules.test.mjs` valida (11 casos): normalización/firma de títulos,
 reglas de calidad del contenido y constructores de `BreadcrumbList`/`FAQPage`.
+
+`tests/reviews.test.mjs` valida el parseo real de valoraciones (`"97.6%"` → 4.88,
+`"4.8"` → 4.8, coma decimal) y el saneo/tope de las reseñas.

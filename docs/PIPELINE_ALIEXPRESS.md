@@ -11,11 +11,21 @@ panel de administración.
 
 ```
 services/
-├── aliApi.ts        → API oficial AliExpress (buscar top + generar enlace afiliado)
+├── aliApi.ts        → API oficial AliExpress (buscar top + marca + valoración + enlace)
 ├── aliScraper.ts    → Scraper tradicional (ZenRows/ScraperAPI) con renderizado JS
-├── aliProducts.ts   → Capa Supabase: anti-duplicados, categoría, insert automatizado
+├── aliProducts.ts   → Capa Supabase: anti-duplicados, marca, categoría, insert
+├── aliReviews.ts    → Opiniones: limpia + traduce reseñas reales (DeepSeek)
+├── aliImages.ts     → Espeja imágenes del CDN al storage propio (sitemap de imágenes)
+├── aliEnrich.ts     → RE-ENRIQUECIMIENTO: refresca precio/stock/valoración de publicados
 ├── aliPipeline.ts   → ORQUESTADOR maestro: une todo en un flujo secuencial
 └── seo-content.ts   → Cerebro SEO (DeepSeek): traduce título + genera HTML + FAQ
+
+lib/
+└── reviews.mjs      → Lógica pura (testeable) de valoraciones y reseñas
+
+app/api/admin/ali-pipeline/enrich/route.ts   → API route (SSE) del re-enriquecimiento
+components/ali-enrich-panel.tsx              → Botón + log en vivo "Actualizar precios y datos"
+```
 
 app/api/admin/ali-pipeline/route.ts   → API route (SSE) que ejecuta el pipeline
 components/ali-pipeline-manager.tsx   → Panel admin (keyword + botón + toasts en vivo)
@@ -69,6 +79,59 @@ El scraper abre la URL del producto, espera a que el JS cargue y extrae del
 
 > El scraper es **frío** (sin IA): solo captura datos crudos. La traducción y
 > el SEO los hace DeepSeek en el paso 5.
+
+---
+
+## 3.1 Marca, opiniones y valoraciones (Fases 2.3–2.5)
+
+### Marca (habilita el filtro por marca)
+- `aliApi.ts` lee la marca de la respuesta oficial probando varias claves
+  (`brand`, `brand_name`, `brandName`): el "envelope" de AliExpress cambia entre versiones.
+- `aliScraper.ts` la refuerza desde `runParams` (`brandComponent`,
+  `productInfoComponent`) y, como respaldo, desde el DOM (`og:brand`,
+  `itemprop="brand"`) y la especificación `Brand Name`.
+- `aliProducts.obtenerMarcaAliExpress` reutiliza o crea la fila en `marcas`
+  (comparación case-insensitive) y el producto se guarda con `marca_id`, por lo
+  que el filtro público por marca del catálogo funciona automáticamente.
+
+### Valoraciones y opiniones (`products.rating_*` / `reviews` — migración 0052)
+- **La valoración es real**: la API aporta `evaluate_rate` (ej. `"97.6%"`) y
+  `lib/reviews.mjs` la normaliza a escala 0-5 (`parsearValoracion`).
+- Las reseñas se extraen (best-effort) por el scraper y `services/aliReviews.ts`
+  las limpia y TRADUCE en una sola llamada a DeepSeek; si la IA falla, se
+  conservan los textos originales (degradación elegante).
+- La ficha muestra la media (estrellas), el nº de valoraciones y las reseñas.
+- El JSON-LD `AggregateRating` se emite **solo** cuando existen media y nº
+  reales: nunca se inventan reseñas (riesgo de penalización de Google).
+
+### Espejado de imágenes (opcional)
+- `services/aliImages.ts` descarga las fotos del CDN y las sube optimizadas
+  (WebP) al bucket propio. Se activa con `MIRROR_AFFILIATE_IMAGES` (por defecto
+  `false`). Al activarlo, el sitemap de imágenes empieza a publicar `<image:loc>`
+  (Google solo admite imágenes de dominios verificados/propios).
+
+### Enlaces salientes
+- Todos los CTA de afiliado usan `rel="nofollow sponsored noopener noreferrer"`
+  (`AFFILIATE_LINK_REL` en `lib/constants.ts`) para no ceder autoridad del dominio.
+
+### Backfill del catálogo existente
+- `npm run brands:backfill` (o `:dry`) rellena `products.marca_id` de los
+  productos antiguos detectando la marca en `specifications`.
+
+### Re-enriquecimiento (Fase 2.6 — botón "Actualizar precios y datos")
+- Los precios, la disponibilidad y las valoraciones cambian con el tiempo. El
+  panel `/admin/ali-pipeline` incluye un segundo módulo que vuelve a extraer el
+  detalle real de los **últimos N productos publicados**.
+- `services/aliEnrich.ts` → `ejecutarEnriquecimientoLote({ limit }, notificar)`:
+  recalcula y ACTUALIZA **solo campos volátiles** (precio, `precio_original`,
+  stock/disponibilidad, `specifications`, `marca_id`, `rating_average` y
+  `reviews`), comparando con el valor actual para escribir únicamente lo que
+  cambió. **Nunca** toca `name`, `slug`, `description`, `seo_faq`, `seo_keywords`
+  ni los enlaces de afiliado (así no se pierde el SEO ya indexado).
+- Reglas defensivas: si el scraper no devuelve un dato, se CONSERVA el actual; no
+  se borran reseñas ni se pisa una marca puesta a mano.
+- La API route `/api/admin/ali-pipeline/enrich` (SSE, RBAC `ali_pipeline`) emite
+  el progreso y revalida la ficha + el sitemap de cada producto actualizado.
 
 ---
 

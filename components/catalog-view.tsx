@@ -33,6 +33,8 @@ type CatalogProduct = {
   specifications?: Record<string, string>
   categories?: { id: string; name: string; slug: string; description: string | null }[]
   images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[]
+  /** Marca resuelta por la relación FK (chip en la card y filtro por marca). */
+  marca?: { id: string; nombre: string; activa: boolean } | null
 }
 
 /** Convierte el estado de los filtros a parámetros URL comunes. */

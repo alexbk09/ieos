@@ -23,6 +23,7 @@ import {
   ALIEXPRESS_OPEN_API_ENDPOINT,
   ALI_SEARCH_METHOD,
   ALI_LINK_METHOD,
+  ALI_BRAND_FIELD_CANDIDATES,
 } from '@/lib/constants'
 
 // ---------- Tipos ----------
@@ -44,8 +45,19 @@ export type AliProductoBuscado = {
   precio_max_venta: number | null
   /** Porcentaje de comisión del afiliado. */
   comision_porcentaje: number | null
-  /** Volumen de ventas reportado (si viene). */
+  /** Volumen de ventas reportado por AliExpress (`lastest_volume`). Null si no viene. */
   ventas_recientes: number | null
+  /**
+   * Valoración positiva del producto tal cual la reporta AliExpress
+   * (`evaluate_rate`, ej: "97.6%"). Se normaliza con lib/reviews.mjs.
+   * Null si la API no la expone.
+   */
+  rating_porcentaje: string | null
+  /**
+   * Número de valoraciones/opiniones reportado por la API (si lo expone).
+   * Es lo que hace HONESTA la emisión de AggregateRating en el schema.
+   */
+  rating_count: number | null
   /**
    * Enlace de afiliado YA generado por la API de búsqueda (s.click.aliexpress.com).
    * La API `product.query` devuelve el promotion_link listo por producto, así
@@ -74,6 +86,23 @@ function validarCredenciales(): string | null {
   if (!ALI_APP_KEY) return 'Falta ALI_APP_KEY en el .env del servidor.'
   if (!ALI_APP_SECRET) return 'Falta ALI_APP_SECRET en el .env del servidor.'
   if (!ALI_TRACKING_ID) return 'Falta ALI_TRACKING_ID (de AliExpress Union).'
+  return null
+}
+
+/**
+ * Devuelve el primer valor con contenido entre una lista de claves candidatas.
+ * POR QUÉ: el "envelope" de AliExpress cambia entre versiones y la marca puede
+ * venir como `brand`, `brand_name` o `brandName`; así no dependemos de una ruta
+ * fija y evitamos perder el dato si el API lo renombra.
+ */
+function primerTextoConValor(fuente: any, claves: readonly string[]): string | null {
+  if (!fuente || typeof fuente !== 'object') return null
+  for (const clave of claves) {
+    const valor = fuente[clave]
+    if (valor === undefined || valor === null) continue
+    const texto = String(valor).trim()
+    if (texto) return texto
+  }
   return null
 }
 
@@ -216,10 +245,10 @@ export async function buscarProductosMasVendidos(
     return {
       ali_product_id: String(p?.product_id ?? p?.productId ?? ''),
       titulo_fabrica: String(p?.product_title ?? p?.productTitle ?? ''),
-      // Marca del producto si la API la expone (campo `brand`). AliExpress la
-      // incluye en la respuesta de búsqueda para productos de marca conocida.
-      // Si no viene, el pipeline cae a la marca detectada por el scraper.
-      marca: String(p?.brand ?? '') || null,
+      // Marca del producto: la API puede exponerla con distintas claves según
+      // la versión (`brand`, `brand_name`, `brandName`). Si no viene ninguna,
+      // el pipeline cae a la marca detectada por el scraper (o queda sin marca).
+      marca: primerTextoConValor(p, ALI_BRAND_FIELD_CANDIDATES),
       url_producto: String(p?.product_detail_url ?? p?.productDetailUrl ?? ''),
       // Imagen principal del producto (CDN). Sirve de fallback cuando el
       // scraper no logra extraer la galería (AliExpress bloquea proxies).
@@ -227,11 +256,30 @@ export async function buscarProductosMasVendidos(
       precio_min_venta: precioTarget != null ? Number(precioTarget) : null,
       precio_max_venta: precioTargetAlto != null ? Number(precioTargetAlto) : null,
       comision_porcentaje: Number(p?.commission_rate ?? p?.commissionRate ?? 0) || null,
-      ventas_recientes: p?.sale_price ? Number(p.sale_price) : null,
+      // Volumen de ventas real de AliExpress (`lastest_volume`). Antes se mapeaba
+      // por error `sale_price` (un PRECIO) en este campo de ventas.
+      ventas_recientes: Number(p?.lastest_volume ?? p?.lastestVolume ?? 0) || null,
+      // Valoración positiva real (ej: "97.6%"). Alimenta products.rating_average.
+      rating_porcentaje: primerTextoConValor(p, ['evaluate_rate', 'evaluateRate']),
+      // Nº de valoraciones reportado (si el API lo expone). Habilita el
+      // AggregateRating del schema solo cuando el dato es real.
+      rating_count: Number(
+        primerTextoConValor(p, ['total_valid_num', 'totalValidNum', 'review_count', 'reviewCount', 'evaluate_count']) ?? 0,
+      ) || null,
       // La API de búsqueda ya devuelve el promotion_link listo por producto.
       promotion_link: String(p?.promotion_link ?? '') || null,
     }
   })
+
+  // Diagnóstico (BK-0): registra UNA vez las claves reales del primer producto
+  // para confirmar qué campos expone hoy la cuenta (brand, evaluate_rate,
+  // lastest_volume, etc.) sin exponer datos sensibles.
+  if (productosCrudos.length > 0) {
+    const primerProducto = productosCrudos[0]
+    if (primerProducto && typeof primerProducto === 'object') {
+      console.info('[aliApi] Campos disponibles en product.query:', Object.keys(primerProducto).join(', '))
+    }
+  }
 
   const productosValidos = productos.filter((x) => x.ali_product_id)
 

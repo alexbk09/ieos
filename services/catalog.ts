@@ -33,6 +33,22 @@ export type ProductImage = {
   color_name?: string | null
 }
 
+/**
+ * Reseña real de un producto (migración 0052).
+ * Se guarda ya traducida del marketplace de origen y se muestra en la
+ * sección "Opiniones" de la ficha (contenido único, long-tail natural).
+ */
+export type ProductReview = {
+  /** Nombre del autor tal como lo publica el marketplace (puede faltar). */
+  autor: string | null
+  /** Valoración de la reseña en escala 0-5 (null si no viene). */
+  valoracion: number | null
+  /** Texto de la reseña (limpio y traducido). */
+  texto: string
+  /** Fecha relativa/absoluta publicada (texto libre, puede faltar). */
+  fecha: string | null
+}
+
 export type Product = {
   id: string
   name: string
@@ -94,6 +110,14 @@ export type Product = {
   seo_faq?: SeoFaqItem[] | null
   /** Palabras clave long-tail objetivo (migración 0047). */
   seo_keywords?: string[] | null
+  /** Valoración media real en escala 0-5 (migración 0052). NULL si no hay dato. */
+  rating_average?: number | null
+  /** Número de valoraciones reales reportadas (migración 0052). */
+  rating_count?: number | null
+  /** Origen de la valoración ('aliexpress' | 'amazon' | 'store'). */
+  rating_source?: string | null
+  /** Reseñas reales traducidas (migración 0052) → sección Opiniones. */
+  reviews?: ProductReview[] | null
   categories?: Category[]
   images?: ProductImage[]
   colors?: string[]
@@ -227,6 +251,14 @@ export type ProductInput = {
   seo_faq?: SeoFaqItem[] | null
   /** Palabras clave long-tail objetivo (migración 0047). */
   seo_keywords?: string[] | null
+  /** Valoración media real 0-5 (migración 0052). Solo pipeline/afiliados. */
+  rating_average?: number | null
+  /** Nº de valoraciones reales (migración 0052). */
+  rating_count?: number | null
+  /** Origen de la valoración (migración 0052). */
+  rating_source?: string | null
+  /** Reseñas reales traducidas (migración 0052). */
+  reviews?: ProductReview[] | null
   // Solo para carga masiva: nombres de marca/proveedor/categoria.
   // Si el item trae nombre y no trae id, se resuelve o crea automaticamente.
   marca_nombre?: string | null
@@ -291,6 +323,11 @@ export function mapProduct(row: any): Product {
     // FAQ/keywords SEO (migración 0047): normaliza a array si viene null.
     seo_faq: Array.isArray(row.seo_faq) ? (row.seo_faq as SeoFaqItem[]) : null,
     seo_keywords: Array.isArray(row.seo_keywords) ? (row.seo_keywords as string[]) : null,
+    // Valoraciones y opiniones reales (migración 0052).
+    rating_average: row.rating_average != null ? Number(row.rating_average) : null,
+    rating_count: row.rating_count != null ? Number(row.rating_count) : null,
+    rating_source: row.rating_source ?? null,
+    reviews: Array.isArray(row.reviews) ? (row.reviews as ProductReview[]) : null,
     colors: row.colors ?? [],
     specifications: row.specifications ?? {},
     categories:
@@ -485,6 +522,12 @@ function buildProductRow(payload: ProductInput) {
     // manual (que no los envía) no borra el contenido generado por la IA.
     ...(payload.seo_faq !== undefined ? { seo_faq: payload.seo_faq } : {}),
     ...(payload.seo_keywords !== undefined ? { seo_keywords: payload.seo_keywords } : {}),
+    // Valoraciones/opiniones (migración 0052): solo se escriben si vienen
+    // definidas; el CRUD manual no las envía y así no borra las del pipeline.
+    ...(payload.rating_average !== undefined ? { rating_average: payload.rating_average } : {}),
+    ...(payload.rating_count !== undefined ? { rating_count: payload.rating_count } : {}),
+    ...(payload.rating_source !== undefined ? { rating_source: payload.rating_source } : {}),
+    ...(payload.reviews !== undefined ? { reviews: payload.reviews } : {}),
   }
 }
 

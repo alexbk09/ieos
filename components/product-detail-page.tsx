@@ -1,6 +1,6 @@
 'use client'
 
-import { ImagePlus, Plus, ShieldCheck, Truck, ExternalLink } from 'lucide-react'
+import { ImagePlus, Plus, ShieldCheck, Star, Truck, ExternalLink } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
@@ -16,6 +16,7 @@ import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
 import { moneyUsd, moneyEur, formatBolivars, formatRate } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
+import { AFFILIATE_LINK_REL } from '@/lib/constants'
 
 // ---------- Tipos serializables (Server Component → Client) ----------
 export type DetailProductImage = {
@@ -24,6 +25,14 @@ export type DetailProductImage = {
   alt_text: string | null
   sort_order: number
   color_name: string | null
+}
+
+/** Reseña real mostrada en la sección "Opiniones" (migración 0052). */
+export type DetailProductReview = {
+  autor: string | null
+  valoracion: number | null
+  texto: string
+  fecha: string | null
 }
 
 export type DetailProduct = {
@@ -55,6 +64,12 @@ export type DetailProduct = {
   categories: { id: string; name: string; slug: string; description: string | null }[]
   images: DetailProductImage[]
   marca?: { id: string; nombre: string; activa: boolean } | null
+  /** Valoración media real en escala 0-5 (migración 0052). */
+  rating_average?: number | null
+  /** Número de valoraciones reales (migración 0052). */
+  rating_count?: number | null
+  /** Reseñas reales traducidas (migración 0052). */
+  reviews?: DetailProductReview[]
 }
 
 type DetailProductProps = {
@@ -81,6 +96,25 @@ function DetailChip({ label, value }: { label: string; value: string }) {
       <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-medium">{value}</p>
     </div>
+  )
+}
+
+/**
+ * Estrellas de valoración (0-5). Renderiza 5 iconos rellenos según la media
+ * redondeada. Accesible (aria-label con el valor exacto).
+ */
+function StarRating({ value, size = 14 }: { value: number; size?: number }) {
+  const redondeada = Math.round(Math.min(Math.max(Number(value) || 0, 0), 5))
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`Valoración ${Number(value).toFixed(1)} de 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          size={size}
+          className={i < redondeada ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'}
+        />
+      ))}
+    </span>
   )
 }
 
@@ -136,6 +170,8 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   // Etiqueta del marketplace / CTA de afiliado
   const affiliateUrl = product.url_afiliado_ali ?? product.url_afiliado_amazon ?? product.url_afiliado_store ?? null
   const market = marketplaceForUrl(affiliateUrl)
+  // Reseñas reales del producto (migración 0052); [] si aún no hay opiniones.
+  const reviews = product.reviews ?? []
   const ctaLabel = product.url_afiliado_ali ? 'Ver Oferta en AliExpress' : market.shortLabel === 'Amazon' ? 'Ver Oferta en Amazon' : market.shortLabel === 'Tienda' ? 'Ver Oferta en la Tienda Oficial' : 'Ver Oferta en AliExpress'
 
   // Producto listo para el carrito híbrido (image_url siempre string en runtime).
@@ -314,28 +350,62 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
               </div>
             )}
 
-            {/* Opiniones: enlace a las valoraciones REALES del marketplace.
-                NO se inventan reseñas ni aggregateRating (política de Google). */}
+            {/* Opiniones y valoración (contenido REAL, migración 0052).
+                Nunca se inventan reseñas: si no hay dato real, se invita a
+                consultar las valoraciones directamente en el marketplace. */}
             <section className="mt-7">
               <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Opiniones</h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {affiliateUrl ? (
-                  <>
-                    Consulta las valoraciones y opiniones reales de compradores en{' '}
-                    <a
-                      href={affiliateUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand-strong underline underline-offset-2"
+
+              {typeof product.rating_average === 'number' && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <StarRating value={product.rating_average} size={16} />
+                  <span className="text-sm font-semibold">{product.rating_average.toFixed(1)} / 5</span>
+                  {typeof product.rating_count === 'number' && product.rating_count > 0 && (
+                    <span className="text-xs text-muted-foreground">{product.rating_count} valoraciones</span>
+                  )}
+                </div>
+              )}
+
+              {reviews.length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {reviews.map((resena, i) => (
+                    <li
+                      key={`${resena.autor ?? 'anonimo'}-${i}`}
+                      className="rounded-2xl border border-border bg-card p-4"
                     >
-                      {market.label}
-                    </a>
-                    .
-                  </>
-                ) : (
-                  'Muy pronto habilitaremos las opiniones de nuestros clientes.'
-                )}
-              </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{resena.autor || 'Comprador'}</span>
+                        {typeof resena.valoracion === 'number' && <StarRating value={resena.valoracion} />}
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{resena.texto}</p>
+                      {resena.fecha && (
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                          {resena.fecha}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {affiliateUrl ? (
+                    <>
+                      Consulta las valoraciones y opiniones reales de compradores en{' '}
+                      <a
+                        href={affiliateUrl}
+                        target="_blank"
+                        rel={AFFILIATE_LINK_REL}
+                        className="text-brand-strong underline underline-offset-2"
+                      >
+                        {market.label}
+                      </a>
+                      .
+                    </>
+                  ) : (
+                    'Muy pronto habilitaremos las opiniones de nuestros clientes.'
+                  )}
+                </p>
+              )}
             </section>
 
             {/* CTA afiliado transparente */}
@@ -343,7 +413,7 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
               <a
                 href={affiliateUrl ?? '#'}
                 target={affiliateUrl ? '_blank' : undefined}
-                rel={affiliateUrl ? 'noopener noreferrer' : undefined}
+                rel={affiliateUrl ? AFFILIATE_LINK_REL : undefined}
                 onClick={(e) => {
                   if (!affiliateUrl) {
                     e.preventDefault()
