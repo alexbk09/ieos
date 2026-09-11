@@ -174,6 +174,19 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
   const reviews = product.reviews ?? []
   // Producto de afiliado: su precio está en EUR (AliExpress), no en USD.
   const esAfiliado = Boolean(affiliateUrl)
+
+  // Ficha técnica (peso/tamaño/peso unitario). Si NO hay ningún dato, la
+  // sección se OCULTA por completo para no dejar un bloque vacío en la ficha.
+  const fichaTecnica = [
+    product.peso ? { label: 'Peso', value: product.peso } : null,
+    product.tamaño ? { label: 'Tamaño', value: product.tamaño } : null,
+    product.weight_grams != null ? { label: 'Peso unitario', value: `${product.weight_grams} g` } : null,
+  ].filter((d): d is { label: string; value: string } => d !== null)
+
+  // Especificaciones sin duplicados por mayúsculas/minúsculas (se conserva la 1ª).
+  const especificaciones = Object.entries(product.specifications ?? {}).filter(
+    ([clave], i, arr) => arr.findIndex(([k]) => k.toLowerCase() === clave.toLowerCase()) === i,
+  )
   const ctaLabel = product.url_afiliado_ali ? 'Ver Oferta en AliExpress' : market.shortLabel === 'Amazon' ? 'Ver Oferta en Amazon' : market.shortLabel === 'Tienda' ? 'Ver Oferta en la Tienda Oficial' : 'Ver Oferta en AliExpress'
 
   // Producto listo para el carrito híbrido (image_url siempre string en runtime).
@@ -338,23 +351,26 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
               </div>
             )}
 
-            {/* Ficha técnica (peso / tamaño / peso unitario).
-                Se usa <h2> real para la jerarquía de encabezados que Google lee. */}
-            <div className="mt-7">
-              <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</h2>
-              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-                {product.peso && <DetailChip label="Peso" value={product.peso} />}
-                {product.tamaño && <DetailChip label="Tamaño" value={product.tamaño} />}
-                {product.weight_grams != null && <DetailChip label="Peso unitario" value={`${product.weight_grams} g`} />}
+            {/* Ficha técnica (peso / tamaño / peso unitario). Se OCULTA por
+                completo si no hay ningún dato, para no dejar un bloque vacío. */}
+            {fichaTecnica.length > 0 && (
+              <div className="mt-7">
+                <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Ficha técnica</h2>
+                <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {fichaTecnica.map((dato) => (
+                    <DetailChip key={dato.label} label={dato.label} value={dato.value} />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Especificaciones JSONB en pares clave-valor (<h2> semántico). */}
-            {Object.keys(product.specifications ?? {}).length > 0 && (
+            {/* Especificaciones reales del producto (<h2> semántico). Se oculta
+                cuando está vacía, igual que la ficha técnica. */}
+            {especificaciones.length > 0 && (
               <div className="mt-6">
                 <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">Especificaciones</h2>
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  {Object.entries(product.specifications ?? {}).map(([key, value]) => (
+                  {especificaciones.map(([key, value]) => (
                     <DetailChip key={key} label={key} value={value} />
                   ))}
                 </div>
