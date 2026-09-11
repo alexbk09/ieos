@@ -281,6 +281,14 @@ export type CatalogFilters = {
   categoryIds?: string[]
   marcaIds?: string[]
   featuredOnly?: boolean
+  /** Solo productos con precio de referencia (oferta / precio tachado). */
+  onSaleOnly?: boolean
+  /** Valoración mínima (escala 0-5) para "Mejor valorados". */
+  minRating?: number
+  /** Solo productos con stock local disponible (> 0). */
+  inStockOnly?: boolean
+  /** Solo productos con descuento por mayoreo activo (> 0). */
+  bulkOnly?: boolean
   /** Orden de los resultados (ver CATALOG_SORT_OPTIONS). Por defecto: curaduría. */
   sort?: CatalogSortValue
 }
@@ -442,6 +450,11 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0, loc
   if (filters.minPrice !== undefined && Number.isFinite(filters.minPrice)) query = query.gte('price_usd', filters.minPrice)
   if (filters.maxPrice !== undefined && Number.isFinite(filters.maxPrice)) query = query.lte('price_usd', filters.maxPrice)
   if (filters.featuredOnly) query = query.eq('featured', true)
+  // Facetas de valor (filtros rápidos del catálogo público).
+  if (filters.onSaleOnly) query = query.not('precio_original', 'is', null)
+  if (filters.minRating !== undefined && Number.isFinite(filters.minRating)) query = query.gte('rating_average', filters.minRating)
+  if (filters.inStockOnly) query = query.gt('stock', 0)
+  if (filters.bulkOnly) query = query.gt('bulk_discount_percent', 0)
   if (filters.categoryIds && filters.categoryIds.length > 0) query = query.in('id', await getProductIdsByCategories(filters.categoryIds))
   if (filters.marcaIds && filters.marcaIds.length > 0) query = query.in('marca_id', filters.marcaIds)
 

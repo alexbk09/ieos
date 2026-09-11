@@ -93,6 +93,32 @@ export function isCatalogSortValue(value: string): value is CatalogSortValue {
   return (CATALOG_SORT_VALUES as readonly string[]).includes(value)
 }
 
+// ---------- Catálogo público: facetas de valor (filtros rápidos) ----------
+
+/** Valoración mínima (escala 0-5) para el filtro rápido "Mejor valorados". */
+export const CATALOG_TOP_RATED_MIN = 4
+
+/**
+ * Filtros rápidos del catálogo (facetas de valor).
+ * `key` es a la vez el parámetro `=true` que viaja en la query de /api/catalog
+ * y la clave del estado en el cliente; `labelKey` resuelve la etiqueta i18n.
+ * - featured: curado por el equipo (products.featured)
+ * - onSale:   tiene precio de referencia/oferta (products.precio_original != null)
+ * - topRated: valoración real >= CATALOG_TOP_RATED_MIN (products.rating_average)
+ * - inStock:  stock local disponible (products.stock > 0)
+ * - bulk:     descuento por mayoreo activo (products.bulk_discount_percent > 0)
+ */
+export const CATALOG_QUICK_FILTERS = [
+  { key: 'featured', labelKey: 'catalog.quickFeatured' },
+  { key: 'onSale', labelKey: 'catalog.quickOnSale' },
+  { key: 'topRated', labelKey: 'catalog.quickTopRated' },
+  { key: 'inStock', labelKey: 'catalog.quickInStock' },
+  { key: 'bulk', labelKey: 'catalog.quickBulk' },
+] as const
+
+/** Clave de un filtro rápido (derivada de CATALOG_QUICK_FILTERS). */
+export type CatalogQuickFilterKey = (typeof CATALOG_QUICK_FILTERS)[number]['key']
+
 /** Límite de productos destacados que se muestran en la portada. */
 export const FEATURED_PRODUCTS_LIMIT = 6
 

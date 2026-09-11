@@ -5,13 +5,15 @@ import {
   CATALOG_EMPTY_STATE_CATEGORY_SUGGESTIONS,
   CATALOG_FILTER_DEBOUNCE_MS,
   CATALOG_PAGE_SIZE,
+  CATALOG_QUICK_FILTERS,
   CATALOG_SORT_OPTIONS,
   DEFAULT_CATALOG_SORT,
   SEARCH_LOG_SOURCES,
+  type CatalogQuickFilterKey,
   type CatalogSortValue,
 } from '@/lib/constants'
 import { trackSearchLog } from '@/lib/analytics-client'
-import { ArrowUpDown, LoaderCircle, RotateCcw, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowUpDown, Check, LoaderCircle, RotateCcw, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderBrand, type HeaderNavLink } from '@/components/site-header'
@@ -54,6 +56,8 @@ function buildParams(filters: {
   maxPrice: string
   categories: string[]
   marcas: string[]
+  /** Filtros rápidos activos (facetas de valor, ver CATALOG_QUICK_FILTERS). */
+  quick: CatalogQuickFilterKey[]
   /** Orden elegido por el usuario (ver CATALOG_SORT_OPTIONS). */
   sort: CatalogSortValue
   /** Idioma activo: el API resuelve nombre/título SEO traducidos. */
@@ -65,6 +69,8 @@ function buildParams(filters: {
   if (filters.maxPrice) params.set('maxPrice', filters.maxPrice)
   if (filters.categories.length > 0) params.set('categories', filters.categories.join(','))
   if (filters.marcas.length > 0) params.set('marcas', filters.marcas.join(','))
+  // Cada filtro rápido viaja como `=true` (featured, onSale, topRated, inStock, bulk).
+  for (const key of filters.quick) params.set(key, 'true')
   // Solo se envía el orden cuando NO es el de por defecto, para no fragmentar la caché.
   if (filters.sort && filters.sort !== DEFAULT_CATALOG_SORT) params.set('sort', filters.sort)
   if (filters.locale) params.set('locale', filters.locale)
@@ -85,9 +91,10 @@ function FilterLabel({ children }: { children: ReactNode }) {
 
 /**
  * Vista de catálogo completo con filtros modernos e infinite scroll.
- * Filtros: búsqueda por texto (nombre/descripción), rango de precio, categorías
- * y marcas con selección por buscador, más un selector de ORDEN (relevancia,
- * mejor valorados, precio, novedades) que viaja en la query de /api/catalog.
+ * Filtros: filtros rápidos de valor (destacados, en oferta, mejor valorados,
+ * con stock, mayoreo), búsqueda por texto (nombre/descripción), rango de precio,
+ * categorías y marcas con selección por buscador, más un selector de ORDEN
+ * (relevancia, mejor valorados, precio, novedades) que viaja en la query de /api/catalog.
  * Los productos se cargan de 10 en 10 desde /api/catalog.
  * Usa el mismo header compartido que la portada (carrito, modo oscuro y sesión)
  * y el mismo ProductCard para cada producto.
@@ -119,6 +126,7 @@ export function CatalogView({
   const [maxPrice, setMaxPrice] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedMarcas, setSelectedMarcas] = useState<string[]>([])
+  const [quickFilters, setQuickFilters] = useState<CatalogQuickFilterKey[]>([])
   const [sort, setSort] = useState<CatalogSortValue>(DEFAULT_CATALOG_SORT)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -144,11 +152,11 @@ export function CatalogView({
    * programática (orden inmediato, "Aplicar", retirar chips) sin sufrir
    * closures obsoletos de React.
    */
-  const filtersRef = useRef({ search, minPrice, maxPrice, selectedCategories, selectedMarcas, sort })
-  filtersRef.current = { search, minPrice, maxPrice, selectedCategories, selectedMarcas, sort }
+  const filtersRef = useRef({ search, minPrice, maxPrice, selectedCategories, selectedMarcas, quick: quickFilters, sort })
+  filtersRef.current = { search, minPrice, maxPrice, selectedCategories, selectedMarcas, quick: quickFilters, sort }
 
   const activeFilterCount =
-    (search ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length
+    (search ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + selectedCategories.length + selectedMarcas.length + quickFilters.length
 
   /** Opciones para los selects con buscador. */
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }))
@@ -166,6 +174,7 @@ export function CatalogView({
       maxPrice: f.maxPrice,
       categories: f.selectedCategories,
       marcas: f.selectedMarcas,
+      quick: f.quick,
       sort: f.sort,
       locale,
     })
@@ -197,6 +206,7 @@ export function CatalogView({
       maxPrice: f.maxPrice,
       categories: f.selectedCategories,
       marcas: f.selectedMarcas,
+      quick: f.quick,
       sort: f.sort,
       locale,
     })
@@ -248,11 +258,17 @@ export function CatalogView({
     setMaxPrice('')
     setSelectedCategories([])
     setSelectedMarcas([])
+    setQuickFilters([])
   }
 
   /** Aplica una categoría desde el estado vacío (sugerencia rápida). */
   function applyCategorySuggestion(categoryId: string) {
     setSelectedCategories([categoryId])
+  }
+
+  /** Activa/desactiva un filtro rápido (faceta de valor) del catálogo. */
+  function toggleQuickFilter(key: CatalogQuickFilterKey) {
+    setQuickFilters((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   }
 
   /**
@@ -280,10 +296,39 @@ export function CatalogView({
       label: marcas.find((m) => m.id === id)?.nombre ?? id,
       onRemove: () => setSelectedMarcas((prev) => prev.filter((v) => v !== id)),
     })),
+    ...quickFilters.map((key) => ({
+      key: `quick:${key}`,
+      label: t(CATALOG_QUICK_FILTERS.find((f) => f.key === key)?.labelKey ?? key),
+      onRemove: () => setQuickFilters((prev) => prev.filter((k) => k !== key)),
+    })),
   ]
 
   const filterPanel = (
     <div className="grid gap-5">
+      {/* Filtros rápidos: facetas de valor de un toque (máxima conversión) */}
+      <div className="grid gap-2">
+        <FilterLabel>{t('catalog.quickTitle')}</FilterLabel>
+        <div className="flex flex-wrap gap-2">
+          {CATALOG_QUICK_FILTERS.map((filter) => {
+            const active = quickFilters.includes(filter.key)
+            return (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => toggleQuickFilter(filter.key)}
+                aria-pressed={active}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active ? 'border-brand bg-brand/10 text-brand-strong' : 'border-border hover:border-brand hover:text-brand-strong'
+                }`}
+              >
+                {active && <Check size={12} />}
+                {t(filter.labelKey)}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Buscador por nombre */}
       <label className="grid gap-2">
         <FilterLabel>{t('catalog.searchLabel')}</FilterLabel>
