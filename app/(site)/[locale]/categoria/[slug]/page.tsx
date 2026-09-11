@@ -13,6 +13,7 @@ import {
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
+import { OG_IMAGE_PATH } from '@/lib/constants'
 import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
 
 /**
@@ -105,7 +106,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
   if (!category) return { title: 'Categoría no encontrada' }
 
-  const name = settings.company_name || 'ilumaX'
+  const name = settings.company_name || 'zonadehobbies'
   // H1/título largo del hub (pSEO) con fallback al nombre de categoría.
   const hubTitle = category.seo_title?.trim() || `${category.name} — Catálogo`
   // Descripción: prioriza la intro editorial del hub; luego la descripción.
@@ -130,6 +131,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     title: `${hubTitle} | ${name}`,
     description: cleanDescription,
     path,
+    // Imagen social por defecto (la categoría hereda la OG de marca).
+    image: absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
     alternatesByLocale,
   })
@@ -150,7 +153,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
   // 404 real si la categoría no existe o está inactiva.
   if (!category) notFound()
 
-  const brandName = settings.company_name || 'ilumaX'
+  const brandName = settings.company_name || 'zonadehobbies'
   const origin = absoluteUrl('/').replace(/\/+$/, '')
   // URL canónica del idioma: usa el slug LOCALIZADO (SEO por idioma).
   const canonicalSlug = category.slug_localizado ?? category.slug
@@ -224,6 +227,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
           tagline: settings.tagline || '',
           logoUrl: settings.logo_url,
           iconUrl: settings.icon_url,
+          whatsapp: settings.whatsapp_number,
         }}
         footer={settings.footer_texts}
         social={settings.social_links}

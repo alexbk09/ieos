@@ -1,6 +1,6 @@
 // Puente de eventos: permite que el Asistente IA agregue productos al carrito
 // SIN acoplar el widget de chat al hook useCart (que vive en cada vista).
-export const CART_BRIDGE_EVENT = 'ilumax:add-to-cart'
+export const CART_BRIDGE_EVENT = 'zonadehobbies:add-to-cart'
 
 export type AddToCartPayload = {
   product: Record<string, unknown>

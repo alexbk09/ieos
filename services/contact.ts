@@ -24,7 +24,7 @@ function getCaptchaSecret(): string {
   return (
     process.env.CAPTCHA_SECRET ||
     process.env.SUPABASE_JWT_SECRET ||
-    'ilumax-captcha-secret-dev'
+    'zonadehobbies-captcha-secret-dev'
   )
 }
 

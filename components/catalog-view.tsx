@@ -232,6 +232,14 @@ export function CatalogView({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [search, minPrice, maxPrice, selectedCategories, selectedMarcas, loadFirstPage])
 
+  // Deep-link de búsqueda: el SearchAction del JSON-LD (WebSite) apunta a
+  // /catalogo?search={termino}. Se resuelve en CLIENTE a propósito: leer
+  // searchParams en el servidor volvería dinámica la página y perderíamos el ISR.
+  useEffect(() => {
+    const term = new URLSearchParams(window.location.search).get('search')
+    if (term && term.trim().length >= 2) setSearch(term.trim())
+  }, [])
+
   // Intersection Observer para infinite scroll.
   useEffect(() => {
     const sentinel = document.getElementById('catalog-sentinel')
@@ -587,7 +595,14 @@ export function CatalogView({
         />
       )}
 
-      <SiteFooter footer={footer} brand={{ name: brand?.name, address: brandAddress }} social={social} />
+      <SiteFooter
+        footer={footer}
+        brand={{ name: brand?.name, address: brandAddress }}
+        social={social}
+        logoUrl={brand?.logoUrl}
+        iconUrl={brand?.iconUrl}
+        whatsapp={brand?.whatsapp}
+      />
 
       <CartDrawer
         open={cartOpen}

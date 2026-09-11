@@ -53,7 +53,7 @@ export function CategoryPageView({
   /** Categorías para la navegación cross-categoría (enlazado interno). */
   categories: CategoryNavItem[]
   navLinks: HeaderNavLink[]
-  brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null }
+  brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null; whatsapp?: string }
   footer: { copyright?: string; slogan?: string }
   social: { instagram?: string; linkedin?: string; email?: string }
   brandAddress?: string
@@ -150,7 +150,14 @@ export function CategoryPageView({
         <CategoryNav items={categories} currentSlug={category.slug} />
       </main>
 
-      <SiteFooter footer={footer} brand={{ name: brand.name, address: brandAddress }} social={social} />
+      <SiteFooter
+        footer={footer}
+        brand={{ name: brand.name, address: brandAddress }}
+        social={social}
+        logoUrl={brand.logoUrl}
+        iconUrl={brand.iconUrl}
+        whatsapp={brand.whatsapp}
+      />
 
       {selected && (
         <ProductDetailModal

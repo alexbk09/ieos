@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const captchaCookie = cookieHeader
     .split(';')
     .map((part) => part.trim())
-    .find((part) => part.startsWith('ilumax_captcha='))
+    .find((part) => part.startsWith('zonadehobbies_captcha='))
   const token = captchaCookie ? decodeURIComponent(captchaCookie.split('=')[1]) : null
 
   const body = (await request.json().catch(() => ({}))) as {

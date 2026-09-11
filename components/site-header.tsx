@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 import { CircleUserRound, Menu, ShoppingBag, X } from 'lucide-react'
 import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -18,18 +20,34 @@ export type HeaderBrand = {
   tagline: string
   logoUrl: string | null
   iconUrl: string | null
+  /** Número de WhatsApp (con código país). Se usa en el footer (enlace directo). */
+  whatsapp?: string
 }
 
-/** Enlaces por defecto si el admin aún no configura nav_links. */
+/**
+ * Enlaces por defecto si el admin aún no configura nav_links.
+ * IMPORTANTE: cada href debe resolver SIEMPRE (rutas reales o anclas que
+ * existen en la home: #como-funciona, #contacto). Nunca anclas huérfanas.
+ */
 const DEFAULT_NAV_LINKS: HeaderNavLink[] = [
   { href: '/', label: 'Inicio' },
-  { href: '/#studio', label: 'Studio' },
+  { href: '/#como-funciona', label: 'Cómo funciona' },
   { href: '/#contacto', label: 'Contacto' },
-  { href: '/catalogo', label: 'Catálogo completo', highlight: true },
+  { href: '/catalogo', label: 'Catálogo', highlight: true },
 ]
 
-/** Marca por defecto si la BD no tiene configurada. */
-const DEFAULT_BRAND: HeaderBrand = { name: 'ilumaX', tagline: 'Arquitectura de luz', logoUrl: null, iconUrl: null }
+/** Marca por defecto si la BD no tiene configurada (usa los logos optimizados). */
+const DEFAULT_BRAND: HeaderBrand = {
+  name: 'zonadehobbies',
+  tagline: 'Ofertas de AliExpress verificadas',
+  logoUrl: '/logos/zonadehobbies-wordmark-on-light.webp',
+  iconUrl: '/logos/zonadehobbies-favicon.png',
+}
+
+/** TRUE si el href es solo una ancla interna (no cambia de ruta). */
+function isHashLink(href: string): boolean {
+  return href.startsWith('#') || href.startsWith('/#')
+}
 
 /**
  * Encabezado compartido de la tienda (portada y catálogo completo).
@@ -71,26 +89,42 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-        <a href={localizedPath('/')} className="flex items-center gap-2">
+        <Link href={localizedPath('/')} className="flex items-center gap-2" aria-label={currentBrand.name}>
+          {/* Logo real (wordmark). En modo oscuro se invierte: los wordmarks de
+              marca son monocromo (letras oscuras/blancas), así que invertir da
+              la versión clara sin duplicar assets ni columnas en la BD. */}
           {currentBrand.logoUrl ? (
-            <img src={currentBrand.logoUrl} alt={`${currentBrand.name} — logo`} className="h-9 w-auto object-contain" />
-          ) : currentBrand.iconUrl ? (
-            <img src={currentBrand.iconUrl} alt={`${currentBrand.name} — ícono`} className="size-9 rounded-xl object-cover" />
+            <Image
+              src={currentBrand.logoUrl}
+              alt={currentBrand.name}
+              width={200}
+              height={80}
+              priority
+              className="h-9 w-auto object-contain dark:invert"
+            />
           ) : (
-            <span className="grid size-9 place-items-center rounded-xl bg-brand font-mono text-sm font-black text-brand-foreground">iX</span>
+            <>
+              {currentBrand.iconUrl ? (
+                <Image src={currentBrand.iconUrl} alt="" width={36} height={36} className="size-9 rounded-xl object-cover" />
+              ) : (
+                <span className="grid size-9 place-items-center rounded-xl bg-brand font-mono text-sm font-black text-brand-foreground">iX</span>
+              )}
+              <span className="text-lg font-semibold tracking-[-0.05em]">{currentBrand.name.split(' ')[0]}</span>
+            </>
           )}
-          <span className="text-lg font-semibold tracking-[-0.05em]">
-            {currentBrand.name.split(' ')[0]}
-     {/*        {currentBrand.name.includes('X') || currentBrand.name.toLowerCase().includes('x') ? (
-              <span className="text-cyan-500">X</span>
-            ) : null} */}
-          </span>
-        </a>
+        </Link>
 
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-          {links.map((link) => (
-            <a key={link.href + link.label} href={localizedPath(link.href)} className={link.highlight ? 'font-semibold text-brand-strong' : ''}>{link.label}</a>
-          ))}
+          {links.map((link) => {
+            const href = localizedPath(link.href)
+            const className = link.highlight ? 'font-semibold text-brand-strong' : ''
+            const key = link.href + link.label
+            // Las anclas puras usan <a> (scroll nativo); las rutas usan <Link>
+            // (navegación cliente, sin recargar la página).
+            return isHashLink(link.href)
+              ? <a key={key} href={href} className={className}>{link.label}</a>
+              : <Link key={key} href={href} className={className}>{link.label}</Link>
+          })}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -112,12 +146,19 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
       {menuOpen && (
         <div className="border-t border-border px-5 py-4 md:hidden">
           <div className="flex flex-col gap-4 text-sm">
-            {links.map((link) => (
-              <a key={link.href + link.label} href={link.href} onClick={() => setMenuOpen(false)} className={link.highlight ? 'font-semibold text-brand-strong' : ''}>{link.label}</a>
-            ))}
-            {sessionRole === 'admin' ? <a href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">{t('header.adminPanel')}</a> : sessionRole === 'client' ? <a href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">{t('header.myRequests')}</a> : null}
-            {sessionRole && <a href="/perfil" onClick={() => setMenuOpen(false)}>{t('header.myAccount')}</a>}
-            {!sessionRole && <a href="/login" onClick={() => setMenuOpen(false)}>{t('header.account')}</a>}
+            {links.map((link) => {
+              // Móvil: mismo criterio que escritorio (ancla → <a>, ruta → <Link>)
+              // y SIEMPRE con el idioma activo (bug: antes no localizaba).
+              const href = localizedPath(link.href)
+              const className = link.highlight ? 'font-semibold text-brand-strong' : ''
+              const key = link.href + link.label
+              return isHashLink(link.href)
+                ? <a key={key} href={href} onClick={() => setMenuOpen(false)} className={className}>{link.label}</a>
+                : <Link key={key} href={href} onClick={() => setMenuOpen(false)} className={className}>{link.label}</Link>
+            })}
+            {sessionRole === 'admin' ? <Link href="/admin" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">{t('header.adminPanel')}</Link> : sessionRole === 'client' ? <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="font-semibold text-brand-strong">{t('header.myRequests')}</Link> : null}
+            {sessionRole && <Link href="/perfil" onClick={() => setMenuOpen(false)}>{t('header.myAccount')}</Link>}
+            {!sessionRole && <Link href="/login" onClick={() => setMenuOpen(false)}>{t('header.account')}</Link>}
           </div>
         </div>
       )}

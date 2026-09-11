@@ -3,9 +3,10 @@ import { Storefront, type StorefrontSettings } from '@/components/storefront'
 import { getFeaturedProducts, getCategoryNav } from '@/services/catalog'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
-import { absoluteUrl } from '@/lib/seo-url'
+import { absoluteUrl, absoluteAssetUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { normalizeHomepageConfig } from '@/lib/homepage-config'
+import { OG_IMAGE_PATH } from '@/lib/constants'
 
 /** ISR: la portada se sirve desde CDN y se revalida cada 5 min. */
 export const revalidate = 300
@@ -33,16 +34,21 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
   const { settings } = await getSiteSettings(locale)
-  const name = settings.company_name || 'ilumaX'
-  const tagline = settings.tagline || 'Arquitectura de luz'
+  const name = settings.company_name || 'zonadehobbies'
+  const tagline = settings.tagline || 'Ofertas verificadas para tus hobbies'
+  // Título "keyword-first" (SEO): la keyword principal manda el ranking y la
+  // marca cierra. Antes era "zonadehobbies — <tagline>" (sin keyword).
+  const title = `Ofertas de AliExpress para tus hobbies | ${name}`
   const description =
     settings.hero_texts?.description ??
-    `Soluciones LED y revestimientos que convierten espacios en experiencias memorables.`
+    `Descubre las mejores ofertas de AliExpress curadas por ${name}: precios verificados, reseñas reales y envío rastreable. Encuentra el equipo para tu hobby.`
 
   return buildPageMetadata({
-    title: `${name} — ${tagline}`,
+    title,
     description,
     path: buildLocalizedPath('/', locale, { prefixDefaultLocale: false }),
+    // Imagen social (og:image/twitter:image): sin ella, compartir la home muestra un hueco.
+    image: absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
     alternatesByLocale: portadaPathsByLocale(),
   })
@@ -92,7 +98,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
     homepageConfig: settings.homepage_config,
   }
 
-  const name = settings.company_name || 'ilumaX'
+  const name = settings.company_name || 'zonadehobbies'
   const tagline = settings.tagline || 'Arquitectura de luz'
   const origin = absoluteUrl('/')
   const homepageConfig = normalizeHomepageConfig(settings.homepage_config ?? {})
@@ -125,6 +131,12 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       }
     : null
 
+  // sameAs (redes reales) + logo absoluto: refuerzan E-E-A-T y el knowledge panel.
+  const sameAs = [settings.social_links?.instagram, settings.social_links?.linkedin]
+    .map((value) => (value ?? '').trim())
+    .filter((value) => value.length > 0)
+  const logoAsset = absoluteAssetUrl(settings.logo_url || settings.icon_url || '')
+
   const jsonLd = [
     {
       '@context': 'https://schema.org',
@@ -132,9 +144,10 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       name,
       url: origin,
       description: settings.hero_texts?.description ?? tagline,
-      ...(settings.logo_url ? { logo: settings.logo_url } : {}),
+      ...(logoAsset ? { logo: logoAsset, image: logoAsset } : {}),
       ...(settings.email ? { email: settings.email } : {}),
       ...(settings.address ? { address: { '@type': 'PostalAddress', streetAddress: settings.address } } : {}),
+      ...(sameAs.length > 0 ? { sameAs } : {}),
     },
     {
       '@context': 'https://schema.org',
@@ -143,7 +156,9 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       url: origin,
       potentialAction: {
         '@type': 'SearchAction',
-        target: { '@type': 'EntryPoint', urlTemplate: `${origin}/catalogo?q={search_term_string}` },
+        // El parámetro debe ser 'search' (el que entiende /api/catalog): con 'q'
+        // la caja de búsqueda de Google no devolvía resultados.
+        target: { '@type': 'EntryPoint', urlTemplate: `${origin}/catalogo?search={search_term_string}` },
         'query-input': 'required name=search_term_string',
       },
     },

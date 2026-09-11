@@ -149,7 +149,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     return { title: 'Producto no encontrado' }
   }
 
-  const brandName = settings.company_name || 'ilumaX'
+  const brandName = settings.company_name || 'zonadehobbies'
   // titulo_seo es el título SEO que configura el admin (migración 0042).
   const seoTitle = product.titulo_seo?.trim() || product.name
   const cleanDescription = clampText(htmlToPlainText(product.description), 300)
@@ -261,7 +261,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       rating_count: product.rating_count ?? null,
     },
     origin: schemaOrigin,
-    organization: { name: settings.company_name || 'ilumaX', url: schemaOrigin },
+    organization: { name: settings.company_name || 'zonadehobbies', url: schemaOrigin },
   })
 
   // BreadcrumbList: ruta jerárquica (Rich Results de Google).
@@ -315,10 +315,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         categories={navCategories}
         navLinks={settings.nav_links}
         brand={{
-          name: settings.company_name || 'ilumaX',
+          name: settings.company_name || 'zonadehobbies',
           tagline: settings.tagline || '',
           logoUrl: settings.logo_url,
           iconUrl: settings.icon_url,
+          whatsapp: settings.whatsapp_number,
         }}
         footer={settings.footer_texts}
         social={settings.social_links}

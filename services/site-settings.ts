@@ -104,13 +104,13 @@ export type SiteSettings = {
 function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettings {
   return {
     id: row?.id ?? 1,
-    company_name: row?.company_name ?? fallback.company_name ?? 'ilumaX',
-    tagline: row?.tagline ?? fallback.tagline ?? 'Arquitectura de luz',
+    company_name: row?.company_name ?? fallback.company_name ?? 'zonadehobbies',
+    tagline: row?.tagline ?? fallback.tagline ?? 'Ofertas de AliExpress verificadas',
     logo_url: row?.logo_url ?? fallback.logo_url ?? null,
     icon_url: row?.icon_url ?? fallback.icon_url ?? null,
     whatsapp_number: row?.whatsapp_number ?? fallback.whatsapp_number ?? '584122649707',
     address: row?.address ?? fallback.address ?? 'Caracas, Venezuela',
-    email: row?.email ?? fallback.email ?? 'hola@ilumax.ve',
+    email: row?.email ?? fallback.email ?? 'hola@zonadehobbies.online',
     // Coordenadas por defecto: Caracas, Venezuela.
     map_lat: Number(row?.map_lat ?? fallback.map_lat ?? 10.4806),
     map_lng: Number(row?.map_lng ?? fallback.map_lng ?? -66.9036),
@@ -132,44 +132,49 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
 /** Configuración por defecto del sitio (usada si no hay fila en la BD). */
 const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
-  company_name: 'ilumaX',
-  tagline: 'Las mejores ofertas de AliExpress',
-  logo_url: null,
-  icon_url: null,
+  company_name: 'zonadehobbies',
+  tagline: 'Ofertas verificadas para tus hobbies',
+  // Identidad visual por defecto: los assets optimizados viven en /public/logos
+  // (generados por scripts/optimize-logos.mjs). El admin puede sustituirlos.
+  logo_url: '/logos/zonadehobbies-wordmark-on-light.webp',
+  icon_url: '/logos/zonadehobbies-favicon.png',
   whatsapp_number: '584122649707',
   address: 'Caracas, Venezuela',
-  email: 'hola@ilumax.ve',
+  email: 'hola@zonadehobbies.online',
   map_lat: 10.4806,
   map_lng: -66.9036,
   map_zoom: 13,
+  // Menú sin destinos duplicados ni anclas rotas: cada href resuelve en la home
+  // (#catalogo, #como-funciona y #contacto existen; ver homepage-sections/storefront).
   nav_links: [
     { href: '/', label: 'Inicio' },
-    { href: '/catalogo', label: 'Ofertas' },
+    { href: '/catalogo', label: 'Catálogo', highlight: true },
     { href: '/#como-funciona', label: 'Cómo funciona' },
     { href: '/#contacto', label: 'Contacto' },
-    { href: '/catalogo', label: 'Ver catálogo', highlight: true },
   ],
   hero_texts: {
-    eyebrow: 'Tienda de ofertas AliExpress',
-    title: 'Los mejores productos de AliExpress ',
-    titleHighlight: 'al mejor precio.',
+    eyebrow: 'Ofertas verificadas · Envío internacional',
+    title: 'Las mejores ofertas de AliExpress, ',
+    titleHighlight: 'para tus hobbies.',
     description:
-      'Curamos y comparamos los productos más vendidos y mejor valorados de AliExpress para que compres con confianza, ahorres tiempo y consigas las mejores ofertas del día.',
-    primaryButton: 'Ver ofertas',
+      'Comparamos miles de productos y seleccionamos los mejor valorados de cada categoría: precio real, reseñas de compradores y envío rastreable. Encuentra el equipo para tu hobby sin pagar de más.',
+    primaryButton: 'Ver ofertas del día',
     primaryHref: '#catalogo',
     secondaryButton: 'Explorar categorías',
     secondaryHref: '/catalogo',
-    badge: 'Ofertas actualizadas',
-    imageAlt: 'Productos destacados de AliExpress',
-    imageCaption: 'Curaduría de ofertas',
+    badge: 'Actualizado hoy',
+    imageAlt: 'Ofertas destacadas para tus hobbies',
+    imageCaption: 'Tu zona de hobbies',
     imagePosition: '01 / 03',
     stats: [
       { value: '+1.000', label: 'productos curados' },
-      { value: '24/7', label: 'ofertas actualizadas' },
-      { value: '100%', label: 'compra protegida' },
+      { value: '7-15', label: 'días de envío' },
+      { value: '0%', label: 'coste extra para ti' },
     ],
   },
-  hero_images: { main: '/products/webp/linea-aura.webp' },
+  // Sin imagen por defecto: la portada muestra el LOGO de la marca (visual sin
+  // marco). El admin puede subir una imagen propia cuando la tenga.
+  hero_images: { main: '' },
   studio_texts: {
     eyebrow: 'Cómo funciona',
     title: 'Compra mejor en AliExpress con nuestra ayuda.',
@@ -190,13 +195,16 @@ const DEFAULT_SETTINGS: SiteSettings = {
     formButton: 'Enviar mensaje',
   },
   footer_texts: {
-    copyright: '© 2025 ilumaX. Caracas, Venezuela.',
-    slogan: 'Las mejores ofertas de AliExpress.',
+    copyright: '© 2026 zonadehobbies. Caracas, Venezuela.',
+    slogan: 'Curamos AliExpress para que disfrutes más tu hobby.',
   },
+  // Redes sociales: se dejan vacías a propósito (apuntar a instagram.com/linkedin.com
+  // genéricos es peor que no mostrarlos). El admin carga los perfiles reales y el
+  // footer + JSON-LD (Organization.sameAs) los emiten automáticamente.
   social_links: {
-    instagram: 'https://instagram.com',
-    linkedin: 'https://linkedin.com',
-    email: 'mailto:hola@ilumax.ve',
+    instagram: '',
+    linkedin: '',
+    email: 'mailto:hola@zonadehobbies.online',
   },
   theme: DEFAULT_THEME,
   homepage_config: DEFAULT_HOMEPAGE_CONFIG,

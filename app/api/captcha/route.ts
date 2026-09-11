@@ -12,7 +12,7 @@ export async function GET() {
   const { expression, token } = createCaptcha()
 
   const response = NextResponse.json({ expression })
-  response.cookies.set('ilumax_captcha', token, {
+  response.cookies.set('zonadehobbies_captcha', token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',

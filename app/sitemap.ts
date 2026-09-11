@@ -66,6 +66,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
       alternates: alternatesFor((l) => buildLocalizedPath('/catalogo', l, { prefixDefaultLocale: false })),
     })
+    // Página legal (términos, privacidad y aviso de afiliado): cambia poco.
+    entries.push({
+      url: absoluteUrl(buildLocalizedPath('/politicas', locale, { prefixDefaultLocale: false })),
+      lastModified: generatedAt,
+      changeFrequency: 'monthly',
+      priority: 0.3,
+      alternates: alternatesFor((l) => buildLocalizedPath('/politicas', l, { prefixDefaultLocale: false })),
+    })
   }
 
   // 2) Landings de categoría (/categoria/[slug]) — pSEO con lastmod real y

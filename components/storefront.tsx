@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { LOCAL_IMAGES_PREFIX, SEARCH_LOG_SOURCES } from '@/lib/constants'
+import { SEARCH_LOG_SOURCES } from '@/lib/constants'
 import { trackSearchLog } from '@/lib/analytics-client'
-import { ArrowUpRight, BadgeCheck, CheckCircle2, Globe2, LoaderCircle, Search, Send, Star } from 'lucide-react'
+import { ArrowUpRight, BadgeCheck, Briefcase, Camera, CheckCircle2, LoaderCircle, Mail, Search, Send } from 'lucide-react'
 
 
 import { CaptchaWidget } from '@/components/ui/captcha-widget'
@@ -18,8 +18,9 @@ import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { useLocalizedPath } from '@/hooks/use-localized-path'
+import { useTranslations } from '@/hooks/use-translations'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig } from '@/lib/homepage-config'
-import { HomepageHero, type SegmentData } from '@/components/homepage-sections'
+import { HomepageHero, StudioSection, type SegmentData } from '@/components/homepage-sections'
 
 
 type Product = { id: string; name: string; slug: string; description: string | null; price_usd: number; stock: number; image_url: string; colors?: string[]; peso?: string | null; tamaño?: string | null; specifications?: Record<string, string>; category_id?: string | null; featured?: boolean; categories?: { id: string; name: string; slug: string; description: string | null }[]; images?: { id: string; url: string; alt_text: string | null; sort_order: number; color_name?: string | null }[] }
@@ -38,63 +39,61 @@ export type StorefrontSettings = {
 
 const FALLBACK_SETTINGS: StorefrontSettings = {
   navLinks: [],
-  brand: { name: 'ilumaX', tagline: 'Arquitectura de luz', logoUrl: null, iconUrl: null, whatsapp: '584122649707', address: 'Caracas, Venezuela', email: 'hola@ilumax.ve' },
+  brand: { name: 'zonadehobbies', tagline: 'Ofertas de AliExpress verificadas', logoUrl: '/logos/zonadehobbies-wordmark-on-light.webp', iconUrl: '/logos/zonadehobbies-favicon.png', whatsapp: '584122649707', address: 'Caracas, Venezuela', email: 'hola@zonadehobbies.online' },
   hero: {
-    eyebrow: 'Arquitectura de luz',
-    title: 'Luz que define ',
-    titleHighlight: 'espacios.',
-    description: 'Soluciones LED y revestimientos que convierten ambientes cotidianos en experiencias memorables. Diseñamos la atmósfera, tú habitas el resultado.',
-    primaryButton: 'Explorar catálogo',
+    eyebrow: 'Ofertas verificadas · Envío internacional',
+    title: 'Las mejores ofertas de AliExpress, ',
+    titleHighlight: 'curadas para ti.',
+    description: 'Comparamos miles de productos y seleccionamos solo los mejor valorados: precio real, reseñas de compradores y envío rastreable. Compra sin sorpresas.',
+    primaryButton: 'Ver ofertas del día',
     primaryHref: '#catalogo',
-    secondaryButton: 'Ver todo',
+    secondaryButton: 'Explorar categorías',
     secondaryHref: '/catalogo',
-    badge: 'Colección 2025',
-    imageAlt: 'Línea Aura 12W',
-    imageCaption: 'La luz como material',
+    badge: 'Actualizado hoy',
+    imageAlt: 'Ofertas destacadas de AliExpress',
+    imageCaption: 'Curaduría de ofertas',
     imagePosition: '01 / 03',
     stats: [
-      { value: '+12', label: 'años de experiencia' },
-      { value: '24/7', label: 'asesoría técnica' },
-      { value: '100%', label: 'diseño venezolano' },
+      { value: '+1.000', label: 'productos curados' },
+      { value: '7-15', label: 'días de envío' },
+      { value: '0%', label: 'coste extra para ti' },
     ],
   },
-  heroImage: `${LOCAL_IMAGES_PREFIX}linea-aura.webp`,
+  heroImage: '',
   studio: {
-    eyebrow: 'El studio',
-    title: 'Diseñamos lo que otros solo iluminan.',
+    eyebrow: 'Cómo funciona',
+    title: 'Compra mejor en AliExpress con nuestra ayuda.',
     items: [
-      { number: '01', text: 'Curaduría de piezas con intención y larga vida útil.' },
-      { number: '02', text: 'Asesoría para traducir ideas en instalaciones reales.' },
-      { number: '03', text: 'Materiales que hacen que cada proyecto tenga identidad.' },
+      { number: '01', text: 'Explora categorías y ofertas curadas por nuestro equipo.' },
+      { number: '02', text: 'Compara precios, reseñas y valoraciones reales de compradores.' },
+      { number: '03', text: 'Compra directo en AliExpress con total seguridad y transparencia.' },
     ],
   },
   contact: {
     eyebrow: 'Hablemos',
-    title: 'Tu espacio tiene algo que decir.',
-    description: 'Cuéntanos sobre tu próximo proyecto. Nuestro equipo puede ayudarte a elegir la solución correcta.',
+    title: '¿Necesitas ayuda para elegir?',
+    description: 'Escríbenos y te ayudamos a encontrar el producto ideal o a resolver cualquier duda sobre tu compra en AliExpress.',
     formNamePlaceholder: 'Tu nombre',
     formEmailPlaceholder: 'Correo electrónico',
-    formMessagePlaceholder: 'Cuéntanos sobre tu proyecto',
+    formMessagePlaceholder: 'Cuéntanos qué buscas',
     formButton: 'Enviar mensaje',
   },
-  footer: { copyright: '© 2025 ilumaX. Caracas, Venezuela.', slogan: 'Iluminamos ideas.' },
-  social: { instagram: 'https://instagram.com', linkedin: 'https://linkedin.com', email: 'mailto:hola@ilumax.ve' },
+  footer: { copyright: '© 2026 zonadehobbies. Caracas, Venezuela.', slogan: 'Curamos AliExpress para que compres mejor.' },
+  social: { instagram: '', linkedin: '', email: 'mailto:hola@zonadehobbies.online' },
   homepageConfig: DEFAULT_HOMEPAGE_CONFIG,
 }
 
-const fallbackProducts: Product[] = [
-  { id: '1', name: 'Panel LED Orbis 24W', slug: 'panel-led-orbis-24w', description: 'Iluminación uniforme para espacios contemporáneos.', price_usd: 28, stock: 42, image_url: `${LOCAL_IMAGES_PREFIX}panel-led.webp`, colors: ['Blanco', 'Negro'], specifications: { voltage: '110-240V', watts: '24W', weight: '0.8 kg' }, featured: true },
-  { id: '2', name: 'Línea Aura 12W', slug: 'linea-aura-12w', description: 'Luz lineal para crear atmósferas limpias.', price_usd: 36, stock: 18, image_url: `${LOCAL_IMAGES_PREFIX}linea-aura.webp`, colors: ['Blanco cálido', 'Blanco neutro'], specifications: { voltage: '12V', watts: '12W', weight: '0.4 kg' }, featured: true },
-  { id: '3', name: 'Wall Tile Nova', slug: 'wall-tile-nova', description: 'Revestimiento modular con presencia escultórica.', price_usd: 22.5, stock: 27, image_url: `${LOCAL_IMAGES_PREFIX}wall-tile.webp`, colors: ['Arena', 'Grafito'], specifications: { dimensions: '50 x 50 cm', weight: '1.2 kg' }, featured: true },
-]
-
-const categories = ['Todos', 'Iluminación LED', 'Revestimiento 3D', 'Perfiles y accesorios']
-
-const categoryFor = (p: Product) => p.categories?.[0]?.name ?? (p.name.includes('Tile') ? 'Revestimiento 3D' : 'Iluminación LED')
+// NOTA: NO hay productos "de ejemplo". Mostrar un catálogo ficticio (LED)
+// confunde al cliente y genera URLs indexables falsas → si la BD viene vacía se
+// muestra un estado vacío honesto.
+const categoryFor = (p: Product) => p.categories?.[0]?.name ?? 'General'
 
 export function Storefront({ initialProducts, settings, categories: initialCategories }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings>; categories?: { id: string; name: string; slug: string; description?: string | null }[] }) {
 
-  const products = initialProducts && initialProducts.length > 0 ? initialProducts : fallbackProducts
+  // Catálogo real (sin datos de ejemplo). Si viene vacío se muestra estado vacío.
+  const products = initialProducts ?? []
+  // Categorías del filtro local: las REALES del catálogo (nada quemado).
+  const categories = useMemo(() => ['Todos', ...(initialCategories ?? []).map((c) => c.name)], [initialCategories])
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
 
@@ -102,6 +101,8 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
   useAgentAddToCart(add)
   // Enlaces internos del inicio (CTA a catálogo, etc.) en el idioma activo.
   const localizedPath = useLocalizedPath()
+  // Traductor de la interfaz (idioma activo de la página).
+  const t = useTranslations()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Todos')
   const [selected, setSelected] = useState<Product | null>(null)
@@ -129,8 +130,16 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
 
   const brand = cfg.brand
   const hero = cfg.hero
-  const heroImage = cfg.heroImage || `${LOCAL_IMAGES_PREFIX}linea-aura.webp`
+  // Sin imagen configurada NO se inventa una: la portada muestra el LOGO de la
+  // marca (visual sin marco). Así no aparece la foto heredada de la era LED.
+  const heroImage = cfg.heroImage
   const navLinks = cfg.navLinks && cfg.navLinks.length > 0 ? cfg.navLinks : []
+
+  // El bloque "Cómo funciona" vive en los segmentos del inicio. Si el admin NO
+  // tiene un segmento 'how-it-works' habilitado, se renderiza el bloque Studio
+  // (studio_texts) para que su contenido editable nunca quede huérfano y el
+  // ancla #como-funciona del menú/footer siempre resuelva.
+  const hasHowItWorksSegment = cfg.homepageConfig.segments.some((s) => s.enabled && s.type === 'how-it-works')
 
 
   // Datos que alimentan los segmentos dinámicos (category-grid / product-carousel).
@@ -220,7 +229,22 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
       brand={{ name: brand.name, tagline: brand.tagline, logoUrl: brand.logoUrl, iconUrl: brand.iconUrl }}
     />
     <main className="flex-1">
-      <HomepageHero config={cfg.homepageConfig} hero={hero} heroImage={heroImage} brandTagline={brand.tagline} data={segmentData} />
+      <HomepageHero
+        config={cfg.homepageConfig}
+        hero={hero}
+        heroImage={heroImage}
+        brandTagline={brand.tagline}
+        brandName={brand.name}
+        brandLogoUrl={brand.logoUrl}
+        brandIconUrl={brand.iconUrl}
+        data={segmentData}
+      />
+
+      {/* "Cómo funciona": se usa el bloque Studio solo como respaldo si el admin
+          no tiene un segmento how-it-works (evita duplicar el contenido). */}
+      {!hasHowItWorksSegment && (
+        <StudioSection config={cfg.homepageConfig} studio={cfg.studio} anchorId="como-funciona" />
+      )}
 
       <section id="catalogo" className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 md:flex-row md:items-end">
@@ -231,11 +255,18 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
           </div>
         </div>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((product) => (
-            <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={add} onViewDetails={setSelected} />
-          ))}
-        </div>
+        {filtered.length > 0 ? (
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((product) => (
+              <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={add} onViewDetails={setSelected} />
+            ))}
+          </div>
+        ) : (
+          /* Estado vacío honesto: nunca se inventan productos de ejemplo. */
+          <div className="mt-8 grid place-items-center rounded-3xl border border-dashed border-border py-16 text-center">
+            <p className="text-sm text-muted-foreground">{t('home.catalogEmpty')}</p>
+          </div>
+        )}
         <div className="mt-10 text-center">
           <a href={localizedPath('/catalogo')} className="inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-medium text-navy-foreground hover:bg-brand hover:text-brand-foreground">Ver catálogo completo <ArrowUpRight size={16} /></a>
         </div>
@@ -258,9 +289,9 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
           </div>
 
           <div className="mt-3 flex gap-3">
-            {cfg.social.instagram && <a href={cfg.social.instagram} aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-border"><Star size={17} /></a>}
-            {cfg.social.linkedin && <a href={cfg.social.linkedin} aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-border"><Star size={17} /></a>}
-            {cfg.social.email && <a href={cfg.social.email} aria-label="Enviar correo" className="grid size-10 place-items-center rounded-full border border-border"><Globe2 size={17} /></a>}
+            {cfg.social.instagram && <a href={cfg.social.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand hover:text-brand"><Camera size={17} /></a>}
+            {cfg.social.linkedin && <a href={cfg.social.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand hover:text-brand"><Briefcase size={17} /></a>}
+            {cfg.social.email && <a href={cfg.social.email} aria-label={t('footer.sendEmail')} className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand hover:text-brand"><Mail size={17} /></a>}
           </div>
         </div>
 
@@ -280,7 +311,14 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
         </form>
       </section>
     </main>
-    <SiteFooter footer={cfg.footer} brand={{ name: brand.name, address: brand.email }} social={cfg.social} />
+    <SiteFooter
+      footer={cfg.footer}
+      brand={{ name: brand.name, address: brand.address }}
+      social={cfg.social}
+      logoUrl={brand.logoUrl}
+      iconUrl={brand.iconUrl}
+      whatsapp={brand.whatsapp}
+    />
 
     {selected && (
       <ProductDetailModal

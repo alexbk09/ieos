@@ -545,6 +545,23 @@ export const MERCHANT_RETURN_DAYS = 30
 
 
 
+// ---------- SEO / Redes sociales ----------
+
+/**
+ * Imagen social (og:image / twitter:image) por defecto: 1200x630 con el
+ * wordmark y el claim de marca. Generada por scripts/optimize-logos.mjs.
+ * Sin esta imagen, compartir la web en WhatsApp/Facebook/X muestra un hueco.
+ */
+export const OG_IMAGE_PATH = '/og/zonadehobbies-og.jpg'
+
+/**
+ * Nº máximo de categorías que muestra la grilla del inicio.
+ * POR QUÉ: con 200 categorías, volcarlas todas satura la portada, diluye el
+ * enlazado interno y hunde la conversión. Mostramos una vitrina curada + un
+ * botón "ver todas" hacia /catalogo (mejor UX y mejor SEO).
+ */
+export const HOMEPAGE_CATEGORY_GRID_LIMIT = 12
+
 // ---------- Sitemap / SEO ----------
 
 /**

@@ -64,7 +64,7 @@ export type CartItem = CartProduct & {
   color_name?: string | null
 }
 
-const CART_STORAGE_KEY = 'ilumax-cart'
+const CART_STORAGE_KEY = 'zonadehobbies-cart'
 
 /** Detalle de un marketplace de afiliado para la confirmación final. */
 export type AffiliateMarket = 'ali' | 'amazon' | 'store'

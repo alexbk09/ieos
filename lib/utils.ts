@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Genera las iniciales de un nombre (empresa o persona).
  * Toma la primera letra de las primeras 2 palabras y las convierte en mayúsculas.
- * Ejemplo: "ilumaX" → "iX", "Mi Empresa C.A." → "ME".
+ * Ejemplo: "zonadehobbies" → "iX", "Mi Empresa C.A." → "ME".
  */
 export function getInitials(name?: string | null): string {
   return (name ?? '')

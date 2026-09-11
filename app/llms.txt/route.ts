@@ -26,7 +26,7 @@ export async function GET() {
     getSitemapProducts(),
   ])
 
-  const name = settings.company_name || 'ilumaX'
+  const name = settings.company_name || 'zonadehobbies'
   const tagline = settings.tagline || ''
   const lines: string[] = []
 

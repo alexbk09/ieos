@@ -4,7 +4,9 @@ import { getCatalogPage, getCategoryNav } from '@/services/catalog'
 import { getMarcasActivas } from '@/services/marcas'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
+import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
+import { OG_IMAGE_PATH } from '@/lib/constants'
 
 /** ISR: el catálogo se sirve desde CDN y se revalida cada 5 min. */
 export const revalidate = 300
@@ -21,20 +23,21 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
   const { settings } = await getSiteSettings(locale)
-  const name = settings.company_name || 'ilumaX'
-  const tagline = settings.tagline || 'Arquitectura de luz'
+  const name = settings.company_name || 'zonadehobbies'
   const description =
     settings.hero_texts?.description ??
-    `Explora el catálogo completo de ${name}: productos seleccionados con envío internacional y compra segura.`
+    `Explora el catálogo completo de ofertas de AliExpress curadas por ${name}: precios verificados, reseñas reales y envío internacional con compra segura.`
 
   const alternatesByLocale = Object.fromEntries(
     publishedLocales().map((l) => [l, buildLocalizedPath('/catalogo', l, { prefixDefaultLocale: false })]),
   )
 
   return buildPageMetadata({
-    title: `Catálogo de productos — ${name} | ${tagline}`,
+    title: `Catálogo de ofertas y productos | ${name}`,
     description,
     path: buildLocalizedPath('/catalogo', locale, { prefixDefaultLocale: false }),
+    // Imagen social por defecto (el catálogo hereda la OG de marca).
+    image: absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
     alternatesByLocale,
   })
@@ -62,7 +65,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ locale
       categories={categories}
       marcas={(marcas ?? []).map((m) => ({ id: m.id, nombre: m.nombre }))}
       navLinks={settings.nav_links}
-      brand={{ name: settings.company_name, tagline: settings.tagline, logoUrl: settings.logo_url, iconUrl: settings.icon_url }}
+      brand={{ name: settings.company_name, tagline: settings.tagline, logoUrl: settings.logo_url, iconUrl: settings.icon_url, whatsapp: settings.whatsapp_number }}
       footer={settings.footer_texts}
       social={settings.social_links}
       brandAddress={settings.address}

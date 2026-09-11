@@ -239,7 +239,7 @@ export function InvoiceSettingsManager({ initialSettings, initialInvoices, avail
           <FormInput label="Estado" value={form.issuer_state} onChange={(e) => setText('issuer_state', e.target.value)} />
           <FormInput label="Teléfono" value={form.issuer_phone} onChange={(e) => setText('issuer_phone', e.target.value)} placeholder="+584122649707" />
         </div>
-        <FormInput label="Correo" value={form.issuer_email} onChange={(e) => setText('issuer_email', e.target.value)} placeholder="hola@ilumax.ve" />
+        <FormInput label="Correo" value={form.issuer_email} onChange={(e) => setText('issuer_email', e.target.value)} placeholder="hola@zonadehobbies.online" />
       </div>
     )
   }

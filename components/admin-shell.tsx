@@ -154,7 +154,7 @@ function NavLinks({ pathname, onNavigate, permissions }: { pathname: string; onN
  * El UserMenu se renderiza por separado: en el header del sidebar de
  * escritorio y en la barra superior móvil.
  */
-function AdminNav({ pathname, onNavigate, companyName = 'ilumaX', permissions }: { pathname: string; onNavigate?: () => void; companyName?: string; permissions: UserModulePermission[] | null }) {
+function AdminNav({ pathname, onNavigate, companyName = 'zonadehobbies', permissions }: { pathname: string; onNavigate?: () => void; companyName?: string; permissions: UserModulePermission[] | null }) {
   return (
     <>
       <div className="flex items-center justify-between gap-3">
@@ -246,9 +246,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-border bg-card p-6 lg:flex">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">{getInitials(siteFooter?.brand?.name ?? 'ilumaX')}</span>
+          <span className="grid size-10 place-items-center rounded-2xl bg-accent font-mono font-black text-primary">{getInitials(siteFooter?.brand?.name ?? 'zonadehobbies')}</span>
           <div>
-            <p className="font-semibold tracking-tight">{siteFooter?.brand?.name ?? 'ilumaX'}</p>
+            <p className="font-semibold tracking-tight">{siteFooter?.brand?.name ?? 'zonadehobbies'}</p>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Panel de control</p>
           </div>
         </div>
@@ -295,7 +295,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <button aria-label="Abrir menú" onClick={() => setSidebarOpen(true)} className="grid size-10 place-items-center rounded-full border border-border text-foreground">
           <Menu size={18} />
         </button>
-        <span className="grid size-9 place-items-center rounded-xl bg-accent font-mono text-sm font-black text-primary">{getInitials(siteFooter?.brand?.name ?? 'ilumaX')}</span>
+        <span className="grid size-9 place-items-center rounded-xl bg-accent font-mono text-sm font-black text-primary">{getInitials(siteFooter?.brand?.name ?? 'zonadehobbies')}</span>
       </div>
       <div className="flex items-center gap-2">
         <p className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:block">Panel de control</p>

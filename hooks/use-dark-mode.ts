@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-const STORAGE_KEY = 'ilumax-dark-mode'
+const STORAGE_KEY = 'zonadehobbies-dark-mode'
 const DARK_CLASS = 'dark'
 
 /**

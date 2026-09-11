@@ -23,7 +23,7 @@ import { themeStyleTagContent } from '@/lib/theme'
 const darkModeInit = `
   (function () {
     try {
-      var stored = localStorage.getItem('ilumax-dark-mode');
+      var stored = localStorage.getItem('zonadehobbies-dark-mode');
       if (stored === 'true') {
         document.documentElement.classList.add('dark');
       }

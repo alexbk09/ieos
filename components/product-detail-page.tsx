@@ -86,7 +86,7 @@ type DetailProductProps = {
   /** Categorías para la navegación cross-categoría. */
   categories: CategoryNavItem[]
   navLinks: HeaderNavLink[]
-  brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null }
+  brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null; whatsapp?: string }
   footer: { copyright?: string; slogan?: string }
   social: { instagram?: string; linkedin?: string; email?: string }
   brandAddress?: string
@@ -524,7 +524,14 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
         </div>
       </main>
 
-      <SiteFooter footer={footer} brand={{ name: brand.name, address: brandAddress }} social={social} />
+      <SiteFooter
+        footer={footer}
+        brand={{ name: brand.name, address: brandAddress }}
+        social={social}
+        logoUrl={brand.logoUrl}
+        iconUrl={brand.iconUrl}
+        whatsapp={brand.whatsapp}
+      />
 
       <CartDrawer
         open={cartOpen}

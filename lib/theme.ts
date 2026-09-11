@@ -39,9 +39,9 @@ export type ThemeConfig = {
   radius: string
 }
 
-/** Valores por defecto: reproducen exactamente el look actual de ilumaX. */
+/** Valores por defecto: reproducen exactamente el look actual de zonadehobbies. */
 export const DEFAULT_THEME: ThemeConfig = {
-  brand: '#06b6d4',          // cian ilumaX (cyan-500)
+  brand: '#06b6d4',          // cian zonadehobbies (cyan-500)
   brandStrong: '#0891b2',    // cian profundo para texto (cyan-600)
   brandLight: '#67e8f9',     // cian claro para fondos oscuros (cyan-300)
   brandForeground: '#020617',// texto sobre cian (blue-950)
@@ -66,7 +66,7 @@ export type ThemePreset = {
 
 export const THEME_PRESETS: ThemePreset[] = [
   {
-    name: 'Cian ilumaX',
+    name: 'Cian zonadehobbies',
     swatch: ['#06b6d4', '#020617'],
     theme: { brand: '#06b6d4', brandStrong: '#0891b2', brandLight: '#67e8f9', brandForeground: '#020617', navy: '#020617', navyForeground: '#f8fafc', navyMuted: '#cbd5e1' },
   },
@@ -212,10 +212,10 @@ export function themeStyleTagContent(theme: Partial<ThemeConfig>): string {
  * pero aparecen después, por lo que ganan la cascada.
  */
 export function applyThemeToDocument(theme: Partial<ThemeConfig>) {
-  let style = document.getElementById('ilumax-theme-preview') as HTMLStyleElement | null
+  let style = document.getElementById('zonadehobbies-theme-preview') as HTMLStyleElement | null
   if (!style) {
     style = document.createElement('style')
-    style.id = 'ilumax-theme-preview'
+    style.id = 'zonadehobbies-theme-preview'
     document.head.appendChild(style)
   }
   style.textContent = themeStyleTagContent(theme)
@@ -223,5 +223,5 @@ export function applyThemeToDocument(theme: Partial<ThemeConfig>) {
 
 /** Elimina el preview cuando se sale de la pestaña Apariencia. */
 export function clearThemeFromDocument() {
-  document.getElementById('ilumax-theme-preview')?.remove()
+  document.getElementById('zonadehobbies-theme-preview')?.remove()
 }

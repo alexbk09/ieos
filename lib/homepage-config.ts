@@ -103,9 +103,10 @@ export type HomepageConfig = {
 
 /**
  * Seed por defecto del inicio (tienda de afiliados AliExpress).
- * Define una portada con ritmo visual: bandas claras (blanco) alternadas con
- * bandas oscuras (navy) para que la página no se vea gris y plana, usando
- * pocos colores (navy + acento de marca) con estética UX/UI moderna.
+ * RITMO VISUAL: las bandas usan los TOKENS de superficie (--surface-1/2/3), que
+ * cambian solos entre modo claro y oscuro. Así pasamos de un tinte suave al
+ * siguiente (sin saltos bruscos blanco↔negro) y reservamos UNA única banda
+ * profunda (--surface-deep) para el CTA final del boletín.
  * El admin puede editar, reordenar o eliminar cada segmento desde Configuración.
  */
 export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
@@ -116,8 +117,9 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
     backgroundType: 'gradient',
     backgroundSolid: 'transparent',
     backgroundImage: '',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ecfeff',
+    // Degradado con tokens: se adapta solo al modo claro/oscuro.
+    backgroundGradientFrom: 'var(--surface-1)',
+    backgroundGradientTo: 'var(--surface-3)',
     showBadge: true,
     showStats: true,
     showImage: true,
@@ -127,8 +129,8 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
     backgroundType: 'gradient',
     backgroundSolid: 'transparent',
     backgroundImage: '',
-    backgroundGradientFrom: '#0f172a',
-    backgroundGradientTo: '#020617',
+    backgroundGradientFrom: 'var(--surface-2)',
+    backgroundGradientTo: 'var(--surface-3)',
     textColor: '',
     accentColor: '',
     mutedColor: '',
@@ -140,18 +142,18 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
       type: 'trust-badges',
       enabled: true,
       backgroundType: 'solid',
-      backgroundSolid: '#ffffff',
+      backgroundSolid: 'var(--surface-1)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-1)',
+      backgroundGradientTo: 'var(--surface-3)',
       textColor: '',
-      eyebrow: 'Confianza',
+      eyebrow: 'Compra con confianza',
       title: 'Compra con total seguridad',
-      description: 'Curamos las mejores ofertas de AliExpress para que compres tranquilo, con envío rastreable y pago protegido.',
+      description: 'Curamos las mejores ofertas de AliExpress para que compres tranquilo: envío rastreable, pago protegido y precios verificados.',
       badges: [
         { icon: 'truck', title: 'Envío rastreable', text: 'Seguimiento en tiempo real de tu pedido.' },
         { icon: 'shield', title: 'Compra protegida', text: 'Pago seguro respaldado por AliExpress.' },
-        { icon: 'tag', title: 'Precios de oferta', text: 'Curamos los mejores descuentos del día.' },
+        { icon: 'tag', title: 'Precios verificados', text: 'Curamos los mejores descuentos del día.' },
       ],
     },
     {
@@ -159,29 +161,29 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
       type: 'category-grid',
       enabled: true,
       backgroundType: 'solid',
-      backgroundSolid: 'transparent',
+      backgroundSolid: 'var(--surface-2)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-2)',
+      backgroundGradientTo: 'var(--surface-3)',
       textColor: '',
-      eyebrow: 'Explora por nicho',
+      eyebrow: 'Explora por categoría',
       title: 'Categorías destacadas',
-      description: 'Encuentra los productos más vendidos y mejor valorados de AliExpress organizados por categoría.',
+      description: 'Encuentra los productos más vendidos y mejor valorados de AliExpress, organizados por categoría para descubrir tu próximo hobby.',
       categorySlugs: [],
     },
     {
       id: 'seg-featured',
       type: 'product-carousel',
       enabled: true,
-      backgroundType: 'gradient',
-      backgroundSolid: 'transparent',
+      backgroundType: 'solid',
+      backgroundSolid: 'var(--surface-3)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-3)',
+      backgroundGradientTo: 'var(--surface-1)',
       textColor: '',
       eyebrow: 'Selección del día',
       title: 'Ofertas que no puedes dejar pasar',
-      description: 'Una curaduría de los productos con mejor relación calidad-precio de AliExpress.',
+      description: 'Una curaduría de los productos con mejor relación calidad-precio de AliExpress, actualizada cada día.',
       carouselLabel: 'Más buscados',
       productSlugs: [],
     },
@@ -190,10 +192,10 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
       type: 'how-it-works',
       enabled: true,
       backgroundType: 'solid',
-      backgroundSolid: '#ffffff',
+      backgroundSolid: 'var(--surface-1)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-1)',
+      backgroundGradientTo: 'var(--surface-2)',
       textColor: '',
       eyebrow: 'Transparencia',
       title: '¿Cómo funciona?',
@@ -210,10 +212,10 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
 
       enabled: true,
       backgroundType: 'solid',
-      backgroundSolid: '#ffffff',
+      backgroundSolid: 'var(--surface-2)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-2)',
+      backgroundGradientTo: 'var(--surface-3)',
       textColor: '',
       eyebrow: 'Opiniones reales',
       title: 'Lo que dicen nuestros clientes',
@@ -229,10 +231,10 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
       type: 'faq',
       enabled: true,
       backgroundType: 'solid',
-      backgroundSolid: 'transparent',
+      backgroundSolid: 'var(--surface-1)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-1)',
+      backgroundGradientTo: 'var(--surface-2)',
       textColor: '',
       eyebrow: 'Dudas frecuentes',
       title: 'Preguntas frecuentes',
@@ -248,11 +250,11 @@ export const DEFAULT_HOMEPAGE_CONFIG: HomepageConfig = {
       id: 'seg-newsletter',
       type: 'newsletter',
       enabled: true,
-      backgroundType: 'gradient',
-      backgroundSolid: 'transparent',
+      backgroundType: 'solid',
+      backgroundSolid: 'var(--surface-deep)',
       backgroundImage: '',
-      backgroundGradientFrom: '#0f172a',
-      backgroundGradientTo: '#020617',
+      backgroundGradientFrom: 'var(--surface-deep)',
+      backgroundGradientTo: 'var(--surface-deep)',
       textColor: '',
       eyebrow: 'No te pierdas nada',
       title: 'Recibe las mejores ofertas en tu correo',
@@ -269,13 +271,13 @@ export function createSegment(type: SegmentType): HomepageSegment {
     id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     type,
     enabled: true,
-    // Por defecto los segmentos nuevos usan una banda blanca para que no se
-    // "pierdan" sobre el fondo gris de la página y tengan presencia visual.
+    // Por defecto los segmentos nuevos usan la superficie principal del tema
+    // (se adapta sola a modo claro/oscuro, sin bandas blancas "quemadas").
     backgroundType: 'solid' as BackgroundType,
-    backgroundSolid: '#ffffff',
+    backgroundSolid: 'var(--surface-1)',
     backgroundImage: '',
-    backgroundGradientFrom: '#0f172a',
-    backgroundGradientTo: '#020617',
+    backgroundGradientFrom: 'var(--surface-1)',
+    backgroundGradientTo: 'var(--surface-3)',
     textColor: '',
   }
 
@@ -285,11 +287,11 @@ export function createSegment(type: SegmentType): HomepageSegment {
     case 'image-text':
       return { ...base, title: 'Imagen con texto', description: 'Describe la imagen a la derecha del texto.', imageAlt: 'Imagen descriptiva' }
     case 'stats':
-      return { ...base, title: 'Cifras que respaldan', stats: [{ value: '+12', label: 'años de experiencia' }] }
+      return { ...base, title: 'Cifras que respaldan', stats: [{ value: '+1.000', label: 'productos curados' }] }
     case 'cta':
-      return { ...base, title: '¿Listo para empezar?', description: 'Cuéntanos sobre tu proyecto.', primaryButton: 'Escríbenos', primaryHref: '#contacto', secondaryButton: 'Ver catálogo', secondaryHref: '/catalogo' }
+      return { ...base, title: '¿Listo para encontrar tu hobby?', description: 'Explora las ofertas curadas y compra con confianza.', primaryButton: 'Ver ofertas', primaryHref: '#catalogo', secondaryButton: 'Ver catálogo', secondaryHref: '/catalogo' }
     case 'quote':
-      return { ...base, quote: 'La luz correcta transforma cualquier espacio.', quoteAuthor: 'Equipo ilumaX' }
+      return { ...base, quote: 'El hobby correcto cambia tu tiempo libre.', quoteAuthor: 'Equipo zonadehobbies' }
     // --- Nuevos tipos (afiliados) ---
     case 'category-grid':
       return { ...base, title: 'Explora por categoría', description: 'Encuentra las mejores ofertas de AliExpress organizadas por nicho.', categorySlugs: [] }

@@ -18,7 +18,8 @@
     "i18n:settings": "node scripts/backfill-settings-i18n.mjs",
     "i18n:settings:dry": "node scripts/backfill-settings-i18n.mjs --dry-run",
     "brands:backfill": "node scripts/backfill-product-brands.mjs",
-    "brands:backfill:dry": "node scripts/backfill-product-brands.mjs --dry-run"
+    "brands:backfill:dry": "node scripts/backfill-product-brands.mjs --dry-run",
+    "brand:optimize": "node scripts/optimize-logos.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^0.2.16",
