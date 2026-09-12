@@ -1,7 +1,10 @@
+import { notFound } from 'next/navigation'
 import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader } from '@/components/admin-shell'
 import { InvoiceSettingsManager } from '@/components/invoice-settings-manager'
+import { hasPermission } from '@/services/roles'
 import { getInvoiceSettings, getInvoicesWithDetails, getInvoiceableRequests } from '@/services/invoicing'
+import { FACTURACION_MODULE_SLUG } from '@/lib/constants'
 
 /**
  * Página de administración de facturación venezolana (SENIAT).
@@ -12,6 +15,8 @@ import { getInvoiceSettings, getInvoicesWithDetails, getInvoiceableRequests } fr
  */
 export default async function InvoicingPage() {
   await requireAdmin()
+  // Módulo legado oculto: sin acceso directo por URL (ver HIDDEN_MODULE_SLUGS).
+  if (!(await hasPermission(FACTURACION_MODULE_SLUG, 'read'))) notFound()
   const [{ settings }, { data: invoices }, { data: availableRequests }] = await Promise.all([
     getInvoiceSettings(),
     getInvoicesWithDetails(),

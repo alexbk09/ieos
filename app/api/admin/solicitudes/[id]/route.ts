@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { hasPermission } from '@/services/roles'
+import { SOLICITUDES_MODULE_SLUG } from '@/lib/constants'
 import { REQUEST_STATUSES, updateRequestStatus } from '@/services/requests'
 
 /**
@@ -8,6 +10,10 @@ import { REQUEST_STATUSES, updateRequestStatus } from '@/services/requests'
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(SOLICITUDES_MODULE_SLUG, 'write'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
   const { id } = await params
   const { status } = await request.json()
 

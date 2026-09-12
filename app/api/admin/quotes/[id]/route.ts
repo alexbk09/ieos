@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { hasPermission } from '@/services/roles'
+import { COTIZACIONES_MODULE_SLUG } from '@/lib/constants'
 import { getSiteSettings } from '@/services/site-settings'
 import { getQuoteById, sendQuoteEmail, updateQuoteStatus, cancelQuote, convertQuoteToRequest } from '@/services/quotes'
 import { QUOTE_STATUSES } from '@/lib/quote-calculator'
@@ -11,6 +13,10 @@ import { QUOTE_STATUSES } from '@/lib/quote-calculator'
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(COTIZACIONES_MODULE_SLUG, 'write'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
   const { id } = await params
   const { status } = await request.json()
 
@@ -28,6 +34,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(COTIZACIONES_MODULE_SLUG, 'write'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
   const { id } = await params
   const { action } = await request.json()
 
@@ -60,6 +70,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(COTIZACIONES_MODULE_SLUG, 'write'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
   const { id } = await params
 
   const result = await cancelQuote(id)

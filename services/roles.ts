@@ -1,4 +1,5 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { isModuleHidden } from '@/lib/constants'
 
 /**
  * Servicio de roles y permisos.
@@ -50,13 +51,16 @@ export type UserModulePermission = {
 
 /**
  * Obtiene todos los módulos del sistema ordenados por nombre.
- * @returns Lista de módulos o null si hay error.
+ * Excluye los módulos legado ocultos (HIDDEN_MODULE_SLUGS) para que no
+ * aparezcan en la matriz de permisos del RoleManager.
+ * @returns Lista de módulos visibles o null si hay error.
  */
 export async function getModules(): Promise<{ data: Module[] | null; error: { message: string } | null }> {
   const supabase = await createServerClient()
   const { data, error } = await supabase.from('modules').select('*').order('name')
   if (error) return { data: null, error: { message: error.message } }
-  return { data: data as Module[], error: null }
+  const visibleModules = (data as Module[]).filter((module) => !isModuleHidden(module.slug))
+  return { data: visibleModules, error: null }
 }
 
 /**
@@ -91,22 +95,27 @@ export async function getRolesWithPermissions(): Promise<{ data: (Role & { permi
 /**
  * Obtiene los permisos del usuario autenticado (para filtrar navegación y UI).
  * Usa la función RPC get_user_permissions() definida en la migración 0013.
+ * Excluye los módulos legado ocultos para que no reaparezcan en la interfaz.
  * @returns Lista de permisos del usuario actual.
  */
 export async function getUserPermissions(): Promise<{ data: UserModulePermission[] | null; error: { message: string } | null }> {
   const supabase = await createServerClient()
   const { data, error } = await supabase.rpc('get_user_permissions')
   if (error) return { data: null, error: { message: error.message } }
-  return { data: data as UserModulePermission[], error: null }
+  const rows = (data ?? []) as UserModulePermission[]
+  return { data: rows.filter((permission) => !isModuleHidden(permission.module_slug)), error: null }
 }
 
 /**
  * Verifica si el usuario autenticado tiene permiso sobre un módulo y acción.
+ * Los módulos legado ocultos quedan SIEMPRE sin acceso (menú, URL directa y APIs).
  * @param slug Slug del módulo (ej: 'productos').
  * @param action Acción: 'read' | 'write' | 'delete'.
  * @returns true si tiene permiso, false en caso contrario.
  */
 export async function hasPermission(slug: string, action: 'read' | 'write' | 'delete'): Promise<boolean> {
+  // Corta antes de consultar la base de datos: ocultar es más rápido y seguro.
+  if (isModuleHidden(slug)) return false
   const supabase = await createServerClient()
   const { data } = await supabase.rpc('has_permission', { p_slug: slug, p_action: action })
   return Boolean(data)

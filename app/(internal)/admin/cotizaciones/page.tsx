@@ -1,6 +1,9 @@
+import { notFound } from 'next/navigation'
 import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader } from '@/components/admin-shell'
 import { QuoteManager } from '@/components/quote-manager'
+import { hasPermission } from '@/services/roles'
+import { COTIZACIONES_MODULE_SLUG } from '@/lib/constants'
 import { getQuotesWithItems, getQuoteSettings } from '@/services/quotes'
 import { getProductsWithCategories } from '@/services/catalog'
 import { getAdminSiteSettings } from '@/services/site-settings'
@@ -15,6 +18,8 @@ import { getOfficialExchangeRate } from '@/services/exchange-rate'
  */
 export default async function QuotesPage() {
   await requireAdmin()
+  // Módulo legado oculto: sin acceso directo por URL (ver HIDDEN_MODULE_SLUGS).
+  if (!(await hasPermission(COTIZACIONES_MODULE_SLUG, 'read'))) notFound()
   const [
     { data: quotes },
     { settings: quoteSettings },

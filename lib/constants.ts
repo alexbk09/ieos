@@ -172,6 +172,68 @@ export const REPORTE_MARGEN_MODULE_SLUG = 'reporte_margen'
 /** Slug del módulo "Analítica de Productos" para permisos. */
 export const ANALYTICS_PRODUCTS_MODULE_SLUG = 'analytics_productos'
 
+// ---------- Slugs legado (sistema anterior de tienda física) ----------
+
+/** Slug del módulo "Cotizaciones" (legado del sistema anterior). */
+export const COTIZACIONES_MODULE_SLUG = 'cotizaciones'
+
+/** Slug del módulo "Facturación" (legado del sistema anterior). */
+export const FACTURACION_MODULE_SLUG = 'facturacion'
+
+/** Slug del módulo "Solicitudes" (legado del sistema anterior). */
+export const SOLICITUDES_MODULE_SLUG = 'solicitudes'
+
+// ---------- Módulos legado ocultos (no pertenecen a la plataforma de afiliación) ----------
+
+/**
+ * Slugs de los módulos del ANTIGUO sistema de tienda física (Ventas, Logística,
+ * Contabilidad y Finanzas, más el control de margen/pérdidas) que YA NO forman
+ * parte de esta plataforma de afiliación.
+ *
+ * Esta es la FUENTE ÚNICA de verdad y alimenta tres comportamientos:
+ *   1. El menú lateral (`components/admin-shell.tsx`) deja de mostrar los grupos.
+ *   2. La matriz de permisos (`services/roles.ts` → getModules/getUserPermissions)
+ *      deja de ofrecerlos, así que ningún rol nuevo puede recibirlos.
+ *   3. `hasPermission()` niega el acceso directo por URL y a sus APIs.
+ *
+ * NO se eliminan archivos ni tablas: ocultar es 100% reversible y no borra datos.
+ * Para reactivar un módulo, basta con quitar su slug de esta lista.
+ */
+export const HIDDEN_MODULE_SLUGS: readonly string[] = [
+  // Ventas (sistema anterior)
+  COTIZACIONES_MODULE_SLUG,
+  FACTURACION_MODULE_SLUG,
+  SOLICITUDES_MODULE_SLUG,
+  // Logística
+  ALMACENES_MODULE_SLUG,
+  TRANSPORTISTAS_MODULE_SLUG,
+  DESPACHOS_MODULE_SLUG,
+  ENVIOS_MODULE_SLUG,
+  // Finanzas
+  CUENTAS_COBRAR_MODULE_SLUG,
+  CONCILIACION_MODULE_SLUG,
+  PASARELAS_MODULE_SLUG,
+  CUENTAS_BANCARIAS_MODULE_SLUG,
+  // Contabilidad
+  LIBROS_FISCALES_MODULE_SLUG,
+  FACTURACION_XML_MODULE_SLUG,
+  REPORTE_MARGEN_MODULE_SLUG,
+  // Control de margen y pérdidas
+  MARGIN_ADJUSTMENT_MODULE_SLUG,
+]
+
+/** Conjunto derivado para consultas O(1) sobre los slugs ocultos. */
+const HIDDEN_MODULE_SLUG_SET = new Set(HIDDEN_MODULE_SLUGS)
+
+/**
+ * Indica si un módulo es legado y debe permanecer oculto (menú, permisos y acceso).
+ * @param slug Slug del módulo a consultar (puede ser null/undefined).
+ * @returns true si el módulo no debe mostrarse ni permitir acceso.
+ */
+export function isModuleHidden(slug: string | null | undefined): boolean {
+  return slug ? HIDDEN_MODULE_SLUG_SET.has(slug) : false
+}
+
 // ---------- Analítica de productos ----------
 
 /**

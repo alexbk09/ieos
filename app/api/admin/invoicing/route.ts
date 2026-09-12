@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { hasPermission } from '@/services/roles'
+import { FACTURACION_MODULE_SLUG } from '@/lib/constants'
 import { validateRif } from '@/lib/invoice-calculator'
 import { getInvoiceSettings, updateInvoiceSettings, type InvoiceSettings } from '@/services/invoicing'
 
@@ -9,6 +11,10 @@ import { getInvoiceSettings, updateInvoiceSettings, type InvoiceSettings } from 
  */
 export async function GET() {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(FACTURACION_MODULE_SLUG, 'read'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
   const { settings, error } = await getInvoiceSettings()
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ settings })
@@ -20,6 +26,10 @@ export async function GET() {
  */
 export async function PATCH(request: Request) {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(FACTURACION_MODULE_SLUG, 'write'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
   const body = (await request.json().catch(() => ({}))) as Partial<InvoiceSettings>
 
   // Valida el RIF del emisor si viene en el payload.

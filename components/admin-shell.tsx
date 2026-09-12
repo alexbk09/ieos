@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, BookOpen, Bot, Building2, ClipboardList, CreditCard, FileText, FolderTree, Globe2, Landmark, Languages, LineChart, LogOut, MapPin, Menu, Package, Percent, Receipt, Search, Settings2, ShieldCheck, Tag, Truck, UserRound, Users, Wallet, Warehouse, X } from 'lucide-react'
+import { BarChart3, Bot, Building2, FolderTree, Globe2, Languages, LineChart, LogOut, Menu, Package, Search, Settings2, ShieldCheck, Tag, UserRound, Users, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -17,6 +17,7 @@ import {
   CATEGORY_SEO_MODULE_SLUG,
   ENTRY_MODULE_SLUG,
   SCRAPER_ALIEXPRESS_MODULE_SLUG,
+  isModuleHidden,
 } from '@/lib/constants'
 
 
@@ -37,10 +38,14 @@ type UserModulePermission = {
 /**
  * Navegación del panel agrupada por módulos:
  * - General: resumen del panel.
- * - Catálogo: gestión de productos, categorías, marcas y proveedores.
- * - Ventas: cotizaciones, facturación y solicitudes.
+ * - Catálogo: productos, categorías, marcas, proveedores, analítica, AliExpress,
+ *   SEO de categorías, guías y traducciones.
  * - Usuarios: gestión de usuarios y roles/permisos.
- * - Sistema: ajuste de precios y configuración general.
+ * - Sistema: configuración general del sitio.
+ *
+ * Los módulos legado (Ventas, Logística, Finanzas, Contabilidad y ajuste de
+ * precios) NO viven aquí: sus slugs están en HIDDEN_MODULE_SLUGS y se filtran
+ * en NavLinks como salvaguarda.
  */
 const navGroups: NavGroup[] = [
   {
@@ -65,39 +70,6 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Ventas',
-    items: [
-      { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText, moduleSlug: 'cotizaciones' },
-      { href: '/admin/facturacion', label: 'Facturación', icon: Receipt, moduleSlug: 'facturacion' },
-      { href: '/admin/solicitudes', label: 'Solicitudes', icon: ClipboardList, moduleSlug: 'solicitudes' },
-    ],
-  },
-  {
-    title: 'Logística',
-    items: [
-      { href: '/admin/almacenes', label: 'Almacenes', icon: Warehouse, moduleSlug: 'almacenes' },
-      { href: '/admin/transportistas', label: 'Transportistas', icon: Truck, moduleSlug: 'transportistas' },
-      { href: '/admin/despachos', label: 'Despacho y Rutas', icon: MapPin, moduleSlug: 'despachos' },
-      { href: '/admin/envios', label: 'Zonas de Envío', icon: MapPin, moduleSlug: 'envios' },
-    ],
-  },
-  {
-    title: 'Finanzas',
-    items: [
-      { href: '/admin/cuentas-cobrar', label: 'Cuentas por Cobrar', icon: Wallet, moduleSlug: 'cuentas_cobrar' },
-      { href: '/admin/conciliacion', label: 'Conciliación bancaria', icon: Landmark, moduleSlug: 'conciliacion' },
-      { href: '/admin/pasarelas', label: 'Pasarelas de Pago', icon: CreditCard, moduleSlug: 'pasarelas' },
-    ],
-  },
-  {
-    title: 'Contabilidad',
-    items: [
-      { href: '/admin/libros-fiscales', label: 'Libros Fiscales', icon: BookOpen, moduleSlug: 'libros_fiscales' },
-      { href: '/admin/facturacion-xml', label: 'Facturación XML', icon: Receipt, moduleSlug: 'facturacion_xml' },
-      { href: '/admin/reporte-margen', label: 'Reporte de Margen', icon: Percent, moduleSlug: 'reporte_margen' },
-    ],
-  },
-  {
     title: 'Usuarios',
     items: [
       { href: '/admin/usuarios', label: 'Usuarios', icon: Users, moduleSlug: 'usuarios' },
@@ -107,7 +79,6 @@ const navGroups: NavGroup[] = [
   {
     title: 'Sistema',
     items: [
-      { href: '/admin/ajustes-precios', label: 'Ajuste de precios', icon: Percent, moduleSlug: 'ajustes_precios' },
       { href: '/admin/configuracion', label: 'Configuración', icon: Settings2, moduleSlug: 'configuracion' },
     ],
   },
@@ -126,6 +97,9 @@ function NavLinks({ pathname, onNavigate, permissions }: { pathname: string; onN
     .map(({ title, items }) => ({
       title,
       items: items.filter((item) => {
+        // Salvaguarda central: un módulo legado oculto nunca se muestra en el menú,
+        // ni siquiera para un admin con todos los permisos.
+        if (isModuleHidden(item.moduleSlug)) return false
         if (!permissions) return true
         return !item.moduleSlug || canReadBySlug.get(item.moduleSlug) === true
       }),

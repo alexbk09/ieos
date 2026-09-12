@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { hasPermission } from '@/services/roles'
+import { COTIZACIONES_MODULE_SLUG } from '@/lib/constants'
 import { createQuote } from '@/services/quotes'
 
 /**
@@ -8,6 +10,10 @@ import { createQuote } from '@/services/quotes'
  */
 export async function POST(request: Request) {
   await requireAdmin()
+  // Módulo legado oculto (RBAC): sin permiso, la API queda bloqueada.
+  if (!(await hasPermission(COTIZACIONES_MODULE_SLUG, 'write'))) {
+    return NextResponse.json({ error: 'Módulo no disponible.' }, { status: 403 })
+  }
 
   const body = await request.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Cuerpo inválido' }, { status: 400 })

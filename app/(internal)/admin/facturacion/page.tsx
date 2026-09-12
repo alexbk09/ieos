@@ -1,16 +1,21 @@
+import { notFound } from 'next/navigation'
 import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader } from '@/components/admin-shell'
 import { InvoiceSettingsManager } from '@/components/invoice-settings-manager'
+import { hasPermission } from '@/services/roles'
 import { getInvoiceSettings, getInvoicesWithDetails, getInvoiceableRequests } from '@/services/invoicing'
+import { FACTURACION_MODULE_SLUG } from '@/lib/constants'
 
 /**
- * Módulo de Facturación (independiente, ya no vive dentro de Configuración).
+ * Módulo de Facturación (módulo legado oculto).
  * Permite configurar el emisor (RIF, razón social), IVA, correlativos y
  * gestionar las facturas electrónicas SENIAT (emitir desde solicitud,
  * ver detalle y anular).
  */
 export default async function FacturacionPage() {
   await requireAdmin()
+  // Módulo legado oculto: sin acceso directo por URL (ver HIDDEN_MODULE_SLUGS).
+  if (!(await hasPermission(FACTURACION_MODULE_SLUG, 'read'))) notFound()
   const [{ settings }, { data: invoices }, { data: availableRequests }] = await Promise.all([
     getInvoiceSettings(),
     getInvoicesWithDetails(),
