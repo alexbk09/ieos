@@ -22,6 +22,12 @@ export const EXCHANGE_RATE = 36.5
 /** Umbral mínimo de stock para considerar un producto como "stock bajo". */
 export const LOW_STOCK_ALERT = 20
 
+/**
+ * Ventana (en días) de las métricas de analítica mostradas en el Dashboard.
+ * Un mes móvil equilibra señal reciente y volumen suficiente de datos.
+ */
+export const DASHBOARD_ANALYTICS_DAYS = 30
+
 /** Tamaño máximo permitido para subir imágenes (5 MB). */
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
 

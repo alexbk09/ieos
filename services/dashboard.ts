@@ -1,101 +1,140 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
 /**
- * Servicio de métricas extendidas del dashboard admin.
- * Capa única de acceso a Supabase para los KPIs adicionales:
- * finanzas (facturas, IVA, CxC), logística (despachos) e inventario.
- * Los componentes NUNCA llaman a supabase.from() directamente.
+ * Servicio de métricas del Dashboard administrativo (plataforma de afiliación).
+ * ------------------------------------------------------------------
+ * Responde a UNA pregunta: "¿cómo está el negocio AHORA?" para el modelo REAL
+ * del proyecto: catálogo de afiliados (AliExpress/Amazon) + contenido pSEO.
+ *
+ * Reemplaza las métricas legadas del sistema de tienda física (ventas,
+ * finanzas, logística), cuyos módulos quedaron ocultos en HIDDEN_MODULE_SLUGS.
+ * Aquí solo se mide lo que el sistema actual produce:
+ *   1. Catálogo de afiliación (productos, nichos/categorías, marcas, proveedores).
+ *   2. Contenido pSEO (entradas/guias y hubs de nicho).
+ *   3. Automatización AliExpress (historial del scraper).
+ *
+ * Regla de oro: los componentes NUNCA consultan Supabase; todo pasa por aquí.
+ * Se usan conteos (count/head) y proyecciones mínimas para que el panel siga
+ * siendo rápido aunque el catálogo crezca a miles de filas.
  */
 
-export type DashboardExtendedData = {
-  despachosActivos: number
-  cuentasPorCobrarSaldo: number
-  cuentasVencidas: number
-  facturasEmitidas: number
-  facturasAnuladas: number
-  totalFacturadoUsd: number
-  ivaGeneradoUsd: number
-  cotizacionesActivas: number
-  cotizacionesConvertidas: number
-  valorInventarioUsd: number
-  productosTotales: number
+/** KPIs del catálogo de afiliación. */
+export type DashboardCatalogo = {
+  productosTotal: number
   productosActivos: number
-  productosAgotados: number
+  productosConAfiliado: number
+  productosSinMarca: number
+  categoriasTotal: number
+  categoriasActivas: number
+  categoriasConHub: number
+  marcasTotal: number
+  proveedoresTotal: number
+}
+
+/** KPIs del contenido pSEO (guías/comparativas). */
+export type DashboardContenido = {
+  entradasTotal: number
+  entradasPublicadas: number
+  entradasBorrador: number
+  entradasRevision: number
+  entradasArchivadas: number
+}
+
+/** KPIs de la automatización del scraper AliExpress. */
+export type DashboardScraper = {
+  total: number
+  exitos: number
+  errores: number
+  ultimos: { url_producto: string; estado: string; created_at: string }[]
+}
+
+export type DashboardOverview = {
+  catalogo: DashboardCatalogo
+  contenido: DashboardContenido
+  scraper: DashboardScraper
 }
 
 /**
- * Obtiene métricas extendidas para el dashboard admin.
- * Consultas ligeras en paralelo con solo las columnas necesarias.
+ * Agrega todas las métricas del Dashboard en una sola pasada paralela.
+ * @returns { data } con los conteos, o { error } si alguna consulta falla.
  */
-export async function getAdminDashboardExtendedData(): Promise<{ data: DashboardExtendedData; error: { message: string } | null }> {
-  const supabase = await createServerClient()
+export async function getDashboardOverview(): Promise<{
+  data: DashboardOverview | null
+  error: { message: string } | null
+}> {
+  try {
+    const supabase = await createServerClient()
 
-  const [despachosRes, cxcRes, invoicesRes, quotesRes, productsRes] = await Promise.all([
-    supabase.from('despachos').select('estado').in('estado', ['programado', 'en_ruta']),
-    supabase.from('cuentas_por_cobrar').select('saldo_usd, estado').in('estado', ['pendiente', 'parcial', 'vencida']),
-    supabase.from('invoices').select('status, total, iva_amount'),
-    supabase.from('quotes').select('status').in('status', ['draft', 'sent', 'accepted', 'converted']),
-    supabase.from('products').select('stock, stock_grams, pricing_type, costo_inicial, is_available'),
-  ])
-
-  // Despachos activos en logística.
-  const despachosActivos = (despachosRes.data ?? []).length
-
-  // Cuentas por cobrar: saldo pendiente total y vencidas.
-  const cxcRows = (cxcRes.data ?? []) as Array<{ saldo_usd: number; estado: string }>
-  const cuentasPorCobrarSaldo = cxcRows.reduce((sum, row) => sum + Number(row.saldo_usd ?? 0), 0)
-  const cuentasVencidas = cxcRows.filter((row) => row.estado === 'vencida').length
-
-  // Facturas: emitidas, anuladas, total facturado e IVA.
-  const facturas = (invoicesRes.data ?? []) as Array<{ status: string; total: number; iva_amount: number }>
-  const emitidas = facturas.filter((row) => row.status === 'issued')
-  const facturasEmitidas = emitidas.length
-  const facturasAnuladas = facturas.filter((row) => row.status === 'cancelled').length
-  const totalFacturadoUsd = emitidas.reduce((sum, row) => sum + Number(row.total ?? 0), 0)
-  const ivaGeneradoUsd = emitidas.reduce((sum, row) => sum + Number(row.iva_amount ?? 0), 0)
-
-  // Cotizaciones activas vs convertidas.
-  const cotizaciones = (quotesRes.data ?? []) as Array<{ status: string }>
-  const cotizacionesActivas = cotizaciones.filter((row) => ['draft', 'sent', 'accepted'].includes(row.status)).length
-  const cotizacionesConvertidas = cotizaciones.filter((row) => row.status === 'converted').length
-
-  // Inventario: valor a costo inicial + conteos de productos.
-  const productos = (productsRes.data ?? []) as Array<{
-    stock: number
-    stock_grams: number
-    pricing_type: string
-    costo_inicial: number
-    is_available: boolean
-  }>
-  const valorInventarioUsd = productos.reduce((sum, row) => {
-    // Productos por peso: el costo inicial es por kilogramo (stock en gramos).
-    if (row.pricing_type === 'weight') {
-      return sum + (Number(row.stock_grams ?? 0) / 1000) * Number(row.costo_inicial ?? 0)
-    }
-    return sum + Number(row.stock ?? 0) * Number(row.costo_inicial ?? 0)
-  }, 0)
-  const productosTotales = productos.length
-  const productosActivos = productos.filter((row) => row.is_available !== false).length
-  const productosAgotados = productos.filter(
-    (row) => (row.pricing_type === 'weight' ? Number(row.stock_grams ?? 0) <= 0 : Number(row.stock ?? 0) <= 0),
-  ).length
-
-  return {
-    data: {
-      despachosActivos,
-      cuentasPorCobrarSaldo,
-      cuentasVencidas,
-      facturasEmitidas,
-      facturasAnuladas,
-      totalFacturadoUsd,
-      ivaGeneradoUsd,
-      cotizacionesActivas,
-      cotizacionesConvertidas,
-      valorInventarioUsd,
-      productosTotales,
+    const [
+      productosTotal,
       productosActivos,
-      productosAgotados,
-    },
-    error: null,
+      productosConAfiliado,
+      productosSinMarca,
+      categorias,
+      marcas,
+      proveedores,
+      entradas,
+      scraperTotal,
+      scraperExitos,
+      scraperErrores,
+      scraperUltimos,
+    ] = await Promise.all([
+      supabase.from('products').select('id', { count: 'exact', head: true }),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('is_available', true),
+      // Productos publicables como afiliado: tienen al menos un enlace de salida.
+      supabase
+        .from('products')
+        .select('id', { count: 'exact', head: true })
+        .or('url_afiliado_ali.not.is.null,url_afiliado_amazon.not.is.null,url_afiliado_store.not.is.null'),
+      supabase.from('products').select('id', { count: 'exact', head: true }).is('marca_id', null),
+      // Categorías = nichos. Solo se proyectan las columnas necesarias.
+      supabase.from('categories').select('activa, seo_title'),
+      supabase.from('marcas').select('id', { count: 'exact', head: true }),
+      supabase.from('proveedores').select('id', { count: 'exact', head: true }),
+      supabase.from('seo_entries').select('estado'),
+      supabase.from('scraper_logs').select('id', { count: 'exact', head: true }),
+      supabase.from('scraper_logs').select('id', { count: 'exact', head: true }).eq('estado', 'exito'),
+      supabase.from('scraper_logs').select('id', { count: 'exact', head: true }).eq('estado', 'error'),
+      supabase.from('scraper_logs').select('url_producto, estado, created_at').order('created_at', { ascending: false }).limit(5),
+    ])
+
+    // Solo se informa el primer error visible; el resto de métricas se conserva.
+    const primerError =
+      productosTotal.error ?? categorias.error ?? entradas.error ?? scraperTotal.error ?? null
+
+    const categoriasRows = (categorias.data ?? []) as { activa: boolean | null; seo_title: string | null }[]
+    const entradasRows = (entradas.data ?? []) as { estado: string }[]
+
+    const data: DashboardOverview = {
+      catalogo: {
+        productosTotal: productosTotal.count ?? 0,
+        productosActivos: productosActivos.count ?? 0,
+        productosConAfiliado: productosConAfiliado.count ?? 0,
+        productosSinMarca: productosSinMarca.count ?? 0,
+        categoriasTotal: categoriasRows.length,
+        categoriasActivas: categoriasRows.filter((c) => c.activa !== false).length,
+        categoriasConHub: categoriasRows.filter((c) => Boolean(c.seo_title?.trim())).length,
+        marcasTotal: marcas.count ?? 0,
+        proveedoresTotal: proveedores.count ?? 0,
+      },
+      contenido: {
+        entradasTotal: entradasRows.length,
+        entradasPublicadas: entradasRows.filter((e) => e.estado === 'publicado').length,
+        entradasBorrador: entradasRows.filter((e) => e.estado === 'borrador').length,
+        entradasRevision: entradasRows.filter((e) => e.estado === 'revision').length,
+        entradasArchivadas: entradasRows.filter((e) => e.estado === 'archivado').length,
+      },
+      scraper: {
+        total: scraperTotal.count ?? 0,
+        exitos: scraperExitos.count ?? 0,
+        errores: scraperErrores.count ?? 0,
+        ultimos: (scraperUltimos.data ?? []) as DashboardScraper['ultimos'],
+      },
+    }
+
+    return { data, error: primerError ? { message: primerError.message } : null }
+  } catch (err: any) {
+    console.error('[dashboard] getDashboardOverview:', err?.message)
+    return { data: null, error: { message: err?.message ?? 'Error cargando el resumen del panel.' } }
   }
 }

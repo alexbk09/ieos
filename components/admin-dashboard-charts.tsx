@@ -1,29 +1,40 @@
 /**
  * Gráficos SVG puros para el dashboard admin.
  * Sin dependencias externas: ligeros, rápidos y responsive.
+ *
+ * Son GENÉRICOS a propósito: cualquier serie { label, value } (vistas de
+ * producto, clics de afiliado, entradas publicadas, etc.) se dibuja igual,
+ * y cualquier distribución { label, value, color } alimenta la dona.
  */
 
-/** Colores por estado de solicitud (ciclo de vida). */
-export const STATUS_COLORS: Record<string, string> = {
-  pending: '#f59e0b',
-  confirmed: '#06b6d4',
-  shipped: '#6366f1',
-  completed: '#10b981',
-  cancelled: '#ef4444',
-}
+/**
+ * Gráfico de barras verticales.
+ * @param data Serie a dibujar (etiqueta corta + valor numérico).
+ * @param formatValue Formatea el valor mostrado en tooltip (por defecto, entero).
+ * @param emptyMessage Mensaje cuando no hay datos que mostrar.
+ */
+export function BarChart({ data, formatValue, emptyMessage = 'Sin datos todavía' }: {
+  data: { label: string; value: number }[]
+  formatValue?: (value: number) => string
+  emptyMessage?: string
+}) {
+  const total = data.reduce((sum, d) => sum + d.value, 0)
+  if (data.length === 0 || total === 0) {
+    return <p className="py-10 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+  }
 
-/** Gráfico de barras verticales para ventas. */
-export function SalesBarChart({ data }: { data: { label: string; value: number }[] }) {
   const max = Math.max(...data.map((d) => d.value), 1)
+  const format = formatValue ?? ((value: number) => String(Math.round(value)))
+
   return (
     <div className="flex h-48 items-end gap-2">
       {data.map((d) => (
         <div key={d.label} className="group flex flex-1 flex-col items-center gap-1.5">
-          <span className="text-[10px] font-medium text-muted-foreground opacity-0 transition group-hover:opacity-100">${Math.round(d.value)}</span>
+          <span className="text-[10px] font-medium text-muted-foreground opacity-0 transition group-hover:opacity-100">{format(d.value)}</span>
           <div
             className="w-full rounded-t-lg bg-gradient-to-t from-cyan-600 to-cyan-400 transition-all group-hover:from-cyan-500 group-hover:to-cyan-300"
             style={{ height: `${Math.max((d.value / max) * 100, 4)}%` }}
-            title={`${d.label}: $${d.value.toFixed(2)}`}
+            title={`${d.label}: ${format(d.value)}`}
           />
           <span className="text-[10px] text-muted-foreground">{d.label}</span>
         </div>
@@ -32,11 +43,18 @@ export function SalesBarChart({ data }: { data: { label: string; value: number }
   )
 }
 
-/** Gráfico de dona con leyenda para distribución de estados. */
-export function StatusDonutChart({ data }: { data: { label: string; value: number; color: string }[] }) {
+/**
+ * Gráfico de dona con leyenda para distribuciones.
+ * @param data Segmentos con color, etiqueta y valor.
+ * @param emptyMessage Mensaje cuando el total es cero.
+ */
+export function DonutChart({ data, emptyMessage = 'Sin datos todavía' }: {
+  data: { label: string; value: number; color: string }[]
+  emptyMessage?: string
+}) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
   if (total === 0) {
-    return <p className="py-10 text-center text-sm text-muted-foreground">Sin solicitudes todavía</p>
+    return <p className="py-10 text-center text-sm text-muted-foreground">{emptyMessage}</p>
   }
 
   let acc = 0

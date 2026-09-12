@@ -135,12 +135,14 @@ tailwind.config = {
         <a class="toc-link" href="#admin-usuarios">20 · Usuarios</a>
         <a class="toc-link" href="#admin-roles">21 · Roles y permisos</a>
         <a class="toc-link" href="#admin-config">22 · Configuración del sitio</a>
-        <a class="toc-link" href="#admin-ajustes">23 · Ajuste de precios</a>
+        <a class="toc-link" href="#admin-entradas">23 · Guías y Comparativas (IA)</a>
+        <a class="toc-link" href="#admin-idiomas">24 · Idiomas y Traducciones</a>
+        <a class="toc-link" href="#conectar">25 · Conectar el sistema</a>
         <p class="toc-group">Parte 3 · Referencia</p>
-        <a class="toc-link" href="#flujos">24 · Flujos completos</a>
-        <a class="toc-link" href="#estados">25 · Estados del sistema</a>
-        <a class="toc-link" href="#faq">26 · Preguntas frecuentes</a>
-        <a class="toc-link" href="#soporte">27 · Soporte y errores</a>
+        <a class="toc-link" href="#flujos">26 · Flujos completos</a>
+        <a class="toc-link" href="#estados">27 · Estados del sistema</a>
+        <a class="toc-link" href="#faq">28 · Preguntas frecuentes</a>
+        <a class="toc-link" href="#soporte">29 · Soporte y errores</a>
       </aside>
 
       <main class="space-y-6">
@@ -391,7 +393,7 @@ tailwind.config = {
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
             <div class="grid size-10 place-items-center rounded-xl bg-brand/10 text-brand text-lg">⚙️</div>
             <h4 class="mt-3 font-bold text-sm">Sistema</h4>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Usuarios, Roles y permisos, Configuración y Ajuste de precios.</p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Usuarios, Roles y permisos y Configuración del sitio.</p>
           </div>
         </div>
         <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Arriba a la derecha tienes notificaciones, cambio de tema y el menú de usuario (perfil / cerrar sesión). En móvil, el menú se abre con el botón ☰.</p>
@@ -399,21 +401,31 @@ tailwind.config = {
 
       <section id="admin-resumen" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
         <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 12</p>
-        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Resumen (KPIs)</h3>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Pantalla de entrada del panel (<code>/admin</code>). Resume el estado del negocio de un vistazo.</p>
-        <div class="mt-6 grid gap-4 md:grid-cols-3">
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Resumen (Panel de control)</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Pantalla de entrada del panel (<code>/admin</code>). Muestra el estado del sistema REAL: catálogo de afiliación, contenido pSEO y rendimiento. No incluye módulos del sistema antiguo (ventas, logística, contabilidad o finanzas).</p>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
-            <h4 class="font-bold text-sm">Catálogo</h4>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Total de productos y cuántos están activos/publicados.</p>
+            <h4 class="font-bold text-sm">KPIs principales (arriba)</h4>
+            <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li><strong>Productos activos</strong> (con el total del catálogo).</li>
+              <li><strong>Nichos activos</strong> y cuántos tienen hub SEO.</li>
+              <li><strong>Guías publicadas</strong> frente al total de entradas.</li>
+              <li><strong>Clics a afiliado</strong> de los últimos 30 días.</li>
+            </ul>
           </div>
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
-            <h4 class="font-bold text-sm">Clientes</h4>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Perfiles registrados en la plataforma.</p>
+            <h4 class="font-bold text-sm">Secciones del tablero</h4>
+            <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li><strong>Catálogo de afiliación</strong>: % de productos con enlace, productos sin marca, marcas y proveedores.</li>
+              <li><strong>Nichos con hub SEO</strong> y <strong>Guías por estado</strong> (gráfico de dona).</li>
+              <li><strong>Rendimiento</strong>: vistas, clics, carrito, IA y búsquedas (30 días) + tendencia diaria.</li>
+              <li><strong>Scraper AliExpress</strong>: total de extracciones y últimas ejecuciones.</li>
+              <li><strong>Accesos rápidos</strong> a todos los módulos y <strong>tasa del día</strong> (Bs.).</li>
+            </ul>
           </div>
-          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
-            <h4 class="font-bold text-sm">Gráficas</h4>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tendencia de actividad del catálogo y del tráfico.</p>
-          </div>
+        </div>
+        <div class="mt-6 rounded-2xl border-l-4 border-brand bg-brand/5 p-4 text-xs text-slate-700 dark:text-slate-200">
+          📈 <strong>Ejemplo de lectura:</strong> si “Con enlace de afiliado” está por debajo del 100 %, revisa los productos sin URL de salida; si un nicho no tiene hub, genéralo en <a class="text-brand underline" href="#admin-seo">SEO de Categorías</a>; si un término aparece en “Búsquedas frecuentes”, crea esa categoría y aliméntala con el <a class="text-brand underline" href="#admin-pipeline">Pipeline</a>.
         </div>
         <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Módulo RBAC: <code>dashboard</code>. Para el detalle de conversión hacia el marketplace usa <a class="text-brand underline" href="#admin-analytics">Analítica y clics</a>.</p>
       </section>
@@ -701,10 +713,6 @@ tailwind.config = {
             <h4 class="font-bold text-sm">Tema visual</h4>
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Colores de marca aplicados a toda la tienda.</p>
           </div>
-          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
-            <h4 class="font-bold text-sm">Cotizaciones</h4>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Ajustes de descuento por efectivo y validez (heredado).</p>
-          </div>
         </div>
         <div class="mt-6 rounded-2xl border-l-4 border-brand bg-brand/5 p-4 text-xs text-slate-700 dark:text-slate-200">
           🖼️ Al cambiar el <strong>logo</strong> recuerda subir una imagen con fondo transparente (PNG/WebP). El ícono se usa como favicon en el navegador.
@@ -712,29 +720,145 @@ tailwind.config = {
         <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Módulo RBAC: <code>configuracion</code>.</p>
       </section>
 
-      <section id="admin-ajustes" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+      <section id="admin-entradas" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
         <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 23</p>
-        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Ajuste de precios</h3>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">En <code>/admin/ajustes-precios</code> aplicas ajustes masivos de precio al catálogo, clave para mantener el <strong>margen</strong> sobre el costo del marketplace y cubrir la comisión/afiliación.</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Guías y Comparativas (IA)</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">En <code>/admin/entradas</code> creas el contenido <strong>informacional</strong> del pSEO: artículos que resuelven una decisión de compra y enlazan tus hubs y tus fichas. Es la capa que captura búsquedas long-tail (“X vs Y”, “los mejores…”, “¿vale la pena?”).</p>
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
-            <h4 class="font-bold text-sm">Qué permite</h4>
+            <h4 class="font-bold text-sm">Tipos de entrada</h4>
+            <ul class="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+              <li><strong>Comparativa</strong> · <strong>Top lista</strong> · <strong>Guía de compra</strong></li>
+              <li><strong>Caso de uso</strong> · <strong>¿Vale la pena?</strong></li>
+              <li><strong>Problema/solución</strong> · <strong>Mito/realidad</strong> · <strong>Regalo</strong></li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-brand/25 bg-brand/5 p-5">
+            <h4 class="font-bold text-sm text-brand-dark dark:text-brand-light">Flujo editorial</h4>
+            <ol class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-decimal pl-4">
+              <li>Define la <strong>keyword objetivo</strong> y elige el tipo.</li>
+              <li>Genera con IA y <strong>revisa</strong> (nada se publica sin revisión).</li>
+              <li>Enlaza productos (comparativa) y el <strong>nicho</strong>.</li>
+              <li>Publica: entra al <strong>sitemap</strong> y a <code>/guias/[slug]</code>.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl border-l-4 border-accent bg-amber-50 dark:bg-amber-500/10 p-4 text-xs text-slate-700 dark:text-slate-200">
+          ✍️ <strong>Ejemplo:</strong> “Tira LED RGB vs tira LED RGBW: cuál elegir” → compara 2 productos, enlaza el hub <em>tiras-led</em> y agrega FAQ. El estado pasa de <em>Borrador</em> a <em>En revisión</em> y, al aprobarlo, a <em>Publicado</em>.
+        </div>
+        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Módulo RBAC: <code>guias_comparativas</code>. Los estados (Borrador, En revisión, Publicado, Archivado) alimentan la dona del <a class="text-brand underline" href="#admin-resumen">Resumen</a>.</p>
+      </section>
+
+      <section id="admin-idiomas" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 24</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Idiomas y Traducciones</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">En <code>/admin/idiomas</code> el sistema detecta qué productos y categorías <strong>aún no están traducidos</strong> y los traduce por tandas con IA. Cada idioma vive en la misma fila (campos <code>*_i18n</code>), sin duplicar productos ni romper enlaces.</p>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">Cómo funciona</h4>
+            <ol class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-decimal pl-4">
+              <li>El panel muestra el <strong>pendiente</strong> (productos + categorías).</li>
+              <li>Pulsa <strong>“Traducir pendientes”</strong>: se traducen en tandas cortas.</li>
+              <li>El progreso se ve en vivo hasta llegar a cero.</li>
+            </ol>
+          </div>
+          <div class="rounded-2xl border border-brand/25 bg-brand/5 p-5">
+            <h4 class="font-bold text-sm text-brand-dark dark:text-brand-light">SEO internacional</h4>
+            <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">Cada idioma tiene su URL localizada y su <code>hreflang</code>; el idioma por defecto se sirve sin prefijo para no cambiar ninguna URL ya indexada.</p>
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+          <h4 class="font-bold text-sm">Traducción por consola (opcional)</h4>
+          <p class="mt-2 text-xs text-slate-600 dark:text-slate-300">El mismo motor está disponible por línea de comandos para procesar todo de una vez:</p>
+          <div class="mt-3 grid gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 sm:grid-cols-2">
+            <div><code>npm run i18n:products</code></div>
+            <div><code>npm run i18n:backfill</code></div>
+            <div><code>npm run i18n:settings</code></div>
+            <div><code>npm run i18n:products:dry</code> (simulación)</div>
+          </div>
+        </div>
+        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Módulo RBAC: <code>categorias_idiomas</code>. Requiere <code>DEEPSEEK_API_KEY</code>.</p>
+      </section>
+
+      <section id="conectar" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 25</p>
+        <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Conectar el sistema (puesta en marcha)</h3>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Todo lo necesario para levantar la plataforma desde cero: dependencias, base de datos en Supabase, claves de las APIs externas y despliegue. Si solo vas a usar la tienda, puedes empezar en la sección 1.</p>
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">1 · Requisitos</h4>
             <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
-              <li>Aplicar un <strong>porcentaje</strong> de ajuste a un filtro de productos.</li>
-              <li>Previsualizar el impacto antes de confirmar.</li>
-              <li>Control de pérdidas y margen por producto.</li>
+              <li>Node.js 20+ y npm instalados.</li>
+              <li>Un proyecto de <strong>Supabase</strong> (base de datos + auth + storage).</li>
+              <li>Cuenta de afiliado de <strong>AliExpress Union</strong> (App Key/Secret + Tracking ID).</li>
+              <li>Un proxy de scraping con JS (<strong>ScraperAPI</strong> o <strong>ZenRows</strong>).</li>
+              <li>Una clave de <strong>DeepSeek</strong> para el SEO y las traducciones con IA.</li>
             </ul>
           </div>
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
-            <h4 class="font-bold text-sm">Buenas prácticas</h4>
+            <h4 class="font-bold text-sm">2 · Instalar y arrancar</h4>
+            <ol class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-decimal pl-4">
+              <li><code>npm install</code> en la raíz del proyecto.</li>
+              <li>Crea el archivo <code>.env.local</code> (tabla de abajo).</li>
+              <li><code>npm run supabase:setup</code> crea tablas, políticas RLS y el admin.</li>
+              <li><code>npm run dev</code> y abre <code>http://localhost:3000</code>.</li>
+            </ol>
+          </div>
+          <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+            <h4 class="font-bold text-sm">3 · Verificar</h4>
             <ul class="mt-3 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
-              <li>Revisa siempre la previsualización antes de guardar.</li>
-              <li>Trabaja por lotes por categoría o marca.</li>
-              <li>Registra el motivo del ajuste para auditoría.</li>
+              <li>Entra a <code>/login</code> con el admin creado.</li>
+              <li>Revisa <code>/admin</code> (<a class="text-brand underline" href="#admin-resumen">Resumen</a>).</li>
+              <li>Ejecuta <code>npm run supabase:verify</code>.</li>
+              <li>Corre <code>npm test</code> para validar la lógica de negocio.</li>
             </ul>
           </div>
         </div>
-        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Módulo RBAC: <code>ajustes_precios</code>. Es la única sección “de sistema” ligada a finanzas que se conserva por su impacto directo en la rentabilidad de la afiliación.</p>
+        <h4 class="mt-8 font-bold text-sm">Variables de entorno (<code>.env.local</code>)</h4>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Las marcadas como <strong>pública</strong> se exponen al navegador; el resto son secretas y solo viven en el servidor. Todas deben apuntar al MISMO proyecto de Supabase.</p>
+        <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200/70 dark:border-slate-700">
+          <table class="table-flow">
+            <thead><tr><th>Variable</th><th>Para qué sirve</th></tr></thead>
+            <tbody>
+              <tr><td><code>NEXT_PUBLIC_SUPABASE_URL</code> <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800">pública</span></td><td>URL del proyecto de Supabase (base de datos, auth y storage).</td></tr>
+              <tr><td><code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800">pública</span></td><td>Clave pública sujeta a RLS. Se acepta también <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> como respaldo.</td></tr>
+              <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Clave de servicio para tareas de servidor (crear usuarios, etc.). Nunca exponerla al cliente.</td></tr>
+              <tr><td><code>SUPABASE_URL</code> · <code>DATABASE_URL</code> (o <code>SUPABASE_DB_PASSWORD</code>)</td><td>Las usa <code>npm run supabase:setup</code> para aplicar las migraciones.</td></tr>
+              <tr><td><code>SUPABASE_ADMIN_EMAIL</code> · <code>SUPABASE_ADMIN_PASSWORD</code></td><td>Credenciales del primer usuario administrador que crea el setup.</td></tr>
+              <tr><td><code>NEXT_PUBLIC_SITE_URL</code> <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800">pública</span></td><td>Dominio real del sitio: canonical, sitemap, robots y JSON-LD.</td></tr>
+              <tr><td><code>NEXT_PUBLIC_DEFAULT_AUTHOR</code> <span class="badge bg-slate-100 text-slate-600 dark:bg-slate-800">pública</span></td><td>Firma editorial por defecto de las guías y los hubs de categoría.</td></tr>
+              <tr><td><code>ALI_APP_KEY</code> · <code>ALI_APP_SECRET</code></td><td>Credenciales de la API de afiliados de AliExpress (descubrimiento de productos).</td></tr>
+              <tr><td><code>ALI_TRACKING_ID</code></td><td>Tu ID de seguimiento de AliExpress Union. <strong>Sin él no se generan enlaces ni comisiones.</strong></td></tr>
+              <tr><td><code>ALI_LOCALE</code></td><td>Idioma/región de las consultas a AliExpress (por ejemplo <code>en_US</code>).</td></tr>
+              <tr><td><code>SCRAPERAPI_API_KEY</code> · <code>ZENROWS_API_KEY</code></td><td>Proxy con renderizado JS que descarga el detalle del producto (basta con uno).</td></tr>
+              <tr><td><code>DEEPSEEK_API_KEY</code></td><td>IA que redacta el SEO de fichas y hubs y traduce el contenido.</td></tr>
+              <tr><td><code>DEEPSEEK_BASE_URL</code> · <code>DEEPSEEK_MODEL</code></td><td>Personalización opcional del endpoint y del modelo de IA.</td></tr>
+              <tr><td><code>CAPTCHA_SECRET</code></td><td>Firma los tokens del captcha anti-bots.</td></tr>
+              <tr><td><code>CONTACT_TO_EMAIL</code></td><td>Bandeja que recibe los mensajes del formulario de contacto.</td></tr>
+              <tr><td><code>SMTP_HOST</code> · <code>SMTP_PORT</code> · <code>SMTP_USER</code> · <code>SMTP_PASS</code> · <code>SMTP_FROM</code> · <code>SMTP_SECURE</code></td><td>Servidor de correo saliente para notificaciones y envíos por email.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <div class="rounded-2xl border-l-4 border-brand bg-brand/5 p-4 text-xs text-slate-700 dark:text-slate-200">
+            🔗 <strong>Dónde conseguir cada clave:</strong> Supabase → <em>Project Settings ▸ API</em> (URL y claves). AliExpress → <em>AliExpress Union / Open Platform</em> (App Key, Secret y Tracking ID). ScraperAPI o ZenRows → su panel de cuenta. DeepSeek → <em>API Keys</em> de platform.deepseek.com.
+          </div>
+          <div class="rounded-2xl border-l-4 border-accent bg-amber-50 dark:bg-amber-500/10 p-4 text-xs text-slate-700 dark:text-slate-200">
+            🚀 <strong>Despliegue (Vercel):</strong> sube el repositorio, define estas variables en <em>Project Settings ▸ Environment Variables</em> y vuelve a desplegar. El build genera el sitemap y todas las páginas pSEO. Nunca subas <code>.env.local</code> al repositorio (ya está en <code>.gitignore</code>).
+          </div>
+        </div>
+        <div class="mt-6 rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
+          <h4 class="font-bold text-sm">Comandos útiles</h4>
+          <div class="mt-3 grid gap-2 text-xs font-mono text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+            <div><code>npm run dev</code> → desarrollo</div>
+            <div><code>npm run build</code> → build de producción</div>
+            <div><code>npm run supabase:setup</code> → migra y crea el admin</div>
+            <div><code>npm run supabase:verify</code> → verifica el esquema</div>
+            <div><code>npm test</code> → pruebas de la lógica de negocio</div>
+            <div><code>npm run i18n:products</code> → traduce el catálogo</div>
+          </div>
+        </div>
+        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">💡 Configuración del sitio: los textos, logo, menú y tema se editan desde <a class="text-brand underline" href="#admin-config">Configuración</a>, no en el código.</p>
       </section>
       <!-- ══════════ PARTE 3 · REFERENCIA ══════════ -->
       <div class="rounded-3xl bg-ink p-6 text-white">
@@ -744,7 +868,7 @@ tailwind.config = {
       </div>
 
       <section id="flujos" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
-        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 24</p>
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 26</p>
         <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Flujos completos</h3>
         <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Estos son los recorridos de extremo a extremo que resumen la plataforma.</p>
         <div class="mt-6 space-y-5">
@@ -782,7 +906,7 @@ tailwind.config = {
         </div>
       </section>
       <section id="estados" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
-        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 25</p>
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 27</p>
         <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Estados del sistema</h3>
         <div class="mt-6 grid gap-4 md:grid-cols-3">
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
@@ -813,7 +937,7 @@ tailwind.config = {
       </section>
 
       <section id="faq" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
-        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 26</p>
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 28</p>
         <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Preguntas frecuentes</h3>
         <div class="mt-6 space-y-4">
           <div class="rounded-2xl border border-slate-200/70 dark:border-slate-700 p-5">
@@ -839,7 +963,7 @@ tailwind.config = {
         </div>
       </section>
       <section id="soporte" class="section-card rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-8">
-        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 27</p>
+        <p class="font-mono text-xs uppercase tracking-[.25em] text-accent-dark dark:text-accent">Sección 29</p>
         <h3 class="mt-2 text-2xl sm:text-3xl font-black tracking-tight">Soporte y errores</h3>
         <div class="mt-6 grid gap-4 md:grid-cols-2">
           <div class="rounded-2xl border border-rose-500/25 bg-rose-50/60 dark:bg-rose-500/5 p-5">
