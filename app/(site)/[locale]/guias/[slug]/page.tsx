@@ -7,12 +7,13 @@ import {
   getEntrySlugs,
   getPublishedEntryBySlug,
   getRelatedEntries,
+  entryHeroImage,
   type Entry,
 } from '@/services/entries'
 import { getSiteSettings } from '@/services/site-settings'
 import { MESSAGES, createTranslator } from '@/lib/i18n-messages'
 import { buildPageMetadata } from '@/lib/seo'
-import { absoluteUrl } from '@/lib/seo-url'
+import { absoluteAssetUrl, absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { buildEntryJsonLd } from '@/lib/entry-rules'
@@ -63,7 +64,7 @@ function toCard(entry: Entry): EntryCardData {
     slugLocalizado: entry.slug_localizado ?? entry.slug,
     titulo: entry.titulo,
     resumen: entry.resumen,
-    heroImageUrl: entry.hero_image_url,
+    heroImageUrl: entryHeroImage(entry),
     angulo: entry.angulo,
     lecturaMinutos: entry.lectura_minutos,
   }
@@ -83,12 +84,15 @@ export async function generateMetadata({
   // La meta description cae al texto del artículo si la IA no dejó `resumen`.
   const descripcion =
     entry.resumen || clampText(htmlToPlainText(entry.cuerpo_html ?? ''), 155) || entry.titulo
+  // Imagen social: la de la entrada o, si no hay, la del primer producto
+  // comparado (mucho mejor que el logo genérico al compartir en redes).
+  const heroImage = entryHeroImage(entry)
 
   return buildPageMetadata({
     title: entry.titulo,
     description: descripcion,
     path: buildLocalizedPath(`/guias/${slugLocal}`, locale, { prefixDefaultLocale: false }),
-    image: entry.hero_image_url ? absoluteUrl(entry.hero_image_url) : absoluteUrl(OG_IMAGE_PATH),
+    image: absoluteAssetUrl(heroImage) || absoluteUrl(OG_IMAGE_PATH),
     robots: entry.indexado_google ? undefined : 'noindex, follow',
     alternatesByLocale: Object.fromEntries(
       publishedLocales().map((l) => [
@@ -133,13 +137,16 @@ export default async function EntryPage({
   const origin = absoluteUrl('/').replace(/\/+$/, '')
   const hubUrl = absoluteUrl(buildLocalizedPath('/guias', locale, { prefixDefaultLocale: false }))
 
+  // Imagen principal: la propia de la entrada o la del primer producto comparado.
+  const heroImage = entryHeroImage(entry)
+
   // JSON-LD en servidor: un único @graph con artículo, productos, FAQ y migas.
   const jsonLd = buildEntryJsonLd({
     article: {
       url: pageUrl,
       headline: entry.titulo,
       description: entry.resumen ?? undefined,
-      image: entry.hero_image_url ? absoluteUrl(entry.hero_image_url) : absoluteUrl(OG_IMAGE_PATH),
+      image: absoluteAssetUrl(heroImage) || absoluteUrl(OG_IMAGE_PATH),
       datePublished: entry.publicado_en ?? undefined,
       dateModified: entry.updated_at,
       author: entry.autor ?? undefined,
@@ -194,7 +201,7 @@ export default async function EntryPage({
           comparativa: entry.comparativa,
           faq: entry.faq,
           angulo: entry.angulo,
-          heroImageUrl: entry.hero_image_url,
+          heroImageUrl: heroImage,
           lecturaMinutos: entry.lectura_minutos,
           autor: entry.autor,
           actualizadoEn: entry.updated_at,

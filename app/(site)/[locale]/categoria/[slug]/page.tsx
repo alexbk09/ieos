@@ -10,7 +10,7 @@ import {
   getProductsByCategorySlug,
   type Product,
 } from '@/services/catalog'
-import { getEntriesForCategory } from '@/services/entries'
+import { getEntriesForCategory, entryHeroImage } from '@/services/entries'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
@@ -230,6 +230,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
           titulo: guide.titulo,
           slugLocalizado: guide.slug_localizado ?? guide.slug,
           resumen: guide.resumen,
+          // Misma cadena de prioridad que en el hub: nunca una tarjeta sin foto.
+          imagenUrl: entryHeroImage(guide),
         }))}
         navLinks={settings.nav_links}
         brand={{

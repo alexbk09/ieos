@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { ProductCard, type CardProduct } from '@/components/product-card'
@@ -57,7 +58,7 @@ export function CategoryPageView({
    * Guías/comparativas del nicho (enlazado interno BIDIRECCIONAL).
    * Es opcional: si el nicho aún no tiene guías, el bloque no se renderiza.
    */
-  guides?: { titulo: string; slugLocalizado: string; resumen: string | null }[]
+  guides?: { titulo: string; slugLocalizado: string; resumen: string | null; imagenUrl?: string | null }[]
   navLinks: HeaderNavLink[]
   brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null; whatsapp?: string }
   footer: { copyright?: string; slogan?: string }
@@ -152,40 +153,71 @@ export function CategoryPageView({
           </section>
         )}
 
-        {/* Guías del nicho: cierra la malla BIDIRECCIONAL hub ↔ entrada ↔ ficha.
-            Google descubre e indexa antes lo que está bien enlazado por ambos lados. */}
-        {guides && guides.length > 0 && (
-          <section
-            aria-labelledby="category-guides-heading"
-            className="mt-12 border-t border-border pt-8"
-          >
+        {/* Guías del nicho + puerta al hub de contenido.
+            Aunque este nicho aún no tenga guías propias, el usuario (y Google)
+            SIEMPRE tiene un camino al contenido: la malla nunca queda rota. */}
+        <section
+          aria-labelledby="category-guides-heading"
+          className="mt-12 border-t border-border pt-8"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <h2 id="category-guides-heading" className="text-2xl font-semibold tracking-[-.04em]">
               {t('entry.related')}
             </h2>
+            <a
+              href={localizedPath('/guias')}
+              className="text-sm font-medium text-brand transition hover:text-brand-strong"
+            >
+              {t('entry.allGuides')}
+            </a>
+          </div>
+
+          {guides && guides.length > 0 ? (
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {guides.map((guide) => (
                 <li key={guide.slugLocalizado}>
                   <a
                     href={localizedPath('/guias/' + guide.slugLocalizado)}
-                    className="group flex h-full flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-brand/60"
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-brand/60"
                   >
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-brand">
-                      {t('entry.eyebrow')}
+                    {/* Miniatura: la foto del producto comparado cuando la guía
+                        no tiene una propia (nunca una tarjeta en gris). */}
+                    <span className="relative block aspect-[16/9] w-full overflow-hidden bg-muted">
+                      {guide.imagenUrl ? (
+                        <Image
+                          src={guide.imagenUrl}
+                          alt={guide.titulo}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <span className="block h-full w-full bg-gradient-to-br from-brand/15 via-muted to-muted" />
+                      )}
                     </span>
-                    <span className="mt-2 font-medium leading-snug group-hover:text-brand">
-                      {guide.titulo}
-                    </span>
-                    {guide.resumen && (
-                      <span className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
-                        {guide.resumen}
+                    <span className="flex flex-1 flex-col p-5">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-brand">
+                        {t('entry.eyebrow')}
                       </span>
-                    )}
+                      <span className="mt-2 font-medium leading-snug group-hover:text-brand">
+                        {guide.titulo}
+                      </span>
+                      {guide.resumen && (
+                        <span className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                          {guide.resumen}
+                        </span>
+                      )}
+                    </span>
                   </a>
                 </li>
               ))}
             </ul>
-          </section>
-        )}
+          ) : (
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {t('entry.indexSubtitle')}
+            </p>
+          )}
+        </section>
 
         {/* Navegación cross-categoría (enlazado interno + UX moderna). */}
         <CategoryNav items={categories} currentSlug={category.slug} />

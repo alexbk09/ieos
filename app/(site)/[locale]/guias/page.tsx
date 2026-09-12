@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { EntryIndexView } from '@/components/entry-index-view'
 import type { EntryCardData } from '@/components/entry-card'
 import { getCategoryNav } from '@/services/catalog'
-import { listPublishedEntries, type Entry } from '@/services/entries'
+import { listPublishedEntries, entryHeroImage, type Entry } from '@/services/entries'
 import { getSiteSettings } from '@/services/site-settings'
 import { MESSAGES, createTranslator } from '@/lib/i18n-messages'
 import { buildPageMetadata } from '@/lib/seo'
@@ -37,7 +37,9 @@ function toCard(entry: Entry): EntryCardData {
     slugLocalizado: entry.slug_localizado ?? entry.slug,
     titulo: entry.titulo,
     resumen: entry.resumen,
-    heroImageUrl: entry.hero_image_url,
+    // Imagen de cabecera: manual si existe, si no la del primer producto
+    // comparado (así la tarjeta nunca queda en gris).
+    heroImageUrl: entryHeroImage(entry),
     angulo: entry.angulo,
     lecturaMinutos: entry.lectura_minutos,
   }

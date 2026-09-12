@@ -1,18 +1,20 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { LayoutDashboard, LogOut, Moon, Sun, UserRound } from 'lucide-react'
+import { BookOpen, LayoutDashboard, LogOut, Moon, Sun, UserRound } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getBrowserUser, getBrowserUserRole } from '@/services/auth-client'
 import { getBrowserProfile } from '@/services/profiles-client'
 import { UserAvatar } from '@/components/user-avatar'
 import { useDarkMode } from '@/hooks/use-dark-mode'
+import { useLocalizedPath } from '@/hooks/use-localized-path'
+import { useTranslations } from '@/hooks/use-translations'
 
 /**
  * Menú de usuario en el header.
- * Muestra el avatar (imagen o iniciales) y al hacer clic despliega
- * las opciones: "Panel admin" (solo administradores), "Mi Perfil" y
- * "Cerrar sesión".
+ * Muestra el avatar (imagen o iniciales) y al hacer clic despliega las
+ * opciones: modo claro/oscuro, "Guías y comparativas", "Panel admin"
+ * (solo administradores), "Mi Perfil" y "Cerrar sesión".
  * Funciona tanto para administradores como para clientes.
  */
 export function UserMenu() {
@@ -22,6 +24,9 @@ export function UserMenu() {
   const [profile, setProfile] = useState<{ name?: string | null; avatar_url?: string | null } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const { dark, toggle } = useDarkMode()
+  // Idioma activo: los enlaces internos del menú conservan el idioma de la página.
+  const t = useTranslations()
+  const localizedPath = useLocalizedPath()
 
   // Carga el perfil (nombre + avatar) y el rol del usuario al montar.
   useEffect(() => {
@@ -86,7 +91,7 @@ export function UserMenu() {
         <div className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-black/10">
           {/* Cabecera con nombre del usuario */}
           <div className="border-b border-border px-4 py-3">
-            <p className="truncate text-sm font-semibold">{profile?.name ?? 'Mi cuenta'}</p>
+            <p className="truncate text-sm font-semibold">{profile?.name ?? t('header.account')}</p>
           </div>
 
           {/* Opciones del menú */}
@@ -98,6 +103,19 @@ export function UserMenu() {
               {dark ? <Sun size={16} className="text-brand" /> : <Moon size={16} className="text-brand" />}
               {dark ? 'Modo claro' : 'Modo oscuro'}
             </button>
+
+            {/* Descubrimiento de contenido: guías y comparativas (pSEO).
+                Se usa la ruta LOCALIZADA para no saltar de idioma. */}
+            <button
+              onClick={() => {
+                setOpen(false)
+                router.push(localizedPath('/guias'))
+              }}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <BookOpen size={16} className="text-brand" />
+              {t('entry.allGuides')}
+            </button>
             {isAdmin && (
               <button
                 onClick={() => {
@@ -107,7 +125,7 @@ export function UserMenu() {
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
               >
                 <LayoutDashboard size={16} className="text-brand" />
-                Panel admin
+                {t('header.adminPanel')}
               </button>
             )}
             <button
@@ -118,7 +136,7 @@ export function UserMenu() {
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
             >
               <UserRound size={16} className="text-brand" />
-              Mi Perfil
+              {t('header.myAccount')}
             </button>
             <button
               onClick={signOut}

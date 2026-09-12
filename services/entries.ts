@@ -3,11 +3,13 @@ import { createPublicClient } from '@/lib/supabase/public'
 import {
   DEFAULT_LOCALE,
   ENTRY_INDEX_PAGE_SIZE,
+  ENTRY_MAX_CRITERIA,
   ENTRY_MAX_PER_CATEGORY,
   ENTRY_RELATED_LIMIT,
   ENTRY_TYPES,
   SOURCE_LOCALE,
 } from '@/lib/constants'
+import { construirComparativa } from '@/lib/entry-rules'
 import { baseLanguage } from '@/lib/i18n-config'
 import { resolveLocalizedList, resolveLocalizedValue } from '@/lib/i18n-content'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
@@ -44,6 +46,11 @@ export type EntryProduct = {
   name: string
   slug: string
   image_url: string | null
+  /**
+   * Galería del producto (respaldo de la imagen de cabecera de la entrada).
+   * Muchas fichas importadas no traen `image_url` pero SÍ galería.
+   */
+  images?: { url: string; sort_order: number }[] | null
   price_usd: number
   stock: number
   specifications: Record<string, string> | null
@@ -105,7 +112,7 @@ const I18N_RESOLVE_OPTIONS = { sourceLocale: SOURCE_LOCALE, defaultLocale: DEFAU
  * comparativa y el CTA de afiliado) + sus nichos.
  */
 export const ENTRY_SELECT =
-  '*, seo_entry_products(posicion,nota,products(id,name,slug,image_url,price_usd,stock,specifications,url_afiliado_ali,url_afiliado_amazon,url_afiliado_store)), seo_entry_categories(categories(id,name,slug,slug_i18n))'
+  '*, seo_entry_products(posicion,nota,products(id,name,slug,image_url,price_usd,stock,specifications,url_afiliado_ali,url_afiliado_amazon,url_afiliado_store,product_images(url,sort_order))), seo_entry_categories(categories(id,name,slug,slug_i18n))'
 
 // ---------- Normalización ----------
 
@@ -149,6 +156,10 @@ export function mapEntry(row: any): Entry {
       name: link.products.name,
       slug: link.products.slug,
       image_url: link.products.image_url ?? null,
+      images: ((link.products.product_images ?? []) as any[])
+        .filter((imagen) => imagen?.url)
+        .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+        .map((imagen) => ({ url: String(imagen.url), sort_order: Number(imagen.sort_order ?? 0) })),
       price_usd: Number(link.products.price_usd ?? 0),
       stock: Number(link.products.stock ?? 0),
       specifications: link.products.specifications ?? null,
@@ -197,6 +208,30 @@ export function mapEntry(row: any): Entry {
     // correcto (una URL localizada por idioma) y no solo el del idioma activo.
     slugI18n: row.slug_i18n ?? null,
   }
+}
+
+/**
+ * Resuelve la IMAGEN DE CABECERA de una entrada.
+ * ------------------------------------------------------------------
+ * Cadena de prioridad (para que la tarjeta NUNCA quede gris):
+ *   1. `hero_image_url`: elección editorial del administrador (manda siempre).
+ *   2. Foto principal del primer producto comparado, en su orden editorial.
+ *   3. Primera imagen de la galería de ese producto.
+ *
+ * POR QUÉ aquí y no en el componente: es una regla de NEGOCIO sobre los datos
+ * (qué imagen representa la entrada), así que vive en la capa /services y los
+ * componentes solo pintan la URL que reciben (UI agnóstica).
+ *
+ * @returns URL de la imagen o null si no hay ninguna disponible.
+ */
+export function entryHeroImage(entry: Pick<Entry, 'hero_image_url' | 'products'>): string | null {
+  if (entry?.hero_image_url) return entry.hero_image_url
+  for (const producto of entry?.products ?? []) {
+    if (producto?.image_url) return producto.image_url
+    const primeraDeGaleria = (producto?.images ?? [])[0]
+    if (primeraDeGaleria?.url) return primeraDeGaleria.url
+  }
+  return null
 }
 
 /**
@@ -591,6 +626,53 @@ function rootI18n<T>(value: T | null | undefined): Record<string, T> {
 }
 
 /**
+ * Garantiza que la entrada tenga TABLA COMPARATIVA si sus productos aportan
+ * especificaciones reales.
+ * ------------------------------------------------------------------
+ * POR QUÉ existe: la tabla es el núcleo de una comparativa y depende de que los
+ * criterios propuestos por la IA existan en las fichas del catálogo. Si no
+ * existen (o la IA no propuso ninguno), la tabla quedaría vacía y la entrada
+ * perdería su utilidad. Aquí se reconstruye con los criterios REALES usando
+ * `construirComparativa` (lógica pura, ya testeada).
+ *
+ * @returns La comparativa resultante, o null si no hay datos comparables.
+ */
+async function asegurarComparativa(entryId: string): Promise<EntryComparison | null> {
+  const supabase = await createServerClient()
+  const { data: row, error } = await supabase
+    .from('seo_entries')
+    .select('comparativa, seo_entry_products(posicion, products(slug, specifications))')
+    .eq('id', entryId)
+    .maybeSingle()
+  if (error || !row) return null
+
+  const existente = normalizarComparativa((row as any).comparativa)
+  // Ya tiene tabla con datos: no se toca (respeta el criterio editorial).
+  if (existente) return existente
+
+  const productos = (((row as any).seo_entry_products ?? []) as any[])
+    .filter((link) => link?.products)
+    .sort((a, b) => Number(a.posicion ?? 0) - Number(b.posicion ?? 0))
+    .map((link) => ({
+      slug: String(link.products.slug),
+      specifications: link.products.specifications ?? {},
+    }))
+
+  const construida = construirComparativa(productos, [], { maxCriterios: ENTRY_MAX_CRITERIA })
+  if (construida.criterios.length === 0) return null
+
+  const { error: updateError } = await supabase
+    .from('seo_entries')
+    .update({ comparativa: construida })
+    .eq('id', entryId)
+  if (updateError) {
+    console.error('[entries] asegurarComparativa:', updateError.message)
+    return null
+  }
+  return construida
+}
+
+/**
  * Crea una entrada sembrando SIEMPRE el idioma raíz (igual que createCategory).
  * Así cualquier locale resuelve por fallback desde el primer momento y la URL
  * localizada nunca queda sin slug.
@@ -615,6 +697,10 @@ export async function createEntry(payload: EntryInput, relations: EntryRelations
 
   const relationResult = await replaceRelations(data.id, relations)
   if (relationResult.error) return { entry: null, error: relationResult.error }
+
+  // La tabla comparativa nunca debe quedar vacía: si la IA no acertó con los
+  // criterios, se reconstruye con las specs REALES de los productos enlazados.
+  await asegurarComparativa(data.id)
 
   // El sitemap se refresca al instante (regla del proyecto: nunca esperar la ISR).
   revalidarSitemap({ entradaSlug: data.slug })
@@ -644,6 +730,10 @@ export async function updateEntry(
     const relationResult = await replaceRelations(id, relations)
     if (relationResult.error) return { entry: null, error: relationResult.error }
   }
+
+  // Si la entrada aún no tiene tabla comparativa (o la IA falló al elegir los
+  // criterios), se reconstruye con las specs reales al guardar.
+  await asegurarComparativa(id)
 
   revalidarSitemap({ entradaSlug: data.slug })
   return { entry: data as { id: string; slug: string }, error: null }

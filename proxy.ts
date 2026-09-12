@@ -59,6 +59,10 @@ export async function proxy(request: NextRequest) {
  *  - Páginas públicas (para la resolución "as-needed" del idioma).
  * Se EXCLUYEN /api, /_next, sitemap.xml, robots.txt, llms.txt y los ficheros
  * estáticos para no penalizar el rendimiento ni el crawl.
+ *
+ * ⚠️ IMPORTANTE: esto es una LISTA BLANCA. Toda ruta pública nueva (como
+ * /guias) DEBE añadirse aquí; si no, no se reescribe al idioma por defecto y
+ * Next responde 404 (busca app/(site)/<ruta> y solo existe [locale]/<ruta>).
  */
 export const config = {
   matcher: [
@@ -69,6 +73,10 @@ export const config = {
     '/catalogo/:path*',
     '/categoria/:path*',
     '/productos/:path*',
+    // Hub y entradas de contenido (guías y comparativas).
+    '/guias/:path*',
+    // Página legal (términos, privacidad y aviso de afiliado).
+    '/politicas/:path*',
     '/es/:path*',
   ],
 }

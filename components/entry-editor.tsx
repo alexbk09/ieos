@@ -41,6 +41,7 @@ export function EntryEditor({
   const [angulo, setAngulo] = useState('')
   const [autor, setAutor] = useState('')
   const [keywords, setKeywords] = useState('')
+  const [heroImagen, setHeroImagen] = useState('')
   const [cuerpo, setCuerpo] = useState('')
   const [faq, setFaq] = useState<FaqItem[]>([])
   const [notas, setNotas] = useState<Record<string, string>>({})
@@ -61,6 +62,7 @@ export function EntryEditor({
     setAngulo(entry.angulo ?? '')
     setAutor(entry.autor ?? '')
     setKeywords((entry.keywords ?? []).join(', '))
+    setHeroImagen(entry.hero_image_url ?? '')
     setCuerpo(entry.cuerpo_html ?? '')
     setFaq(entry.faq ?? [])
     setTipo(entry.tipo)
@@ -88,6 +90,7 @@ export function EntryEditor({
           autor,
           cuerpo_html: cuerpo,
           indexado_google: indexado,
+          hero_image_url: heroImagen.trim() || null,
           keywords: keywords
             .split(',')
             .map((keyword) => keyword.trim())
@@ -217,6 +220,13 @@ export function EntryEditor({
           value={keywords}
           onChange={(event) => setKeywords(event.target.value)}
           hint="Separadas por coma (long-tail)"
+        />
+
+        <FormInput
+          label="Imagen de cabecera (URL)"
+          value={heroImagen}
+          onChange={(event) => setHeroImagen(event.target.value)}
+          hint="Opcional. Si lo dejas vacío, se usa la foto del primer producto comparado."
         />
 
         <FormTextarea

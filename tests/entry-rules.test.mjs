@@ -262,6 +262,23 @@ test('construirComparativa descarta filas sin ningún valor y respeta maxCriteri
   assert.deepEqual(construirComparativa([], ['Potencia']), { criterios: [] })
 })
 
+test('construirComparativa cae a las specs REALES si los criterios pedidos no existen', () => {
+  // La IA puede proponer criterios que ninguna ficha declara (o inventarlos):
+  // en ese caso la tabla no puede quedar vacía, se comparan los criterios reales.
+  const tabla = construirComparativa(
+    [
+      { slug: 'a', specifications: { Potencia: '12W', Conectividad: 'WiFi' } },
+      { slug: 'b', specifications: { Potencia: '18W', Conectividad: 'Bluetooth' } },
+    ],
+    ['Colores disponibles', 'Garantía extendida'],
+  )
+  assert.deepEqual(
+    tabla.criterios.map((c) => c.criterio),
+    ['Potencia', 'Conectividad'],
+  )
+  assert.equal(tabla.criterios[0].valores.length, 2)
+})
+
 // ---------- Schema JSON-LD ----------
 
 test('buildArticleSchema exige url y titular', () => {

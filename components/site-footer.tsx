@@ -37,6 +37,8 @@ const DEFAULT_FOOTER: FooterTexts = {
 const FOOTER_LINKS = {
   explore: [
     { key: 'footer.catalog', href: '/catalogo' },
+    // Hub de contenido (guías y comparativas): puerta del cluster pSEO.
+    { key: 'entry.allGuides', href: '/guias' },
     { key: 'footer.howItWorks', href: '/#como-funciona' },
     { key: 'footer.faq', href: '/#faq' },
   ],

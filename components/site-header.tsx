@@ -33,6 +33,8 @@ const DEFAULT_NAV_LINKS: HeaderNavLink[] = [
   { href: '/', label: 'Inicio' },
   { href: '/#como-funciona', label: 'Cómo funciona' },
   { href: '/#contacto', label: 'Contacto' },
+  // Hub de contenido: guías, comparativas y consejos de compra (pSEO).
+  { href: '/guias', label: 'Guías' },
   { href: '/catalogo', label: 'Catálogo', highlight: true },
 ]
 
