@@ -35,5 +35,5 @@ export async function POST(request: Request) {
   }
 
   await logEntryGeneration({ entryId: id, exito: true, etapa: 'traduccion' })
-  return NextResponse.json({ traducidos: result.data.traducidos })
+  return NextResponse.json({ traducidos: result.data.traducidos, pendientes: result.data.pendientes })
 }

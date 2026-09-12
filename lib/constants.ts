@@ -734,6 +734,17 @@ export const TRANSLATION_TEMPERATURE = 0.2
  */
 export const TRANSLATION_MAX_TOKENS = 8000
 
+/**
+ * Idiomas por llamada al traducir contenido LARGO (artículos de guías).
+ * ------------------------------------------------------------------
+ * POR QUÉ existe: pedir 5 idiomas en UNA sola llamada para un artículo de
+ * ~6.000 caracteres de HTML + FAQ desborda el límite de tokens de salida
+ * (finish_reason = 'length'): la respuesta se corta a la mitad y el JSON llega
+ * incompleto → error 500. Con un lote pequeño cada respuesta cabe entera; el
+ * número de llamadas sigue siendo proporcional a los idiomas pendientes.
+ */
+export const TRANSLATION_LOCALE_BATCH_SIZE = 2
+
 /** Nº máximo de entidades a traducir por lote (controla el coste de tokens). */
 export const TRANSLATION_BATCH_SIZE = 10
 

@@ -62,7 +62,22 @@ export function requestTranslation(input: {
   temperature: number
   maxTokens: number
   messages: ChatMessage[]
-}): Promise<{ success: true; text: string } | { success: false; error: string }>
+}): Promise<
+  | {
+      success: true
+      text: string
+      /** 'stop' = respuesta completa; 'length' = cortada por límite de tokens. */
+      finishReason: string | null
+      usage: Record<string, unknown> | null
+    }
+  | { success: false; error: string }
+>
+
+/**
+ * Reparte los idiomas pendientes en lotes (evita respuestas truncadas al
+ * traducir contenido largo a varios idiomas en una sola llamada).
+ */
+export function chunkLocales(locales: string[], size: number): string[][]
 
 /** Fusiona la traducción nueva con el estado actual de una categoría. */
 export function mergeCategoryTranslations(

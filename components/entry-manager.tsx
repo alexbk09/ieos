@@ -20,7 +20,8 @@ import { TableRowSkeleton } from '@/components/ui/skeleton'
 import { confirmDelete } from '@/components/confirm-dialog'
 import { EntryEditor } from '@/components/entry-editor'
 import type { Entry, EntryEstado } from '@/services/entries'
-import { ENTRY_TYPES } from '@/lib/constants'
+import { ENTRY_TYPES, TRANSLATION_LOCALE_BATCH_SIZE } from '@/lib/constants'
+import { SUPPORTED_LOCALES } from '@/lib/i18n-config'
 
 /**
  * EntryManager — panel de "Guías y Comparativas" (entradas SEO).
@@ -210,20 +211,38 @@ export function EntryManager() {
     }
   }
 
-  /** Traduce la entrada a los idiomas pendientes (nunca genera a medias). */
+  /**
+   * Traduce la entrada por TANDAS.
+   * ------------------------------------------------------------------
+   * POR QUÉ en bucle: cada lote de idiomas tarda ~15 s y una petición con todos
+   * los idiomas se acercaría al límite de tiempo de la plataforma (y antes se
+   * cortaba por tokens). El servidor traduce un lote y devuelve cuántos quedan;
+   * el cliente repite hasta terminar, mostrando el progreso en vivo.
+   */
   async function traducir(entry: Entry) {
     setAccionEnCurso(entry.id)
     try {
-      const res = await fetch('/api/admin/entradas/traducir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entry.id }),
-      })
-      const body = await res.json()
-      if (!res.ok) throw new Error(body?.error ?? 'No se pudo traducir la entrada.')
+      const traducidos: string[] = []
+      // Máximo de tandas necesarias según los idiomas soportados y el tamaño
+      // de lote (evita bucles infinitos si algo devuelve datos incoherentes).
+      const maxTandas = Math.ceil(SUPPORTED_LOCALES.length / TRANSLATION_LOCALE_BATCH_SIZE)
+
+      for (let tanda = 0; tanda < maxTandas; tanda += 1) {
+        const res = await fetch('/api/admin/entradas/traducir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: entry.id }),
+        })
+        const body = await res.json()
+        if (!res.ok) throw new Error(body?.error ?? 'No se pudo traducir la entrada.')
+
+        traducidos.push(...(body.traducidos ?? []))
+        if (!body.pendientes) break
+      }
+
       toast.success(
-        body.traducidos?.length > 0
-          ? 'Traducida a: ' + body.traducidos.join(', ') + '.'
+        traducidos.length > 0
+          ? 'Traducida a: ' + traducidos.join(', ') + '.'
           : 'La entrada ya estaba traducida.',
       )
     } catch (err: any) {

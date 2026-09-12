@@ -6,6 +6,7 @@ import {
   buildCategoryMessages,
   buildEntryMessages,
   buildProductMessages,
+  chunkLocales,
   mergeCategoryTranslations,
   mergeEntryTranslations,
   mergeProductTranslations,
@@ -16,6 +17,7 @@ import {
 import {
   SOURCE_LOCALE,
   TRANSLATION_API_URL,
+  TRANSLATION_LOCALE_BATCH_SIZE,
   TRANSLATION_MAX_TOKENS,
   TRANSLATION_MODEL,
   TRANSLATION_TEMPERATURE,
@@ -156,7 +158,15 @@ export async function traducirCategoria(
 
 /** Resultado de una traducción de producto. */
 export type TraduccionProductoResult =
-  | { success: true; data: { translations: Record<string, any>; traducidos: string[] } }
+  | {
+      success: true
+      data: {
+        translations: Record<string, any>
+        traducidos: string[]
+        /** Idiomas que aún quedan por traducir (el cliente repite tandas). */
+        pendientes: number
+      }
+    }
   | { success: false; error: string }
 
 /**
@@ -193,36 +203,55 @@ export async function traducirProducto(
     })
 
     if (pendientes.length === 0) {
-      return { success: true, data: { translations, traducidos: [] } }
+      return { success: true, data: { translations, traducidos: [], pendientes: 0 } }
     }
 
-    const respuesta = await requestTranslation({
-      apiKey,
-      apiUrl: TRANSLATION_API_URL,
-      model: TRANSLATION_MODEL,
-      temperature: TRANSLATION_TEMPERATURE,
-      maxTokens: TRANSLATION_MAX_TOKENS,
-      messages: buildProductMessages({
-        nombre: row.name,
-        tituloSeo: row.titulo_seo,
-        descripcion: row.description ?? null,
-        seoFaq: row.seo_faq ?? null,
-        locales: pendientes,
-      }),
-    })
-    if (!respuesta.success) return { success: false, error: respuesta.error }
+    // Traducción POR LOTES (misma razón que en las entradas): la descripción
+    // HTML de una ficha puede desbordar el límite de tokens si se piden varios
+    // idiomas de una vez, y la respuesta llegaría cortada (JSON incompleto).
+    let nuevas = mergeProductTranslations(translations, {})
+    const traducidos: string[] = []
 
-    const parsed = parseTranslationResponse(respuesta.text)
-    if (!parsed.success) return { success: false, error: parsed.error }
+    for (const lote of chunkLocales(pendientes, TRANSLATION_LOCALE_BATCH_SIZE)) {
+      const respuesta = await requestTranslation({
+        apiKey,
+        apiUrl: TRANSLATION_API_URL,
+        model: TRANSLATION_MODEL,
+        temperature: TRANSLATION_TEMPERATURE,
+        maxTokens: TRANSLATION_MAX_TOKENS,
+        messages: buildProductMessages({
+          nombre: row.name,
+          tituloSeo: row.titulo_seo,
+          descripcion: row.description ?? null,
+          seoFaq: row.seo_faq ?? null,
+          locales: lote,
+        }),
+      })
+      if (!respuesta.success) return { success: false, error: respuesta.error }
 
-    const nuevas = mergeProductTranslations(translations, parsed.data)
+      if (respuesta.finishReason === 'length') {
+        return {
+          success: false,
+          error: 'La traducción se cortó por límite de tokens en el lote [' + lote.join(', ') + '].',
+        }
+      }
+
+      const parsed = parseTranslationResponse(respuesta.text)
+      if (!parsed.success) {
+        return { success: false, error: parsed.error + ' Lote: [' + lote.join(', ') + '].' }
+      }
+
+      nuevas = mergeProductTranslations(nuevas, parsed.data)
+      traducidos.push(...lote)
+    }
+
     const { error: updateError } = await supabase
       .from('products')
       .update({ translations: nuevas })
       .eq('id', productoId)
     if (updateError) return { success: false, error: updateError.message }
 
-    return { success: true, data: { translations: nuevas, traducidos: pendientes } }
+    return { success: true, data: { translations: nuevas, traducidos, pendientes: pendientes.length - traducidos.length } }
   } catch (err: any) {
     console.error('[i18n-translate] traducirProducto:', err?.message)
     return { success: false, error: err?.message ?? 'Error traduciendo el producto.' }
@@ -234,7 +263,14 @@ export { SOURCE_LOCALE }
 
 /** Resultado de una traducción de entrada SEO. */
 export type TraduccionEntradaResult =
-  | { success: true; data: { traducidos: string[] } }
+  | {
+      success: true
+      data: {
+        traducidos: string[]
+        /** Idiomas que aún quedan por traducir (el cliente repite tandas). */
+        pendientes: number
+      }
+    }
   | { success: false; error: string }
 
 /**
@@ -267,28 +303,56 @@ export async function traducirEntrada(
     const permitidos = options.locales ?? TARGET_LOCALES
     // Solo se traduce lo que FALTA: si ya está todo, coste cero (ni una llamada).
     const pendientes = missingEntryLocales(row).filter((locale) => permitidos.includes(locale))
-    if (pendientes.length === 0) return { success: true, data: { traducidos: [] } }
+    if (pendientes.length === 0) return { success: true, data: { traducidos: [], pendientes: 0 } }
 
-    const respuesta = await requestTranslation({
-      apiKey,
-      apiUrl: TRANSLATION_API_URL,
-      model: TRANSLATION_MODEL,
-      temperature: TRANSLATION_TEMPERATURE,
-      maxTokens: TRANSLATION_MAX_TOKENS,
-      messages: buildEntryMessages({
-        titulo: row.titulo,
-        resumen: row.resumen ?? '',
-        cuerpoHtml: row.cuerpo_html ?? '',
-        faq: row.faq ?? null,
-        locales: pendientes,
-      }),
-    })
-    if (!respuesta.success) return { success: false, error: respuesta.error }
+    // Traducción POR LOTES: un artículo completo NO cabe en una sola respuesta
+    // para 5 idiomas (el modelo la cortaba por límite de tokens y el JSON
+    // llegaba incompleto). Los mapas se acumulan lote a lote y se guardan una
+    // sola vez al final (una única escritura en la base).
+    let mapas = mergeEntryTranslations(row, {})
+    const traducidos: string[] = []
 
-    const parsed = parseTranslationResponse(respuesta.text)
-    if (!parsed.success) return { success: false, error: parsed.error }
+    for (const lote of chunkLocales(pendientes, TRANSLATION_LOCALE_BATCH_SIZE)) {
+      const respuesta = await requestTranslation({
+        apiKey,
+        apiUrl: TRANSLATION_API_URL,
+        model: TRANSLATION_MODEL,
+        temperature: TRANSLATION_TEMPERATURE,
+        maxTokens: TRANSLATION_MAX_TOKENS,
+        messages: buildEntryMessages({
+          titulo: row.titulo,
+          resumen: row.resumen ?? '',
+          cuerpoHtml: row.cuerpo_html ?? '',
+          faq: row.faq ?? null,
+          locales: lote,
+        }),
+      })
+      if (!respuesta.success) return { success: false, error: respuesta.error }
 
-    const mapas = mergeEntryTranslations(row, parsed.data)
+      // Corte por límite de tokens: mensaje CLARO (antes decía "JSON no válido",
+      // que despistaba). El lote queda identificado para poder reintentarlo.
+      if (respuesta.finishReason === 'length') {
+        return {
+          success: false,
+          error:
+            'La traducción se cortó por límite de tokens en el lote [' +
+            lote.join(', ') +
+            ']. Vuelve a intentarlo: los idiomas ya traducidos se conservan.',
+        }
+      }
+
+      const parsed = parseTranslationResponse(respuesta.text)
+      if (!parsed.success) {
+        return {
+          success: false,
+          error: parsed.error + ' Lote: [' + lote.join(', ') + '].',
+        }
+      }
+
+      mapas = mergeEntryTranslations({ ...row, ...mapas }, parsed.data)
+      traducidos.push(...lote)
+    }
+
     const { error: updateError } = await supabase
       .from('seo_entries')
       .update(mapas)
@@ -298,7 +362,9 @@ export async function traducirEntrada(
     // Cambió el idioma de la entrada: se revalida su página y el sitemap.
     revalidarSitemap({ entradaSlug: row.slug })
 
-    return { success: true, data: { traducidos: pendientes } }
+    // `pendientes` permite al cliente repetir tandas hasta terminar sin que una
+    // sola petición se acerque al límite de tiempo de la plataforma.
+    return { success: true, data: { traducidos, pendientes: pendientes.length - traducidos.length } }
   } catch (err: any) {
     console.error('[i18n-translate] traducirEntrada:', err?.message)
     return { success: false, error: err?.message ?? 'Error traduciendo la entrada.' }

@@ -149,6 +149,23 @@ Recomendaciones operativas:
   ya indexada no cambia.
 - Traducir tiene coste cero si el idioma ya está completo (no se llama al modelo).
 
+### Traducción por lotes y reanudable (robustez)
+
+Un artículo completo + su FAQ **no caben en una sola respuesta para 5 idiomas**:
+el modelo agotaba los tokens de salida (`finish_reason = length`), la respuesta
+llegaba cortada y el JSON inválido provocaba un error 500.
+
+Por eso la traducción funciona así:
+
+1. **Lotes de idiomas** (`TRANSLATION_LOCALE_BATCH_SIZE`): cada llamada traduce
+   un lote pequeño, garantizando que la respuesta quepa entera.
+2. **Detección explícita de truncado**: si aun así el modelo se corta, el error
+   dice exactamente eso (y qué lote) en lugar de "JSON no válido".
+3. **Reanudable desde el panel**: el servidor traduce un lote y devuelve cuántos
+   idiomas quedan; el cliente repite tandas hasta terminar. Cada petición dura
+   ~15 s (lejos del límite de la plataforma) y los idiomas ya traducidos se
+   conservan, así que reintentar nunca reinicia el trabajo.
+
 ---
 
 ## 10. SEO técnico asociado

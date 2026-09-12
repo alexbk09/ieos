@@ -26,9 +26,12 @@ const { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations,
 )
 const { resolveSiteSettings, TRANSLATABLE_SETTINGS_KEYS } = await import('../lib/site-settings-i18n.mjs')
 const { slugify } = await import('../lib/slug.mjs')
-const { missingEntryLocales, mergeEntryTranslations, buildEntryMessages } = await import(
-  '../lib/i18n-translate.mjs'
-)
+const {
+  missingEntryLocales,
+  mergeEntryTranslations,
+  buildEntryMessages,
+  chunkLocales,
+} = await import('../lib/i18n-translate.mjs')
 
 // ---------- slugify (fuente única, re-exportada por services/catalog.ts) ----------
 
@@ -672,5 +675,37 @@ test('buildEntryMessages pide las claves de idioma exactas y conserva la FAQ', (
   // La FAQ vacía se filtra antes de enviarla al modelo.
   assert.equal(payload.faq_origen.length, 1)
   assert.ok(messages[0].content.includes('cuerpo_html'))
+})
+
+// --- Traducción por lotes (evita respuestas cortadas por límite de tokens) ---
+
+test('chunkLocales reparte los idiomas en lotes del tamaño indicado', () => {
+  assert.deepEqual(chunkLocales(['en', 'fr', 'de', 'it', 'pt'], 2), [
+    ['en', 'fr'],
+    ['de', 'it'],
+    ['pt'],
+  ])
+  assert.deepEqual(chunkLocales([], 2), [])
+  assert.deepEqual(chunkLocales(['en'], 5), [['en']])
+  // Tamaño inválido (0, null) => 1: nunca lotes vacíos ni bucles infinitos.
+  assert.deepEqual(chunkLocales(['en', 'fr'], 0), [['en'], ['fr']])
+})
+
+test('parseTranslationResponse tolera cercas de código y texto alrededor del JSON', () => {
+  const conCercas = parseTranslationResponse('```json\n{"en":{"titulo":"Hi"}}\n```')
+  assert.equal(conCercas.success, true)
+  assert.equal(conCercas.data.en.titulo, 'Hi')
+
+  // El modelo añade una frase antes/después: se recorta al objeto JSON.
+  const conProsa = parseTranslationResponse('Claro, aquí tienes:\n{"en":{"titulo":"Hi"}}\nEspero que sirva.')
+  assert.equal(conProsa.success, true)
+  assert.equal(conProsa.data.en.titulo, 'Hi')
+})
+
+test('parseTranslationResponse rechaza JSON realmente inválido (no inventa nada)', () => {
+  assert.equal(parseTranslationResponse('{"en":{"titulo":"Hi"').success, false)
+  assert.equal(parseTranslationResponse('').success, false)
+  assert.equal(parseTranslationResponse('[1,2]').success, false)
+  assert.equal(parseTranslationResponse('sin json').success, false)
 })
 
