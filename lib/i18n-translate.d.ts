@@ -95,6 +95,38 @@ export function mergeCategoryTranslations(
   seo_faq_i18n: Record<string, FaqItemLike[]>
 }
 
+/**
+ * Huella comparable de un nombre (minúsculas, sin acentos y palabras ordenadas).
+ * Sirve para comparar traducciones automáticas que reordenan las palabras.
+ */
+export function nameFingerprint(text: unknown): string
+
+/**
+ * TRUE si el nombre base de la categoría aún no está redactado en el idioma raíz
+ * (data heredada escrita en inglés). Coste cero: solo lee el JSONB.
+ */
+export function isSourceLocaleNamePending(row: any): boolean
+
+/** Mensajes del modelo para redactar el nombre de una categoría en el idioma raíz. */
+export function buildSourceLocaleNameMessages(input: {
+  nombre: string
+  locale?: string
+}): ChatMessage[]
+
+/** Extrae el nombre redactado en el idioma raíz de la respuesta del modelo. */
+export function parseSourceLocaleName(
+  text: string,
+): { success: true; name: string } | { success: false; error: string }
+
+/**
+ * Fusiona el nombre del idioma raíz con el estado actual: solo reescribe `name`
+ * y su clave del JSONB (los idiomas y los slugs quedan intactos).
+ */
+export function mergeSourceLocaleName(
+  row: any,
+  nombre: string,
+): { name: string; name_i18n: Record<string, string> } | null
+
 /** Fusiona la traducción nueva con el estado actual de un producto. */
 export function mergeProductTranslations(
   translationsActuales: Record<string, any> | null | undefined,

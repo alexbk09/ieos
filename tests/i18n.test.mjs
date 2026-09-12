@@ -31,6 +31,11 @@ const {
   mergeEntryTranslations,
   buildEntryMessages,
   chunkLocales,
+  nameFingerprint,
+  isSourceLocaleNamePending,
+  buildSourceLocaleNameMessages,
+  parseSourceLocaleName,
+  mergeSourceLocaleName,
 } = await import('../lib/i18n-translate.mjs')
 
 // ---------- slugify (fuente única, re-exportada por services/catalog.ts) ----------
@@ -707,5 +712,81 @@ test('parseTranslationResponse rechaza JSON realmente inválido (no inventa nada
   assert.equal(parseTranslationResponse('').success, false)
   assert.equal(parseTranslationResponse('[1,2]').success, false)
   assert.equal(parseTranslationResponse('sin json').success, false)
+})
+
+
+// --- Idioma raíz: data heredada escrita en otro idioma (nombre de categoría) ---
+// Contexto real que cubren estos tests: el pipeline nombró las categorías con la
+// keyword en inglés mientras SOURCE_LOCALE ya era 'es'; el filtro del catálogo en
+// español mostraba esos nombres. Estas funciones detectan y reparan ese desfase.
+
+test('nameFingerprint ignora acentos, signos y orden de palabras', () => {
+  assert.equal(nameFingerprint('Acrylic Stand Anime'), nameFingerprint('Anime Acrylic Stand'))
+  assert.equal(nameFingerprint('  Teclados   Mecánicos RGB '), 'mecanicos rgb teclados')
+  assert.equal(nameFingerprint(null), '')
+})
+
+test('isSourceLocaleNamePending detecta el nombre heredado en inglés', () => {
+  // La clave del idioma raíz es una copia del inglés: nadie lo redactó en español.
+  const heredada = {
+    name: 'Action Figure Display Case',
+    name_i18n: { es: 'Action Figure Display Case', en: 'Action Figure Display Case', fr: 'Vitrine pour Figurines' },
+  }
+  assert.equal(isSourceLocaleNamePending(heredada), true)
+
+  // Ya redactado en español (distinto del inglés): nada que hacer.
+  const reparada = {
+    name: 'Vitrina para Figuras de Acción',
+    name_i18n: { es: 'Vitrina para Figuras de Acción', en: 'Action Figure Display Case' },
+  }
+  assert.equal(isSourceLocaleNamePending(reparada), false)
+
+  // Data anterior a la migración 0049: sin clave del idioma raíz.
+  assert.equal(isSourceLocaleNamePending({ name: 'Earphones', name_i18n: { en: 'Earphones' } }), true)
+  assert.equal(isSourceLocaleNamePending({ name: 'Earphones', name_i18n: {} }), true)
+
+  // Sin nombre utilizable no se marca pendiente.
+  assert.equal(isSourceLocaleNamePending({ name: '   ', name_i18n: {} }), false)
+  // Sin inglés de referencia no hay con qué comparar: no se gasta una llamada.
+  assert.equal(isSourceLocaleNamePending({ name: 'Earphones', name_i18n: { es: 'Earphones' } }), false)
+})
+
+test('mergeSourceLocaleName reescribe el idioma raíz y preserva idiomas y slugs', () => {
+  const row = {
+    name: '3 In 1 Magnetic Wireless Charger',
+    slug: '3-in-1-magnetic-wireless-charger',
+    name_i18n: { es: '3 In 1 Magnetic Wireless Charger', en: '3 in 1 Magnetic Wireless Charger', fr: 'Chargeur 3 en 1' },
+    slug_i18n: { es: '3-in-1-magnetic-wireless-charger', fr: 'chargeur-3-en-1' },
+  }
+  const cambios = mergeSourceLocaleName(row, 'Cargador Inalámbrico Magnético 3 en 1')
+
+  assert.equal(cambios.name, 'Cargador Inalámbrico Magnético 3 en 1')
+  assert.equal(cambios.name_i18n.es, 'Cargador Inalámbrico Magnético 3 en 1')
+  // Los demás idiomas se conservan tal cual.
+  assert.equal(cambios.name_i18n.en, '3 in 1 Magnetic Wireless Charger')
+  assert.equal(cambios.name_i18n.fr, 'Chargeur 3 en 1')
+  // La URL indexada no se toca (el slug no forma parte de la fusión).
+  assert.equal('slug' in cambios, false)
+  assert.equal('slug_i18n' in cambios, false)
+  // Sin nombre válido no se propone ningún cambio.
+  assert.equal(mergeSourceLocaleName(row, '  '), null)
+})
+
+test('buildSourceLocaleNameMessages pide el nombre en el idioma raíz y su JSON', () => {
+  const messages = buildSourceLocaleNameMessages({ nombre: 'Acrylic Stand Anime' })
+  assert.equal(messages.length, 2)
+  assert.equal(messages[0].role, 'system')
+  assert.ok(messages[0].content.includes('español'))
+  assert.ok(messages[0].content.includes('{"name":""}'))
+  assert.equal(JSON.parse(messages[1].content).nombre_origen, 'Acrylic Stand Anime')
+})
+
+test('parseSourceLocaleName lee {"name":"..."} y rechaza respuestas inválidas', () => {
+  const ok = parseSourceLocaleName('```json\n{"name":"Vitrina para Figuras de Acción"}\n```')
+  assert.equal(ok.success, true)
+  assert.equal(ok.name, 'Vitrina para Figuras de Acción')
+
+  assert.equal(parseSourceLocaleName('{"name":"   "}').success, false)
+  assert.equal(parseSourceLocaleName('sin json').success, false)
 })
 

@@ -190,6 +190,18 @@ vuelve a llamar al modelo (coste cero). Los idiomas publicados en la web se
 controlan con `PUBLISHED_LOCALES` (lib/i18n-config.mjs); un producto sin traducción
 usa el fallback de su idioma raíz.
 
+**Idioma raíz (es):** el NOMBRE de la categoría se redacta siempre en el idioma
+raíz al crear el nicho (`aliProducts.redactarNombreCategoriaEnIdiomaRaiz`), mientras
+que el `slug` se deriva de la keyword: es la identidad de ruta estable, así re-ejecutar
+el pipeline con la misma keyword reutiliza la categoría en lugar de duplicarla. Para
+reparar categorías heredadas con el nombre en inglés (data del pipeline antiguo, que
+aparecía en el filtro del catálogo en español) existe
+`npm run i18n:categories:es` (`--dry-run` para inspeccionar el plan): escribe el dato
+base y su clave del idioma raíz **sin tocar `slug`/`slug_i18n`** (URLs ya indexadas
+intactas) ni los idiomas traducidos. El panel "Idiomas y Traducciones" aplica la misma
+corrección antes de traducir los idiomas destino, así que basta pulsar "Traducir
+pendientes" para poner al día un lote.
+
 **Panel "Idiomas y Traducciones" (`/admin/idiomas`, RBAC `categorias_idiomas`):**
 traduce desde la UI el contenido pendiente (lo ya existente y las cargas masivas)
 sin consola, reutilizando `services/i18n-pending`. La carga masiva NO traduce en

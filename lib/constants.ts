@@ -859,6 +859,13 @@ export const TRANSLATION_MAX_TOKENS = 8000
  */
 export const TRANSLATION_LOCALE_BATCH_SIZE = 2
 
+/**
+ * Máximo de tokens de salida al REDACTAR el nombre de una categoría en el idioma
+ * raíz. Es una sola línea corta (2-5 palabras), así que no comparte el
+ * presupuesto de 8k del traductor de fichas y artículos completos.
+ */
+export const TRANSLATION_NAME_MAX_TOKENS = 400
+
 /** Nº máximo de entidades a traducir por lote (controla el coste de tokens). */
 export const TRANSLATION_BATCH_SIZE = 10
 

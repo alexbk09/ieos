@@ -25,6 +25,12 @@ export const LOCALE_LLM_NAMES: Record<string, string>
 /** Devuelve el nombre en inglés del idioma (para prompts del LLM). */
 export function localeLlmName(code: string | null | undefined): string
 
+/** Nombre NATIVO de cada idioma (para prompts redactados en ese idioma). */
+export const LOCALE_NATIVE_NAMES: Record<string, string>
+
+/** Devuelve el nombre nativo del idioma (ej: 'es' → 'español'). */
+export function localeNativeName(code: string | null | undefined): string
+
 /**
  * Idiomas PUBLICADOS (live): solo estos generan rutas, hreflang y sitemap.
  * Subconjunto de SUPPORTED_LOCALES; debe incluir DEFAULT_LOCALE.

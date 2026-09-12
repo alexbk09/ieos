@@ -6,11 +6,15 @@ import {
   buildCategoryMessages,
   buildEntryMessages,
   buildProductMessages,
+  buildSourceLocaleNameMessages,
   chunkLocales,
+  isSourceLocaleNamePending,
   mergeCategoryTranslations,
   mergeEntryTranslations,
   mergeProductTranslations,
+  mergeSourceLocaleName,
   missingEntryLocales,
+  parseSourceLocaleName,
   parseTranslationResponse,
   requestTranslation,
 } from '@/lib/i18n-translate'
@@ -20,6 +24,7 @@ import {
   TRANSLATION_LOCALE_BATCH_SIZE,
   TRANSLATION_MAX_TOKENS,
   TRANSLATION_MODEL,
+  TRANSLATION_NAME_MAX_TOKENS,
   TRANSLATION_TEMPERATURE,
 } from '@/lib/constants'
 
@@ -153,6 +158,101 @@ export async function traducirCategoria(
   } catch (err: any) {
     console.error('[i18n-translate] traducirCategoria:', err?.message)
     return { success: false, error: err?.message ?? 'Error traduciendo la categoría.' }
+  }
+}
+
+/** Resultado de redactar el nombre base de una categoría en el idioma raíz. */
+export type TraduccionNombreRaizResult =
+  | {
+      success: true
+      data: {
+        /** TRUE = el dato base se reescribió en el idioma raíz. */
+        actualizado: boolean
+        /** Nombre resultante (el nuevo si hubo cambio). */
+        nombre: string
+        /** Nombre base anterior (para el log/UI). */
+        anterior: string
+      }
+    }
+  | { success: false; error: string }
+
+/**
+ * Redacta en el IDIOMA RAÍZ el nombre de una categoría cuyo dato base quedó
+ * guardado en otro idioma (inglés) por el pipeline antiguo.
+ * ------------------------------------------------------------------
+ * POR QUÉ hace falta: `name_i18n[SOURCE_LOCALE]` se hereda del dato base, así que
+ * un `name` en inglés se servía como "español" en el filtro del catálogo, la
+ * portada y los hubs. Corregir el dato base arregla todos esos sitios a la vez.
+ *
+ * Garantías:
+ *  - NO toca `slug`/`slug_i18n`: la URL ya indexada nunca cambia.
+ *  - NO toca los idiomas ya traducidos (solo reescribe el idioma raíz).
+ *  - Coste cero cuando el nombre ya está redactado en el idioma raíz (no se
+ *    llama al modelo) ni cuando el modelo devuelve el mismo texto (no se escribe).
+ *
+ * @param categoriaId UUID de la categoría.
+ * @param options.forzar TRUE = redacta aunque el detector lo considere al día.
+ */
+export async function traducirNombreCategoriaAlIdiomaRaiz(
+  categoriaId: string,
+  options: { forzar?: boolean } = {},
+): Promise<TraduccionNombreRaizResult> {
+  try {
+    const apiKey = getTranslationApiKey()
+    if (!apiKey) return { success: false, error: 'Falta la clave del motor de traducción.' }
+
+    const supabase = await createServerClient()
+    const { data, error: readError } = await supabase
+      .from('categories')
+      .select('id,name,slug,name_i18n')
+      .eq('id', categoriaId)
+      .maybeSingle()
+    if (readError) return { success: false, error: readError.message }
+    if (!data) return { success: false, error: 'La categoría no existe.' }
+
+    // Cast explícito: la proyección parcial degrada la inferencia de PostgREST.
+    const row = data as { id: string; name: string; slug: string; name_i18n: Record<string, string> | null }
+    const anterior = row.name
+
+    // Dato ya redactado en el idioma raíz: no se gasta una llamada al modelo.
+    if (!options.forzar && !isSourceLocaleNamePending(row)) {
+      return { success: true, data: { actualizado: false, nombre: anterior, anterior } }
+    }
+
+    const respuesta = await requestTranslation({
+      apiKey,
+      apiUrl: TRANSLATION_API_URL,
+      model: TRANSLATION_MODEL,
+      temperature: TRANSLATION_TEMPERATURE,
+      maxTokens: TRANSLATION_NAME_MAX_TOKENS,
+      messages: buildSourceLocaleNameMessages({ nombre: anterior }),
+    })
+    if (!respuesta.success) return { success: false, error: respuesta.error }
+
+    const parsed = parseSourceLocaleName(respuesta.text)
+    if (!parsed.success) return { success: false, error: parsed.error }
+
+    const cambios = mergeSourceLocaleName(row, parsed.name)
+    if (!cambios) return { success: false, error: 'El motor devolvió un nombre vacío.' }
+
+    // Mismo texto (ej: un nombre idéntico en ambos idiomas): nada que escribir.
+    if (cambios.name === anterior) {
+      return { success: true, data: { actualizado: false, nombre: anterior, anterior } }
+    }
+
+    const { error: updateError } = await supabase
+      .from('categories')
+      .update({ ...cambios, updated_at: new Date().toISOString() })
+      .eq('id', categoriaId)
+    if (updateError) return { success: false, error: updateError.message }
+
+    // El nombre visible del filtro/hub cambió: se revalida landing y sitemap.
+    revalidarSitemap({ categoriaSlug: row.slug })
+
+    return { success: true, data: { actualizado: true, nombre: cambios.name, anterior } }
+  } catch (err: any) {
+    console.error('[i18n-translate] traducirNombreCategoriaAlIdiomaRaiz:', err?.message)
+    return { success: false, error: err?.message ?? 'Error redactando el nombre en el idioma raíz.' }
   }
 }
 

@@ -1,6 +1,16 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
-import { CATALOG_PAGE_SIZE, SITEMAP_MAX_IMAGES_PER_URL, SOURCE_LOCALE } from '@/lib/constants'
+import {
+  CATALOG_PAGE_SIZE,
+  SITEMAP_MAX_IMAGES_PER_URL,
+  SOURCE_LOCALE,
+  TRANSLATION_API_URL,
+  TRANSLATION_MODEL,
+  TRANSLATION_NAME_MAX_TOKENS,
+  TRANSLATION_TEMPERATURE,
+} from '@/lib/constants'
+// Núcleo puro de traducción (mismo prompt que el backfill; cero duplicación).
+import { buildSourceLocaleNameMessages, parseSourceLocaleName, requestTranslation } from '@/lib/i18n-translate'
 import { isOwnOriginUrl } from '@/lib/seo-url'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 import { PRODUCT_SELECT, mapProduct, slugify } from '@/services/catalog'
@@ -122,8 +132,10 @@ export async function existeProductoAliExpress(aliProductId: string) {
 }
 
 /**
- * Convierte una keyword semilla en un nombre de categoría legible.
+ * Deriva el nombre BASE determinista de una categoría a partir de la keyword.
  * Ej: "tira led rgb" -> "Tira Led RGB". Mantiene acrónimos comunes en mayúscula.
+ * Se usa para el slug (identidad de ruta estable) y como respaldo del nombre
+ * visible cuando el motor de traducción no está disponible.
  */
 function nombreCategoriaDesdeKeyword(keyword: string): string {
   const palabras = keyword.trim().split(/\s+/).filter(Boolean)
@@ -142,10 +154,51 @@ function nombreCategoriaDesdeKeyword(keyword: string): string {
 }
 
 /**
+ * Redacta en el IDIOMA RAÍZ (español) el nombre de un nicho nuevo a partir de la
+ * keyword semilla (normalmente en inglés).
+ * ------------------------------------------------------------------
+ * POR QUÉ: `name_i18n[SOURCE_LOCALE]` se hereda del dato base, así que crear la
+ * categoría con el texto de la keyword en inglés hacía que el filtro del catálogo
+ * en español mostrara nombres en inglés. Ahora el nombre nace ya localizado.
+ * Defensivo: si el motor no está configurado o falla, se usa el nombre derivado
+ * para que la categoría nunca se quede sin crear.
+ * @param nombreBase Nombre determinista derivado de la keyword (fallback).
+ * @returns Nombre listo para el idioma raíz.
+ */
+async function redactarNombreCategoriaEnIdiomaRaiz(nombreBase: string): Promise<string> {
+  const apiKey = (process.env.DEEPSEEK_API_KEY ?? '').trim()
+  if (!apiKey) return nombreBase
+
+  try {
+    const respuesta = await requestTranslation({
+      apiKey,
+      apiUrl: TRANSLATION_API_URL,
+      model: TRANSLATION_MODEL,
+      temperature: TRANSLATION_TEMPERATURE,
+      maxTokens: TRANSLATION_NAME_MAX_TOKENS,
+      messages: buildSourceLocaleNameMessages({ nombre: nombreBase }),
+    })
+    if (!respuesta.success) return nombreBase
+
+    const parsed = parseSourceLocaleName(respuesta.text)
+    return parsed.success ? parsed.name : nombreBase
+  } catch (err: any) {
+    console.error('[aliProducts] redactarNombreCategoriaEnIdiomaRaiz:', err?.message)
+    return nombreBase
+  }
+}
+
+/**
  * Crea (o reutiliza) la categoría del nicho derivada de la keyword semilla.
  * Así cada producto automatizado queda en una categoría real y filtrable
  * (ej: "tira led rgb" -> categoría "Tira Led RGB"), en lugar de amontonar
  * todo en una genérica. Si no hay keyword, usa "Importados AliExpress".
+ *
+ * El SLUG se deriva SIEMPRE del nombre determinista de la keyword: es la
+ * identidad de ruta estable (re-ejecutar el pipeline con la misma keyword
+ * reutiliza la categoría en lugar de duplicarla). El NOMBRE visible, en cambio,
+ * se redacta en el idioma raíz para que la web en español nunca muestre el
+ * término inglés de la keyword.
  *
  * El producto se relaciona luego por la tabla N:N `product_categories`
  * (igual que las marcas por FK), de modo que el filtro del catálogo público
@@ -154,9 +207,9 @@ function nombreCategoriaDesdeKeyword(keyword: string): string {
 export async function obtenerCategoriaAliExpress(keyword?: string) {
   try {
     const supabase = await createServerClient()
-    const nombre = nombreCategoriaDesdeKeyword(keyword ?? '')
-    const slug = slugify(nombre)
-    const { data: existente } = await supabase.from('categories').select('id,name_i18n').eq('slug', slug).maybeSingle()
+    const nombreBase = nombreCategoriaDesdeKeyword(keyword ?? '')
+    const slug = slugify(nombreBase)
+    const { data: existente } = await supabase.from('categories').select('id,name,name_i18n').eq('slug', slug).maybeSingle()
     if (existente?.id) {
       // La categoría ya existe: se asegura su traducción base (idioma raíz) para
       // nichos creados antes de la migración 0049. Idempotente: solo si falta.
@@ -164,17 +217,19 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
       if (!names[SOURCE_LOCALE]) {
         await supabase
           .from('categories')
-          .update({ name_i18n: { ...names, [SOURCE_LOCALE]: nombre } })
+          .update({ name_i18n: { ...names, [SOURCE_LOCALE]: existente.name ?? nombreBase } })
           .eq('id', existente.id)
       }
-      return { success: true as const, categoriaId: existente.id, nombre }
+      return { success: true as const, categoriaId: existente.id, nombre: existente.name ?? nombreBase }
     }
+    // Nicho nuevo: el nombre visible nace redactado en el idioma raíz.
+    const nombre = await redactarNombreCategoriaEnIdiomaRaiz(nombreBase)
     const { data: creada, error: errorCreacion } = await supabase
       .from('categories')
       .insert({
         name: nombre,
         slug,
-        description: `Productos del nicho "${keyword ?? 'AliExpress'}" descubiertos y optimizados por el pipeline automatizado.`,
+        description: `Productos del nicho "${nombre}" descubiertos y optimizados por el pipeline automatizado.`,
         // Traducción base (idioma raíz): el nicho nace internacionalizable.
         // El resto de idiomas los completa traducirCategoria() en el pipeline.
         name_i18n: { [SOURCE_LOCALE]: nombre },
