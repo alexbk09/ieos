@@ -490,6 +490,38 @@ export const AFFILIATE_DEFAULT_STOCK = 50
  */
 export const AFFILIATE_COST_RATIO = 0.5
 
+// ---------- Disponibilidad AliExpress (Fase 2.8 — degradación SEO-safe) ----------
+// Un producto afiliado puede DESAPARECER del catálogo de AliExpress o quedarse
+// sin precio comprable. La API de afiliados no expone inventario real (el
+// "stock" de los afiliados es un placeholder), así que la verificación compara
+// el detalle fresco de la API con el estado publicado y DEGRADA la ficha
+// (OutOfStock + alternativas) sin ocultarla: así no se pierde la URL indexada.
+
+/**
+ * Estados y acciones del evaluador puro de disponibilidad.
+ * Se re-exportan desde lib/ali-availability.mjs para que la app tenga un único
+ * punto de configuración (misma fuente que consumen los tests de Node).
+ */
+export { ALI_ESTADO, ALI_ACCION } from '@/lib/ali-availability'
+
+/**
+ * Ausencias consecutivas del detalle en AliExpress necesarias para degradar.
+ * Con 2 se descarta el falso positivo por un fallo transitorio (rate limit o
+ * error de lote) sin dejar un producto muerto publicado más de una corrida.
+ */
+export const ALI_UNAVAILABLE_MISSES_THRESHOLD = 2
+
+/**
+ * Tope defensivo de productos verificados por ejecución del botón manual.
+ * La verificación es REANUDABLE: se priorizan los productos con
+ * `ali_last_checked_at` más antiguo (nulos primero), así que pulsar de nuevo
+ * continúa por los pendientes en lugar de repetir los mismos.
+ */
+export const ALI_AVAILABILITY_MAX_PRODUCTS = 500
+
+/** Tamaño de página al leer el catálogo afiliado a verificar (Supabase). */
+export const ALI_AVAILABILITY_PAGE_SIZE = 500
+
 // ---------- Opiniones y valoraciones (peso SEO del producto) ----------
 
 /**

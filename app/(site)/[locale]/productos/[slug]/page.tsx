@@ -68,6 +68,9 @@ function toDetailProduct(product: NonNullable<Awaited<ReturnType<typeof getPubli
     weight_grams: product.weight_grams,
     featured: product.featured,
     is_available: product.is_available,
+    // Disponibilidad verificada en AliExpress (migración 0058): degrada la ficha
+    // (OutOfStock) sin ocultarla.
+    ali_status: product.ali_status ?? null,
     url_afiliado_ali: product.url_afiliado_ali ?? null,
     url_afiliado_amazon: product.url_afiliado_amazon ?? null,
     url_afiliado_store: product.url_afiliado_store ?? null,
@@ -120,6 +123,8 @@ function toCardProduct(product: Product): CardProduct {
     unit_label: product.unit_label || 'u',
     low_stock_threshold: Number(product.low_stock_threshold ?? 10),
     bulk_discount_percent: Number(product.bulk_discount_percent ?? 0),
+    // Disponibilidad del afiliado: el módulo de relacionados excluye los caídos.
+    ali_status: product.ali_status ?? null,
     url_afiliado_ali: product.url_afiliado_ali ?? null,
     url_afiliado_amazon: product.url_afiliado_amazon ?? null,
     url_afiliado_store: product.url_afiliado_store ?? null,
@@ -248,6 +253,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       pricing_type: product.pricing_type === 'weight' ? 'weight' : 'unit',
       stock_grams: Number(product.stock_grams) || 0,
       image_url: product.image_url,
+      // Si está caído en el marketplace, el schema emite OutOfStock (evita el
+      // "content mismatch" que Google penaliza).
+      ali_status: product.ali_status ?? null,
       url_afiliado_ali: product.url_afiliado_ali,
       url_afiliado_amazon: product.url_afiliado_amazon,
       url_afiliado_store: product.url_afiliado_store,

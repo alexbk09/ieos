@@ -12,6 +12,8 @@ import {
   ALI_API_MIN_INTERVAL_MS,
   AFFILIATE_DEFAULT_STOCK,
 } from '@/lib/constants'
+// Estado de disponibilidad del marketplace (lógica pura compartida, sin strings quemados).
+import { ALI_ESTADO } from '@/lib/ali-availability'
 
 /**
  * Servicio de RE-ENRIQUECIMIENTO de productos afiliados (Fase 2.6, v2).
@@ -80,6 +82,12 @@ type FilaProducto = {
   specifications: Record<string, string> | null
   marca_id: string | null
   rating_average: number | null
+  /**
+   * Disponibilidad verificada contra AliExpress (migración 0058). Si está en
+   * 'unavailable', el enriquecimiento NO debe re-publicar el stock: ese estado
+   * solo lo restaura la verificación de disponibilidad (fuente autoritativa).
+   */
+  ali_status: string | null
 }
 
 /** Espera simple para respetar el rate limit de la API. */
@@ -169,7 +177,11 @@ function calcularActualizaciones(
   }
 
   // Disponibilidad: si hay precio vigente, el producto está a la venta.
-  if (campos.includes('precio')) {
+  // ⚠️ EXCEPCIÓN (Fase 2.8): si la verificación de disponibilidad lo marcó como
+  // 'unavailable', un cambio de precio NO lo re-publica. Ese estado solo lo
+  // restaura `aliAvailability` (fuente autoritativa), evitando que los dos
+  // botones se contradigan (stock 50 + ficha degradada).
+  if (campos.includes('precio') && fila.ali_status !== ALI_ESTADO.UNAVAILABLE) {
     cambios.stock = AFFILIATE_DEFAULT_STOCK
     cambios.is_available = true
     campos.push('stock')
@@ -221,7 +233,7 @@ async function leerProductosAfiliados(limite: number | null) {
   for (;;) {
     const { data, error } = await supabase
       .from('products')
-      .select('id,slug,name,asin,price_usd,precio_original,image_url,specifications,marca_id,rating_average')
+      .select('id,slug,name,asin,price_usd,precio_original,image_url,specifications,marca_id,rating_average,ali_status')
       .eq('is_available', true)
       .not('asin', 'is', null)
       .order('created_at', { ascending: false })

@@ -4,6 +4,8 @@ import { createPublicClient } from '@/lib/supabase/public'
 // Localización de los textos de producto/categoría devueltos al asistente.
 import { resolveProductTranslations, resolveLocalizedValue } from '@/lib/i18n-content'
 import { localeLlmName } from '@/lib/i18n-config'
+// Estado de disponibilidad del marketplace (lógica pura compartida).
+import { ALI_ESTADO } from '@/lib/ali-availability'
 import {
   AGENT_BRAND_NAME,
   AGENT_MAX_CATEGORY_RESULTS,
@@ -48,7 +50,7 @@ function trackAgentSearchInBackground(query: string, productIds: string[], resul
 const AGENT_PRODUCT_SELECT =
   'id,name,slug,description,titulo_seo,translations,price_usd,stock,image_url,colors,pricing_type,' +
   'price_per_kilo_usd,price_per_gram_usd,stock_grams,min_order_grams,unit_label,' +
-  'bulk_discount_percent,category_id,featured,specifications,' +
+  'bulk_discount_percent,category_id,featured,specifications,ali_status,' +
   'url_afiliado_ali,url_afiliado_amazon,url_afiliado_store,' +
   'product_categories(categories(id,name,slug,name_i18n,slug_i18n)),product_images(id,url,alt_text,sort_order,color_name)'
 
@@ -188,7 +190,15 @@ export function createBuscarProductosTool(locale: string) {
         trackAgentSearchInBackground(term || catSlug, [], 0)
         return { ok: true, products: [] }
       }
-      const products = (data as any[]).map((p) => toCartProduct(p, locale))
+      // Los productos verificados como NO disponibles en AliExpress (migración
+      // 0058) no se recomiendan: su ficha sigue viva (SEO-safe) pero la IA no
+      // debe ofrecer como comprable algo que ya no lo es.
+      const disponibles = (data as any[]).filter((p) => p.ali_status !== ALI_ESTADO.UNAVAILABLE)
+      if (disponibles.length === 0) {
+        trackAgentSearchInBackground(term || catSlug, [], 0)
+        return { ok: true, products: [] }
+      }
+      const products = disponibles.map((p) => toCartProduct(p, locale))
       // Analitica: registra la busqueda y que productos mostro la IA al cliente.
       trackAgentSearchInBackground(term || catSlug, products.map((p) => p.id), products.length)
       return { ok: true, products }

@@ -1,6 +1,6 @@
 'use client'
 
-import { ImagePlus, Plus, ShieldCheck, Star, Truck, ExternalLink } from 'lucide-react'
+import { ImagePlus, PackageX, Plus, ShieldCheck, Star, Truck, ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
@@ -16,6 +16,8 @@ import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
 import { moneyUsd, moneyEur, formatBolivars, formatRate } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
+// Estados de disponibilidad del marketplace (lógica pura compartida).
+import { ALI_ESTADO } from '@/lib/ali-availability'
 import { AFFILIATE_LINK_REL, SEO_OPTIONAL_SPECS_SECTION } from '@/lib/constants'
 // Aísla el párrafo de la ficha técnica (redactado por la IA) del resto de la
 // descripción, para mostrarlo en su propia pestaña sin tocar la BD.
@@ -65,6 +67,12 @@ export type DetailProduct = {
   weight_grams: number | null
   featured: boolean
   is_available: boolean
+  /**
+   * Disponibilidad verificada en el marketplace de afiliado (migración 0058).
+   * 'unavailable' = ficha degradada (OutOfStock + alternativas) pero publicada:
+   * NUNCA se oculta para no perder la URL indexada.
+   */
+  ali_status?: 'ok' | 'unavailable' | null
   url_afiliado_ali: string | null
   url_afiliado_amazon: string | null
   url_afiliado_store: string | null
@@ -252,6 +260,10 @@ export function ProductDetailPageView({ product, related, guides, categories, na
   // con enlace de afiliado se comunica disponibilidad + envío estimado en vez
   // de un stock falso que rompería la confianza y el "content mismatch" SEO.
   const isAffiliate = Boolean(product.url_afiliado_ali || product.url_afiliado_amazon || product.url_afiliado_store)
+  // Verificado como NO disponible en el marketplace (migración 0058): la ficha
+  // se degrada (OutOfStock + alternativas) pero NUNCA se oculta, para conservar
+  // la URL indexada y no generar soft-404.
+  const noDisponible = product.ali_status === ALI_ESTADO.UNAVAILABLE
   // Stock bajo: solo aplica a productos propios (sin afiliado). En afiliados
   // siempre se muestra verde ("Disponible") porque no hay inventario real.
   const lowStock = isAffiliate
@@ -259,11 +271,20 @@ export function ProductDetailPageView({ product, related, guides, categories, na
     : isWeight
       ? (product.min_order_grams > 0 && product.stock_grams < product.min_order_grams * 10)
       : product.stock < threshold
-  const stockBadge = isAffiliate
-    ? t('product.affiliateAvailability')
-    : isWeight
-      ? t('product.availableWeight', { weight: stockValue })
-      : t('product.stockInStock', { label: stockValue })
+  const stockBadge = noDisponible
+    ? t('product.unavailable')
+    : isAffiliate
+      ? t('product.affiliateAvailability')
+      : isWeight
+        ? t('product.availableWeight', { weight: stockValue })
+        : t('product.stockInStock', { label: stockValue })
+
+  // Alternativas mostradas cuando el producto está caído: se excluyen otros
+  // productos también degradados para no encadenar fichas sin stock.
+  const alternativas = useMemo(
+    () => related.filter((item) => item.ali_status !== ALI_ESTADO.UNAVAILABLE),
+    [related],
+  )
 
 
 
@@ -351,7 +372,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
                   {esAfiliado ? moneyEur(product.precio_original) : moneyUsd(product.precio_original)}
                 </p>
               )}
-              <span className={`ml-auto rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${lowStock ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
+              <span className={`ml-auto rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${noDisponible ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400' : lowStock ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
                 {stockBadge}
               </span>
             </div>
@@ -472,45 +493,78 @@ export function ProductDetailPageView({ product, related, guides, categories, na
               )}
             </section>
 
-            {/* CTA afiliado transparente */}
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href={affiliateUrl ?? '#'}
-                target={affiliateUrl ? '_blank' : undefined}
-                rel={affiliateUrl ? AFFILIATE_LINK_REL : undefined}
-                onClick={(e) => {
-                  if (!affiliateUrl) {
-                    e.preventDefault()
-                    add(cartProduct, 'u', 1, selectedColor ?? undefined)
-                    return
-                  }
-                  // Analítica: registro de salida real al marketplace de afiliado.
-                  trackAffiliateClick(product.id, affiliateUrl)
-                }}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-strong active:scale-[0.99]"
-              >
-                {affiliateUrl ? <><ExternalLink size={16} /> {ctaLabel}</> : <>{t('product.addToSelection')} <Plus size={16} /></>}
-              </a>
-              <button
-                onClick={() => add(cartProduct, 'u', 1, selectedColor ?? undefined)}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground transition hover:bg-muted"
-              >
-                <Plus size={15} /> {t('product.addRequest')}
-              </button>
-            </div>
+            {/* CTA afiliado transparente. Si el producto está verificado como NO
+                disponible, se muestra un estado bloqueado + aviso + acceso directo
+                a las alternativas: la ficha sigue viva (sin soft-404) y el schema
+                declara OutOfStock, así el SEO no se perjudica. */}
+            {noDisponible ? (
+              <div className="mt-8 space-y-3">
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700">
+                  <PackageX size={18} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">{t('product.unavailableTitle')}</p>
+                    <p className="mt-1 text-amber-700/90">{t('product.unavailableBody')}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-full bg-muted px-6 py-3.5 text-sm font-semibold text-muted-foreground"
+                >
+                  <PackageX size={16} /> {t('product.unavailable')}
+                </button>
+                {alternativas.length > 0 && (
+                  <a
+                    href="#alternativas"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground transition hover:bg-muted"
+                  >
+                    {t('product.seeAlternatives')}
+                  </a>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={affiliateUrl ?? '#'}
+                    target={affiliateUrl ? '_blank' : undefined}
+                    rel={affiliateUrl ? AFFILIATE_LINK_REL : undefined}
+                    onClick={(e) => {
+                      if (!affiliateUrl) {
+                        e.preventDefault()
+                        add(cartProduct, 'u', 1, selectedColor ?? undefined)
+                        return
+                      }
+                      // Analítica: registro de salida real al marketplace de afiliado.
+                      trackAffiliateClick(product.id, affiliateUrl)
+                    }}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-strong active:scale-[0.99]"
+                  >
+                    {affiliateUrl ? <><ExternalLink size={16} /> {ctaLabel}</> : <>{t('product.addToSelection')} <Plus size={16} /></>}
+                  </a>
+                  <button
+                    onClick={() => add(cartProduct, 'u', 1, selectedColor ?? undefined)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground transition hover:bg-muted"
+                  >
+                    <Plus size={15} /> {t('product.addRequest')}
+                  </button>
+                </div>
 
-            {affiliateUrl && (
-              <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-brand-strong" />
-                {t('product.redirectNote', { market: market.label })}
-              </p>
+                {affiliateUrl && (
+                  <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                    <ShieldCheck size={14} className="mt-0.5 shrink-0 text-brand-strong" />
+                    {t('product.redirectNote', { market: market.label })}
+                  </p>
+                )}
+                <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-muted-foreground">
+                  <Truck size={14} className="shrink-0 text-brand-strong" />
+                  {affiliateUrl
+                    ? t('product.shipInternational', { market: market.label })
+                    : t('product.shipLocal', { brand: brand.name })}
+                </p>
+              </>
             )}
-            <p className="mt-2 flex items-center gap-2 text-xs leading-5 text-muted-foreground">
-              <Truck size={14} className="shrink-0 text-brand-strong" />
-              {affiliateUrl
-                ? t('product.shipInternational', { market: market.label })
-                : t('product.shipLocal', { brand: brand.name })}
-            </p>
           </div>
         </div>
 
@@ -544,9 +598,11 @@ export function ProductDetailPageView({ product, related, guides, categories, na
           </section>
         )}
 
-        {/* Enlazado interno (SEO): productos de la misma categoría. */}
-        <div className="mx-auto max-w-7xl">
-          <RelatedProducts products={related} rate={exchangeRate} onAdd={add} />
+        {/* Enlazado interno (SEO): productos de la misma categoría. Cuando el
+            producto está caído, este bloque hace de "alternativas" (ancla
+            #alternativas) y excluye otros productos también degradados. */}
+        <div id="alternativas" className="mx-auto max-w-7xl scroll-mt-24">
+          <RelatedProducts products={alternativas} rate={exchangeRate} onAdd={add} />
         </div>
 
         {/* Navegación cross-categoría (UX moderna + enlazado interno). */}

@@ -64,6 +64,13 @@ export type SchemaProduct = {
   }[]
   sku?: string | null
   /**
+   * Disponibilidad verificada en el marketplace de afiliado (migración 0058).
+   * 'unavailable' → se emite `OutOfStock` aunque exista stock local placeholder,
+   * porque el producto ya no es comprable en AliExpress (evita el "content
+   * mismatch" que Google penaliza).
+   */
+  ali_status?: 'ok' | 'unavailable' | null
+  /**
    * Valoración media real en escala 0-5 (migración 0052). Solo se emite
    * AggregateRating cuando este dato Y el nº de valoraciones son reales.
    */
@@ -221,6 +228,11 @@ export function marketplaceLabel(url: string | null): string {
  * - product unit: unidades disponibles.
  */
 export function resolveAvailability(product: SchemaProduct): string {
+  // Producto caído en el marketplace de afiliado (migración 0058): la ficha se
+  // degrada y se declara OutOfStock ANTES de mirar el stock local, que en los
+  // productos importados es un placeholder de conveniencia, no inventario real.
+  if (product.ali_status === 'unavailable') return SCHEMA_URL.OutOfStock
+
   const isWeight = product.pricing_type === 'weight'
   const available = isWeight ? Number(product.stock_grams ?? 0) > 0 : Number(product.stock) > 0
   if (!available) return SCHEMA_URL.OutOfStock

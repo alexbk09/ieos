@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormInput, FormSubmitButton } from '@/components/ui/form-field'
+// Parser compartido de Server-Sent Events (mismo protocolo que el panel de disponibilidad).
+import { consumirSSE } from '@/lib/sse-client'
 
 /**
  * Panel de RE-ENRIQUECIMIENTO de productos AliExpress (Fase 2.6).
@@ -62,51 +64,8 @@ function IconoEtapa({ etapa }: { etapa: EtapaEnriquecimiento }) {
   return <Loader2 size={16} className="animate-spin text-blue-500" />
 }
 
-/**
- * Consume un stream SSE línea a línea y despacha cada evento.
- * Se aísla aquí para mantener el componente legible y sin duplicar la lectura.
- */
-async function consumirSSE(
-  respuesta: Response,
-  handlers: { onEtapa: (n: NotificacionEtapa) => void; onFin: (fin: ResultadoFinal) => void },
-) {
-  if (!respuesta.body) throw new Error('El navegador no soporta streaming de respuesta.')
-  const lector = respuesta.body.getReader()
-  const decodificador = new TextDecoder()
-  let buffer = ''
-
-  const procesar = (bloque: string) => {
-    for (const evento of bloque.split('\n\n')) {
-      if (!evento.trim()) continue
-      let tipo = 'message'
-      let datos = ''
-      for (const linea of evento.split('\n')) {
-        if (linea.startsWith('event:')) tipo = linea.slice(6).trim()
-        else if (linea.startsWith('data:')) datos += linea.slice(5).trim()
-      }
-      if (!datos) continue
-      try {
-        const payload = JSON.parse(datos)
-        if (tipo === 'etapa') handlers.onEtapa(payload as NotificacionEtapa)
-        else if (tipo === 'fin') handlers.onFin(payload as ResultadoFinal)
-      } catch {
-        // Ignora eventos malformados.
-      }
-    }
-  }
-
-  for (;;) {
-    const { done, value } = await lector.read()
-    if (done) break
-    buffer += decodificador.decode(value, { stream: true })
-    const indice = buffer.lastIndexOf('\n\n')
-    if (indice >= 0) {
-      procesar(buffer.slice(0, indice))
-      buffer = buffer.slice(indice + 2)
-    }
-  }
-  if (buffer.trim()) procesar(buffer)
-}
+// El parser SSE vive ahora en '@/lib/sse-client' (una sola implementación para
+// los dos paneles del pipeline, evitando que el protocolo se desincronice).
 
 export function AliEnrichPanel() {
   // Vacío (o 0) = actualizar TODOS los productos publicados.
@@ -159,7 +118,7 @@ export function AliEnrichPanel() {
         return
       }
 
-      await consumirSSE(respuesta, {
+      await consumirSSE<NotificacionEtapa, ResultadoFinal>(respuesta, {
         onEtapa: (notificacion) => {
           setLogEnVivo((prev) => [...prev, notificacion])
           if (notificacion.etapa === 'error') toast.error(notificacion.mensaje)

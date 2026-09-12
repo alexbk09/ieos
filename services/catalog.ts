@@ -14,6 +14,8 @@ import {
 import { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations } from '@/lib/i18n-content'
 import { baseLanguage } from '@/lib/i18n-config'
 import type { SeoFaqItem } from '@/lib/seo-types'
+// Estado de disponibilidad del marketplace de afiliado (lógica pura compartida).
+import type { AliEstadoDisponibilidad } from '@/lib/ali-availability'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 // Fuente única de slugs (lógica pura .mjs reutilizable por scripts y tests).
 import { slugify } from '@/lib/slug'
@@ -82,6 +84,13 @@ export type Product = {
   unit_label: string
   /** Visible/oculto en el catálogo público. */
   is_available: boolean
+  /**
+   * Disponibilidad REAL en el marketplace de afiliado (migración 0058).
+   * 'unavailable' = la ficha se DEGRADA (OutOfStock + alternativas) pero SIGUE
+   * publicada a propósito para no perder la URL indexada ni crear soft-404.
+   * 'ok' por defecto; `null`/`undefined` = aún sin verificar.
+   */
+  ali_status?: AliEstadoDisponibilidad | null
   /** Umbral de stock bajo (configurable). */
   low_stock_threshold: number
   /** SKU interno (opcional). */
@@ -329,6 +338,9 @@ export function mapProduct(row: any): Product {
     min_order_grams: Number(row.min_order_grams ?? 0),
     unit_label: row.unit_label ?? 'u',
     is_available: row.is_available !== false,
+    // Disponibilidad del afiliado: cualquier valor distinto de 'unavailable'
+    // se normaliza a 'ok' (incluye filas previas a la migración 0058).
+    ali_status: row.ali_status === 'unavailable' ? 'unavailable' : 'ok',
     low_stock_threshold: Number(row.low_stock_threshold ?? 10),
     sku: row.sku ?? null,
     bar_code: row.bar_code ?? null,

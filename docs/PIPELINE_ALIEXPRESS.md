@@ -17,14 +17,17 @@ services/
 ├── aliReviews.ts    → Opiniones: limpia + traduce reseñas reales (DeepSeek)
 ├── aliImages.ts     → Espeja imágenes del CDN al storage propio (sitemap de imágenes)
 ├── aliEnrich.ts     → RE-ENRIQUECIMIENTO: refresca precio/stock/valoración de publicados
+├── aliAvailability.ts → VERIFICACIÓN DE DISPONIBILIDAD: degrada fichas caídas (SEO-safe, sin IA)
 ├── aliPipeline.ts   → ORQUESTADOR maestro: une todo en un flujo secuencial
 └── seo-content.ts   → Cerebro SEO (DeepSeek): traduce título + genera HTML + FAQ
 
 lib/
-└── reviews.mjs      → Lógica pura (testeable) de valoraciones y reseñas
+├── reviews.mjs      → Lógica pura (testeable) de valoraciones y reseñas
+├── ali-availability.mjs → Lógica pura (testeable) de disponibilidad: sospecha → degradar → recuperar
+└── sse-client.ts    → Parser compartido de Server-Sent Events (paneles del pipeline)
 
-app/api/admin/ali-pipeline/enrich/route.ts   → API route (SSE) del re-enriquecimiento
-components/ali-enrich-panel.tsx              → Botón + log en vivo "Actualizar precios y datos"
+app/api/admin/ali-pipeline/availability/route.ts → API route (SSE) de la verificación de disponibilidad
+components/ali-availability-panel.tsx            → Botón + salud del catálogo + log en vivo
 ```
 
 app/api/admin/ali-pipeline/route.ts   → API route (SSE) que ejecuta el pipeline
@@ -217,6 +220,75 @@ independiente: si uno falla, el resto continúa.
   *Ficha técnica* (`components/ui/tabs.tsx`) junto a los datos físicos y la tabla
   de especificaciones. Ambos paneles permanecen en el DOM (`hidden` al estar
   inactivos), así Google indexa también el contenido de las pestañas cerradas.
+
+---
+
+## 4-bis. Disponibilidad y degradación SEO-safe (Fase 2.8)
+
+**Problema que resuelve.** El re-enriquecimiento (Fase 2.6) ya detectaba que un
+producto había desaparecido de AliExpress, pero **solo escribía un log**: la ficha
+seguía publicada con el precio viejo, el badge decía *"Disponible"* y el JSON-LD
+seguía emitiendo `InStock` (riesgo real de penalización por "content mismatch").
+
+**Qué hace el botón "Verificar disponibilidad".**
+
+```
+POST /api/admin/ali-pipeline/availability   (SSE · requireAdmin + RBAC 'ali_pipeline')
+        │
+        ▼
+ejecutarVerificacionDisponibilidad()
+  1. Lee los productos afiliados con `asin`/URL de AliExpress, los MENOS revisados
+     primero (`ali_last_checked_at`) → el botón es REANUDABLE.
+  2. UNA llamada a `productdetail.get` por cada 20 IDs (espaciadas
+     `ALI_API_MIN_INTERVAL_MS`) → precio/imagen reales.
+  3. `evaluarDisponibilidadAli()` (lib/ali-availability.mjs, lógica pura):
+       sin detalle  → ausencia +1          (SOSPECHA)
+       sin precio   → ausencia +1          (precio 0/vacío no es comprable)
+       2 ausencias  → MARCAR NO DISPONIBLE (umbral configurable)
+       con precio   → RECUPERAR si estaba caído
+  4. Persiste SOLO campos de disponibilidad y revalida la ficha + sitemap.
+```
+
+**Señales usadas y por qué (diagnóstico verificado).**
+
+| Señal | ¿Sirve? | Motivo |
+|---|---|---|
+| HTTP status del item | ❌ | `https://www.aliexpress.com/item/1.html` (inexistente) responde **200** con HTML vacío |
+| Scraper del HTML | ❌ | `window.runParams = { }`: el HTML ya no distingue vivo/muerto (y cuesta créditos) |
+| Ausencia en `productdetail.get` | ✅ | Señal principal de "ya no está" |
+| Precio 0/vacío en el detalle | ✅ | No es comprable; se combina con la ausencia |
+| `link.generate` → `405 "The result is empty"` | ✅ | Confirmación fuerte (disponible para ampliar) |
+
+**Cómo se degrada (SEO-safe, nunca se oculta).**
+
+| Campo | Antes | Después de degradar | Por qué |
+|---|---|---|---|
+| `ali_status` | `ok` | `unavailable` | Estado explícito, base de la UI y del schema |
+| `stock` | 50 (placeholder) | `0` | Fuerza `OutOfStock` en el JSON-LD |
+| `is_available` | `true` | **`true` (intacto)** | La ficha sigue viva: **no hay soft-404 ni se pierde la URL indexada** |
+| Precio / SEO | — | **intactos** | No se toca el contenido ya indexado |
+| UI de la ficha | CTA activo | Aviso *"No disponible temporalmente"* + CTA bloqueado + **alternativas** (`#alternativas`) | Retiene la visita y redirige el clic a productos vivos |
+| Asistente IA | recomendaba el producto | lo excluye (`services/agent.ts`) | No se ofrece como comprable algo que no lo es |
+| Sitemap | — | la URL **permanece** | Protección del posicionamiento ganado |
+
+Si el producto vuelve a AliExpress con precio válido, la siguiente verificación lo
+**restaura solo** (`ali_status = ok`, stock de afiliado, fechas limpias).
+
+**Coste: 0 € por diseño.** La API de afiliados de AliExpress no cobra por llamada
+(solo limita la frecuencia, ya mitigado) y este flujo **no usa IA (DeepSeek) ni el
+proxy de scraping (ZenRows/ScraperAPI)** — a diferencia del botón de
+re-enriquecimiento, que sí consume tokens de IA.
+
+**Seguridad de datos (anti-falsos positivos).**
+
+- Umbral de **2 ausencias consecutivas** (`ALI_UNAVAILABLE_MISSES_THRESHOLD`).
+- Si un lote de la API **falla** (rate limit/red), sus IDs se **omiten**: un fallo
+  de la API nunca cuenta como producto caído.
+- Si **ningún** lote responde, se aborta sin escribir nada.
+- `evaluarDisponibilidadAli()` es **fail-safe**: con datos incompletos no degrada.
+
+**Testing económico** (regla de oro): `tests/ali-availability.test.mjs` cubre umbral,
+idempotencia, precio inválido, recuperación y fail-safe con `node --test`.
 
 ---
 

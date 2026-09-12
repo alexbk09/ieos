@@ -4,6 +4,8 @@ import Image from 'next/image'
 import { Plus } from 'lucide-react'
 import { plainTextFromHtml } from '@/components/rich-description'
 import { LOW_STOCK_ALERT, PRODUCT_EVENT_TYPES } from '@/lib/constants'
+// Estados de disponibilidad del marketplace (lógica pura compartida, sin strings quemados).
+import { ALI_ESTADO } from '@/lib/ali-availability'
 import { trackProductEvent } from '@/lib/analytics-client'
 import { formatBolivars, moneyEur, moneyUsd } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
@@ -52,6 +54,12 @@ export type CardProduct = {
   url_afiliado_amazon?: string | null
   /** URL de afiliado genérica de la store (legado). Opcional. */
   url_afiliado_store?: string | null
+  /**
+   * Disponibilidad verificada en el marketplace de afiliado (migración 0058).
+   * 'unavailable' = ficha degradada (OutOfStock + alternativas) pero publicada:
+   * NUNCA se oculta para no perder la URL indexada.
+   */
+  ali_status?: 'ok' | 'unavailable' | null
   /** Marca resuelta por la relación FK (para alt descriptivo de imagen). */
   marca?: { id: string; nombre: string; activa: boolean } | null
 }
@@ -73,6 +81,15 @@ export const categoryFor = (p: CardProduct) => p.categories?.[0]?.name ?? 'Gener
 /** TRUE si el producto es de afiliado (tiene URL de marketplace externo). */
 export function isAffiliateProduct(product: CardProduct): boolean {
   return Boolean(product.url_afiliado_ali || product.url_afiliado_amazon || product.url_afiliado_store)
+}
+
+/**
+ * TRUE si el producto está verificado como NO disponible en su marketplace de
+ * afiliado (migración 0058). La ficha se conserva publicada (SEO-safe) pero la
+ * UI deja de ofrecerlo como comprable.
+ */
+export function esProductoNoDisponible(product: Pick<CardProduct, 'ali_status'>): boolean {
+  return product.ali_status === ALI_ESTADO.UNAVAILABLE
 }
 
 /**
@@ -116,6 +133,9 @@ function priceLabel(product: CardProduct) {
  * que es lo que de verdad decide la compra en dropshipping.
  */
 function availabilityLabel(product: CardProduct, t: Translator): string {
+  // Producto caído en el marketplace: se comunica con claridad (ficha degradada
+  // pero viva) en lugar de seguir anunciando "Disponible".
+  if (esProductoNoDisponible(product)) return t('product.unavailable')
   if (isAffiliateProduct(product)) return t('product.affiliateAvailability')
   // Producto propio (sin afiliado): se conserva el stock real si existe.
   const isWeight = product.pricing_type === 'weight'
@@ -173,11 +193,11 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           título) navega a /productos/[slug] para que Google pueda indexar. */}
       <a href={productUrl} aria-label={t('product.viewDetailsNamed', { name: product.name })} className="relative block w-full overflow-hidden bg-muted">
         {image ? (
-          <Image src={image} alt={productImageAlt(product)} width={400} height={440} loading="lazy" className="aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105" />
+          <Image src={image} alt={productImageAlt(product)} width={400} height={440} loading="lazy" className={`aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105${esProductoNoDisponible(product) ? ' opacity-60 grayscale' : ''}`} />
         ) : (
           <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">{t('product.noImage')}</div>
         )}
-        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{availabilityLabel(product, t)}</span>
+        <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${esProductoNoDisponible(product) ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{availabilityLabel(product, t)}</span>
         {Number(product.bulk_discount_percent ?? 0) > 0 && (
           <span className="absolute right-4 top-4 rounded-full bg-emerald-500/90 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
             -{product.bulk_discount_percent}% {t('product.wholesale')}
@@ -220,8 +240,9 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
                 onAdd(product)
               }
             }}
-            aria-label={t('product.addToCart', { name: product.name })}
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground transition hover:bg-navy hover:text-navy-foreground"
+            disabled={esProductoNoDisponible(product)}
+            aria-label={esProductoNoDisponible(product) ? t('product.unavailable') : t('product.addToCart', { name: product.name })}
+            className={`grid size-9 shrink-0 place-items-center rounded-full transition ${esProductoNoDisponible(product) ? 'cursor-not-allowed bg-muted text-muted-foreground' : 'bg-brand text-brand-foreground hover:bg-navy hover:text-navy-foreground'}`}
           >
             <Plus size={17} />
           </button>

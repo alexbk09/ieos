@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth'
 import { AdminPageHeader } from '@/components/admin-shell'
 import { AliPipelineManager } from '@/components/ali-pipeline-manager'
 import { AliEnrichPanel } from '@/components/ali-enrich-panel'
+import { AliAvailabilityPanel } from '@/components/ali-availability-panel'
 
 /**
  * Pagina admin del Pipeline de Automatización AliExpress (Fase 2.2).
@@ -21,11 +22,13 @@ export default async function AliPipelinePage() {
       <AdminPageHeader
         eyebrow="Catalogo · AliExpress · Automatizacion"
         title="Pipeline AliExpress"
-        description="Descubre los productos mas vendidos por keyword (API oficial), extrae su detalle fisico (scraper), genera enlace de afiliado y optimiza el SEO con DeepSeek antes de guardarlos en Supabase. Ademas, actualiza precios, stock, valoraciones y opiniones de los productos ya publicados."
+        description="Descubre los productos mas vendidos por keyword (API oficial), extrae su detalle fisico (scraper), genera enlace de afiliado y optimiza el SEO con DeepSeek antes de guardarlos en Supabase. Ademas, actualiza precios, stock, valoraciones y opiniones de los productos ya publicados, y verifica su disponibilidad real en AliExpress para degradar (OutOfStock + alternativas) las fichas caidas sin ocultarlas."
       />
       <div className="space-y-8 p-5 sm:p-8">
         <AliPipelineManager />
         <AliEnrichPanel />
+        {/* Fase 2.8: disponibilidad real + degradación SEO-safe (sin IA ni scraper). */}
+        <AliAvailabilityPanel />
       </div>
     </>
   )
