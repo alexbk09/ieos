@@ -733,6 +733,21 @@ export const ENTRY_RELATED_LIMIT = 3
  */
 export const ENTRY_INDEX_PAGE_SIZE = 12
 
+/**
+ * Tope de entradas que descarga de una vez el panel admin de "Guías y
+ * Comparativas". El panel busca y pagina en CLIENTE sobre ese lote: acotarlo
+ * mantiene la respuesta de la API predecible y la tabla siempre ligera.
+ */
+export const ENTRY_ADMIN_LIST_LIMIT = 100
+
+/**
+ * Tipos de entrada que crea el "generador masivo" del panel (3 guías por clic).
+ * Cubren las tres intenciones de búsqueda más rentables de un nicho de
+ * afiliación: ranking de ventas, idea de regalo y veredicto de compra.
+ * DEBEN existir en ENTRY_TYPES (y en el CHECK de la migración 0056).
+ */
+export const ENTRY_BULK_TYPES = ['top_lista', 'regalo', 'vale_la_pena'] as const
+
 /** Velocidad media de lectura (palabras por minuto) para el tiempo estimado. */
 export const ENTRY_READING_WORDS_PER_MINUTE = 200
 

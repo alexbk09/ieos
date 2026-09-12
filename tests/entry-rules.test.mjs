@@ -13,6 +13,7 @@ const {
   buildArticleSchema,
   buildItemListSchema,
   buildEntryJsonLd,
+  elegirNichoMenosCubierto,
 } = await import('../lib/entry-rules.mjs')
 
 // Configuración inyectada por parámetro (fuente real: lib/constants.ts).
@@ -384,3 +385,49 @@ test('tieneSeccionEnCuerpo detecta la FAQ ya redactada dentro del artículo', ()
   const conAtributos = '<h2 class="x">PREGUNTAS FRECUENTES</h2><h3>¿Algo?</h3><p>Si.</p>'
   assert.equal(tieneSeccionEnCuerpo(conAtributos, 'Preguntas Frecuentes'), true)
 })
+
+// ---------- Rotación de nichos del generador masivo ----------
+
+test('elegirNichoMenosCubierto rota al nicho con menos guías del lote', () => {
+  const nichos = [
+    { id: 'a', porTipo: { top_lista: 1, regalo: 1, vale_la_pena: 1 } },
+    { id: 'b', porTipo: { top_lista: 0, regalo: 0, vale_la_pena: 0 } },
+    { id: 'c', porTipo: {} },
+  ]
+  // b y c empatan a 0: gana el primero de la lista (determinista).
+  assert.equal(elegirNichoMenosCubierto(nichos, ['top_lista', 'regalo', 'vale_la_pena']).id, 'b')
+})
+
+test('elegirNichoMenosCubierto avanza al siguiente nicho al subir la cobertura', () => {
+  const tipos = ['top_lista', 'regalo', 'vale_la_pena']
+  const nichos = [
+    { id: 'a', porTipo: { top_lista: 1, regalo: 1, vale_la_pena: 1 } },
+    { id: 'b', porTipo: { top_lista: 1, regalo: 1, vale_la_pena: 1 } },
+    { id: 'c', porTipo: { top_lista: 1, regalo: 1, vale_la_pena: 1 } },
+  ]
+  // Primer clic: todos vacíos -> primer nicho.
+  assert.equal(elegirNichoMenosCubierto(nichos, tipos).id, 'a')
+  // Tras cubrir 'a', el siguiente clic debe caer en 'b' (no repetir 'a').
+  nichos[0] = { id: 'a', porTipo: { top_lista: 1, regalo: 1, vale_la_pena: 1 } }
+  nichos[1] = { id: 'b', porTipo: {} }
+  nichos[2] = { id: 'c', porTipo: {} }
+  assert.equal(elegirNichoMenosCubierto(nichos, tipos).id, 'b')
+})
+
+test('elegirNichoMenosCubierto ignora tipos que no pertenecen al lote', () => {
+  const nichos = [
+    { id: 'a', porTipo: { comparativa: 5, top_lista: 1 } },
+    { id: 'b', porTipo: { comparativa: 0, top_lista: 0 } },
+  ]
+  // Solo cuenta la cobertura de los tipos pedidos: 'a' tiene 1, 'b' tiene 0.
+  assert.equal(elegirNichoMenosCubierto(nichos, ['top_lista', 'regalo']).id, 'b')
+})
+
+test('elegirNichoMenosCubierto devuelve null sin nichos y tolera datos incompletos', () => {
+  assert.equal(elegirNichoMenosCubierto([], ['top_lista']), null)
+  assert.equal(elegirNichoMenosCubierto(null, ['top_lista']), null)
+  assert.equal(elegirNichoMenosCubierto(undefined, ['top_lista']), null)
+  // Nichos sin `porTipo` cuentan como cobertura 0 (nunca rompen la rotación).
+  assert.equal(elegirNichoMenosCubierto([{ id: 'a' }, { id: 'b' }], ['top_lista']).id, 'a')
+})
+

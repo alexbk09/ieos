@@ -143,3 +143,22 @@ export function buildBreadcrumbSchema(
 
 /** Construye el JSON-LD FAQPage (o null si no hay preguntas válidas). */
 export function buildFaqSchema(faq: EntryFaqItemLike[] | null | undefined): Record<string, unknown> | null
+
+// ---------- Cobertura / rotación de nichos (generador masivo del panel) ----------
+
+/** Nicho mínimo con la cobertura de guías que ya tiene por tipo de entrada. */
+export type NicheCoverageLike = {
+  id: string
+  /** Nº de entradas existentes por tipo (clave = tipo de ENTRY_TYPES). */
+  porTipo?: Record<string, number>
+}
+
+/**
+ * Elige el nicho con MENOS entradas del lote de tipos indicado (rotación).
+ * Determinista: ante empate gana el primero de la lista.
+ * @returns El nicho con menor cobertura, o null si la lista está vacía.
+ */
+export function elegirNichoMenosCubierto<T extends NicheCoverageLike>(
+  nichos: T[],
+  tipos: string[],
+): T | null

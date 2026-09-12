@@ -3,6 +3,7 @@ import { createPublicClient } from '@/lib/supabase/public'
 import {
   DEFAULT_AUTHOR,
   DEFAULT_LOCALE,
+  ENTRY_ADMIN_LIST_LIMIT,
   ENTRY_INDEX_PAGE_SIZE,
   ENTRY_MAX_CRITERIA,
   ENTRY_MAX_PER_CATEGORY,
@@ -476,7 +477,10 @@ export async function getEntriesForCategory(
  */
 export async function listEntries(filters: EntryListFilters = {}) {
   const supabase = await createServerClient()
-  const limit = Math.min(Math.max(Number(filters.limit) || ENTRY_INDEX_PAGE_SIZE, 1), 100)
+  const limit = Math.min(
+    Math.max(Number(filters.limit) || ENTRY_INDEX_PAGE_SIZE, 1),
+    ENTRY_ADMIN_LIST_LIMIT,
+  )
   const offset = Math.max(Number(filters.offset) || 0, 0)
 
   let query = supabase
@@ -492,6 +496,79 @@ export async function listEntries(filters: EntryListFilters = {}) {
   if (error) return { entries: [] as Entry[], error }
   // Sin localizar: el editor trabaja sobre el idioma raíz (fuente de verdad).
   return { entries: (data ?? []).map((row) => mapEntry(row)), error: null }
+}
+
+/**
+ * Cobertura de guías por nicho (alimenta el generador masivo del panel).
+ * ------------------------------------------------------------------
+ * POR QUÉ existe: el botón "crear 3 guías" debe saber qué nicho está SIN cubrir
+ * para rotar y no repetir siempre el mismo. Devuelve, para cada categoría, cuántas
+ * entradas tiene de cada tipo vigilado + el total (todas las intenciones), que es
+ * el dato con el que el admin ve si el nicho ya está saturado.
+ *
+ * Se hace en DOS lecturas (categorías + tabla puente con su entrada) y se agrega
+ * en memoria: es más explícito, más barato de depurar y evita depender de las
+ * sutilezas del filtrado sobre recursos anidados de PostgREST.
+ */
+export type NicheGuideCoverage = {
+  id: string
+  name: string
+  slug: string
+  activa: boolean
+  /** Nº de entradas existentes por tipo (solo los tipos vigilados del lote). */
+  porTipo: Record<string, number>
+  /** Nº total de entradas enlazadas al nicho (cualquier tipo/intención). */
+  total: number
+}
+
+/**
+ * Lista los nichos con su cobertura de entradas.
+ * @param tipos Tipos de entrada a contabilizar (se filtran contra ENTRY_TYPES).
+ * @returns { niches, error } con los nichos siempre ordenados por nombre.
+ */
+export async function listNicheGuideCoverage(tipos: string[]) {
+  const supabase = await createServerClient()
+  // Solo se cuentan tipos válidos: datos sucios del cliente no deben colarse.
+  const vigilados = tipos.filter((tipo) => ENTRY_TYPES.includes(tipo as any))
+
+  const { data: categorias, error: categoriasError } = await supabase
+    .from('categories')
+    .select('id,name,slug,activa')
+    .order('name', { ascending: true })
+  if (categoriasError) return { niches: [] as NicheGuideCoverage[], error: categoriasError }
+
+  // Una sola lectura del puente (nicho ↔ entrada) con el tipo de cada entrada.
+  const { data: enlaces, error: enlacesError } = await supabase
+    .from('seo_entry_categories')
+    .select('category_id, seo_entries(tipo)')
+  if (enlacesError) return { niches: [] as NicheGuideCoverage[], error: enlacesError }
+
+  // Agregación en memoria: cobertura por tipo + total por nicho.
+  const acumulado = new Map<string, { porTipo: Record<string, number>; total: number }>()
+  for (const enlace of (enlaces ?? []) as any[]) {
+    const categoryId = enlace?.category_id
+    if (!categoryId) continue
+    const actual = acumulado.get(categoryId) ?? { porTipo: {}, total: 0 }
+    actual.total += 1
+    const tipo = enlace?.seo_entries?.tipo
+    if (tipo && vigilados.includes(tipo)) {
+      actual.porTipo[tipo] = (actual.porTipo[tipo] ?? 0) + 1
+    }
+    acumulado.set(categoryId, actual)
+  }
+
+  const niches: NicheGuideCoverage[] = ((categorias ?? []) as any[]).map((categoria) => {
+    const datos = acumulado.get(categoria.id) ?? { porTipo: {}, total: 0 }
+    return {
+      id: String(categoria.id),
+      name: String(categoria.name ?? ''),
+      slug: String(categoria.slug ?? ''),
+      activa: categoria.activa !== false,
+      porTipo: datos.porTipo,
+      total: datos.total,
+    }
+  })
+  return { niches, error: null }
 }
 
 /** Lee una entrada por id (editor del panel). Sin localizar: idioma raíz. */

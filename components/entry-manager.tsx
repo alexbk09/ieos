@@ -14,13 +14,17 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
-import { FormInput, FormTextarea } from '@/components/ui/form-field'
-import { TableRowSkeleton } from '@/components/ui/skeleton'
+import { DataTable, type TableColumn } from '@/components/ui/data-table'
+import { SearchableSelect } from '@/components/ui/select-search'
 import { confirmDelete } from '@/components/confirm-dialog'
 import { EntryEditor } from '@/components/entry-editor'
+import { EntryNicheBatch } from '@/components/entry-niche-batch'
 import type { Entry, EntryEstado } from '@/services/entries'
-import { ENTRY_TYPES, TRANSLATION_LOCALE_BATCH_SIZE } from '@/lib/constants'
+import {
+  ENTRY_ADMIN_LIST_LIMIT,
+  ENTRY_TYPES,
+  TRANSLATION_LOCALE_BATCH_SIZE,
+} from '@/lib/constants'
 import { SUPPORTED_LOCALES } from '@/lib/i18n-config'
 
 /**
@@ -63,11 +67,13 @@ const CLASE_ESTADO: Record<EntryEstado, string> = {
   archivado: 'bg-destructive/10 text-destructive',
 }
 
+/** Filas por página de la tabla de entradas (la paginación es en cliente). */
+const ENTRY_TABLE_PAGE_SIZE = 10
+
 export function EntryManager() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [estado, setEstado] = useState<'' | EntryEstado>('')
-  const [search, setSearch] = useState('')
 
   /** Nichos disponibles para el asistente (deja elegir categoría o IA). */
   const [categorias, setCategorias] = useState<{ id: string; name: string }[]>([])
@@ -90,7 +96,9 @@ export function EntryManager() {
       try {
         const params = new URLSearchParams()
         if (estado) params.set('estado', estado)
-        if (search.trim()) params.set('search', search.trim())
+        // La búsqueda y la paginación las resuelve la tabla en CLIENTE; la API
+        // solo necesita el filtro de estado y el tope del lote descargado.
+        params.set('limit', String(ENTRY_ADMIN_LIST_LIMIT))
         const res = await fetch('/api/admin/entradas?' + params.toString())
         const body = await res.json()
         if (!res.ok) throw new Error(body?.error ?? 'No se pudieron cargar las entradas.')
@@ -101,7 +109,7 @@ export function EntryManager() {
         if (!silencioso) setLoading(false)
       }
     },
-    [estado, search],
+    [estado],
   )
 
   useEffect(() => {
@@ -136,7 +144,7 @@ export function EntryManager() {
    * guarda en estado `borrador`, de modo que nada llega al público sin revisión
    * humana (lo contrario sería "publicar contenido a escala" y Google lo castiga).
    */
-  async function generarBorrador() {
+  const generarBorrador = useCallback(async () => {
     setGenerando(true)
     try {
       const resGenerar = await fetch('/api/admin/entradas/generate', {
@@ -182,10 +190,10 @@ export function EntryManager() {
     } finally {
       setGenerando(false)
     }
-  }
+  }, [tipoNuevo, decideIA, categoriaNueva, cargar])
 
   /** Cambia el estado editorial (publicar / despublicar / archivar). */
-  async function cambiarEstado(entry: Entry, nuevo: EntryEstado) {
+  const cambiarEstado = useCallback(async (entry: Entry, nuevo: EntryEstado) => {
     setAccionEnCurso(entry.id)
     try {
       const res = await fetch('/api/admin/entradas', {
@@ -209,7 +217,7 @@ export function EntryManager() {
     } finally {
       setAccionEnCurso(null)
     }
-  }
+  }, [cargar])
 
   /**
    * Traduce la entrada por TANDAS.
@@ -219,7 +227,7 @@ export function EntryManager() {
    * cortaba por tokens). El servidor traduce un lote y devuelve cuántos quedan;
    * el cliente repite hasta terminar, mostrando el progreso en vivo.
    */
-  async function traducir(entry: Entry) {
+  const traducir = useCallback(async (entry: Entry) => {
     setAccionEnCurso(entry.id)
     try {
       const traducidos: string[] = []
@@ -250,10 +258,10 @@ export function EntryManager() {
     } finally {
       setAccionEnCurso(null)
     }
-  }
+  }, [])
 
   /** Elimina la entrada (con confirmación explícita: es irreversible). */
-  async function eliminar(entry: Entry) {
+  const eliminar = useCallback(async (entry: Entry) => {
     const confirmado = await confirmDelete({
       title: '¿Eliminar la entrada?',
       description:
@@ -273,7 +281,156 @@ export function EntryManager() {
     } finally {
       setAccionEnCurso(null)
     }
-  }
+  }, [cargar])
+
+  /**
+   * Columnas de la tabla de entradas.
+   * Incluye el NICHO de cada entrada (enlazado interno) para leer de un vistazo a
+   * qué hub pertenece y poder filtrar por nicho desde el buscador de la tabla.
+   */
+  const columnas = useMemo<TableColumn<Entry>[]>(
+    () => [
+      {
+        key: 'titulo',
+        header: 'Título',
+        sortable: true,
+        sortValue: (entry) => entry.titulo.toLowerCase(),
+        cellClassName: 'max-w-[380px]',
+        render: (entry) => (
+          <div className="min-w-0">
+            <p className="line-clamp-1 font-medium">{entry.titulo}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              /guias/{entry.slug}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: 'nicho',
+        header: 'Nicho',
+        sortable: true,
+        sortValue: (entry) => entry.categories.map((nicho) => nicho.name).join(' ').toLowerCase(),
+        render: (entry) =>
+          entry.categories.length === 0 ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {entry.categories.map((nicho) => (
+                <span
+                  key={nicho.id}
+                  className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {nicho.name}
+                </span>
+              ))}
+            </div>
+          ),
+      },
+      {
+        key: 'tipo',
+        header: 'Tipo',
+        sortable: true,
+        sortValue: (entry) => entry.tipo,
+        render: (entry) => (
+          <span className="text-xs text-muted-foreground">
+            {ETIQUETA_TIPO[entry.tipo] ?? entry.tipo}
+          </span>
+        ),
+      },
+      {
+        key: 'estado',
+        header: 'Estado',
+        sortable: true,
+        sortValue: (entry) => entry.estado,
+        render: (entry) => (
+          <span
+            className={'rounded-full px-2.5 py-1 text-[11px] font-medium ' + CLASE_ESTADO[entry.estado]}
+          >
+            {entry.estado}
+          </span>
+        ),
+      },
+      {
+        key: 'productos',
+        header: 'Productos',
+        hiddenMobile: true,
+        headerClassName: 'text-center',
+        cellClassName: 'text-center',
+        render: (entry) => (
+          <span className="text-xs text-muted-foreground">{entry.products.length}</span>
+        ),
+      },
+      {
+        key: 'publicada',
+        header: 'Publicada',
+        sortable: true,
+        hiddenMobile: true,
+        sortValue: (entry) => entry.publicado_en ?? '',
+        render: (entry) => (
+          <span className="text-xs text-muted-foreground">
+            {entry.publicado_en ? new Date(entry.publicado_en).toLocaleDateString('es-VE') : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'acciones',
+        header: 'Acciones',
+        headerClassName: 'text-right',
+        cellClassName: 'text-right',
+        render: (entry) => (
+          <div className="flex items-center justify-end gap-1">
+            <Button className="px-2.5" onClick={() => setEditando(entry)} title="Editar">
+              <Pencil className="h-4 w-4" aria-hidden />
+            </Button>
+            {entry.estado === 'publicado' ? (
+              <Button
+                className="px-2.5"
+                onClick={() => cambiarEstado(entry, 'borrador')}
+                disabled={accionEnCurso === entry.id}
+                title="Despublicar"
+              >
+                {accionEnCurso === entry.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <EyeOff className="h-4 w-4" aria-hidden />
+                )}
+              </Button>
+            ) : (
+              <Button
+                className="px-2.5"
+                onClick={() => cambiarEstado(entry, 'publicado')}
+                disabled={accionEnCurso === entry.id}
+                title="Publicar"
+              >
+                {accionEnCurso === entry.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden />
+                )}
+              </Button>
+            )}
+            <Button
+              className="px-2.5"
+              onClick={() => traducir(entry)}
+              disabled={accionEnCurso === entry.id}
+              title="Traducir idiomas pendientes"
+            >
+              <Languages className="h-4 w-4" aria-hidden />
+            </Button>
+            <Button
+              className="px-2.5"
+              onClick={() => eliminar(entry)}
+              disabled={accionEnCurso === entry.id}
+              title="Eliminar"
+            >
+              <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [accionEnCurso, cambiarEstado, traducir, eliminar],
+  )
 
   // ---------- Render ----------
 
@@ -326,19 +483,21 @@ export function EntryManager() {
 
           <label className="grid gap-2 text-sm">
             <span className="font-medium">Nicho</span>
-            <select
+            {/* Select con BUSCADOR: el catálogo de nichos crece y un <select>
+                nativo obliga a recorrer la lista a ojo. Con búsqueda se elige en
+                dos teclas y la lista sigue siendo usable a escala. */}
+            <SearchableSelect
               value={categoriaNueva}
-              onChange={(event) => setCategoriaNueva(event.target.value)}
+              onChange={setCategoriaNueva}
               disabled={decideIA}
-              className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none disabled:opacity-50 focus:border-ring focus:ring-2 focus:ring-ring/30"
-            >
-              <option value="">— Selecciona un nicho —</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.name}
-                </option>
-              ))}
-            </select>
+              options={categorias.map((categoria) => ({
+                value: categoria.id,
+                label: categoria.name,
+              }))}
+              placeholder="— Selecciona un nicho —"
+              searchPlaceholder="Buscar nicho…"
+              emptyText="Ningún nicho coincide"
+            />
           </label>
 
           <label className="flex items-start gap-2 self-end text-sm">
@@ -357,6 +516,13 @@ export function EntryManager() {
           </label>
         </div>
       </section>
+
+      {/* Generador masivo: 3 guías por nicho, siempre como borrador. */}
+      <EntryNicheBatch
+        onCreated={async () => {
+          await cargar(true)
+        }}
+      />
 
       {/* Filtros y acciones de la lista */}
       <div className="flex flex-wrap items-center gap-3">
@@ -378,12 +544,9 @@ export function EntryManager() {
           ))}
         </div>
 
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por título…"
-          className="h-10 w-full max-w-xs rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-        />
+        <p className="text-xs text-muted-foreground">
+          {loading ? 'Cargando…' : entries.length + ' entradas en el panel'}
+        </p>
 
         <Button className="ml-auto" onClick={() => cargar()}>
           <RefreshCw className="h-4 w-4" aria-hidden />
@@ -391,111 +554,25 @@ export function EntryManager() {
         </Button>
       </div>
 
-      {/* Lista de entradas */}
-      <div className="overflow-hidden rounded-3xl border border-border bg-card">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-left font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th scope="col" className="px-4 py-3">Título</th>
-                <th scope="col" className="px-4 py-3">Tipo</th>
-                <th scope="col" className="px-4 py-3">Estado</th>
-                <th scope="col" className="px-4 py-3">Productos</th>
-                <th scope="col" className="px-4 py-3">Publicada</th>
-                <th scope="col" className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <TableRowSkeleton cells={6} />
-              ) : (
-                entries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-border/60 last:border-0">
-                    <td className="max-w-[380px] px-4 py-3">
-                      <p className="line-clamp-1 font-medium">{entry.titulo}</p>
-                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                        /guias/{entry.slug}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {ETIQUETA_TIPO[entry.tipo] ?? entry.tipo}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={
-                          'rounded-full px-2.5 py-1 text-[11px] font-medium ' + CLASE_ESTADO[entry.estado]
-                        }
-                      >
-                        {entry.estado}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{entry.products.length}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {entry.publicado_en ? new Date(entry.publicado_en).toLocaleDateString('es-VE') : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button className="px-2.5" onClick={() => setEditando(entry)} title="Editar">
-                          <Pencil className="h-4 w-4" aria-hidden />
-                        </Button>
-                        {entry.estado === 'publicado' ? (
-                          <Button
-                            className="px-2.5"
-                            onClick={() => cambiarEstado(entry, 'borrador')}
-                            disabled={accionEnCurso === entry.id}
-                            title="Despublicar"
-                          >
-                            {accionEnCurso === entry.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                            ) : (
-                              <EyeOff className="h-4 w-4" aria-hidden />
-                            )}
-                          </Button>
-                        ) : (
-                          <Button
-                            className="px-2.5"
-                            onClick={() => cambiarEstado(entry, 'publicado')}
-                            disabled={accionEnCurso === entry.id}
-                            title="Publicar"
-                          >
-                            {accionEnCurso === entry.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                            ) : (
-                              <Eye className="h-4 w-4" aria-hidden />
-                            )}
-                          </Button>
-                        )}
-                        <Button
-                          className="px-2.5"
-                          onClick={() => traducir(entry)}
-                          disabled={accionEnCurso === entry.id}
-                          title="Traducir idiomas pendientes"
-                        >
-                          <Languages className="h-4 w-4" aria-hidden />
-                        </Button>
-                        <Button
-                          className="px-2.5"
-                          onClick={() => eliminar(entry)}
-                          disabled={accionEnCurso === entry.id}
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {!loading && entries.length === 0 && (
-          <p className="p-8 text-center text-sm text-muted-foreground">
-            No hay entradas con estos filtros. Genera la primera con el asistente de arriba.
-          </p>
-        )}
-      </div>
+      {/* Lista de entradas: buscador + orden + PAGINACIÓN en cliente (DataTable). */}
+      <DataTable
+        data={entries}
+        columns={columnas}
+        rowKey={(entry) => entry.id}
+        searchKeys={(entry) =>
+          [
+            entry.titulo,
+            entry.slug,
+            entry.keyword_objetivo ?? '',
+            ...entry.categories.map((nicho) => nicho.name),
+          ].join(' ')
+        }
+        searchPlaceholder="Buscar por título, slug o nicho…"
+        emptyMessage="Ninguna entrada coincide con la búsqueda"
+        noDataMessage="Aún no hay entradas con estos filtros"
+        loading={loading}
+        pageSize={ENTRY_TABLE_PAGE_SIZE}
+      />
 
       {/* Editor de la entrada seleccionada (organismo independiente). */}
       <EntryEditor
