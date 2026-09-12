@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { FormInput, FormTextarea } from '@/components/ui/form-field'
 import type { Entry } from '@/services/entries'
-import { ENTRY_TYPES } from '@/lib/constants'
+import { DEFAULT_AUTHOR, ENTRY_TYPES } from '@/lib/constants'
 
 /**
  * EntryEditor — editor de una entrada SEO (borrador o publicada).
@@ -60,7 +60,9 @@ export function EntryEditor({
     setSlug(entry.slug)
     setResumen(entry.resumen ?? '')
     setAngulo(entry.angulo ?? '')
-    setAutor(entry.autor ?? '')
+    // PRERRELLENO: si la entrada no tiene autor, el campo aparece con el autor
+    // por defecto del entorno (y el admin puede cambiarlo antes de guardar).
+    setAutor(entry.autor ?? DEFAULT_AUTHOR)
     setKeywords((entry.keywords ?? []).join(', '))
     setHeroImagen(entry.hero_image_url ?? '')
     setCuerpo(entry.cuerpo_html ?? '')

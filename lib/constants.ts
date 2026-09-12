@@ -676,6 +676,20 @@ export const MERCHANT_RETURN_DAYS = 30
 export const OG_IMAGE_PATH = '/og/zonadehobbies-og.jpg'
 
 /**
+ * Autor por defecto de los contenidos editoriales (firma visible E-E-A-T).
+ * ------------------------------------------------------------------
+ * POR QUÉ es configurable por entorno: la firma es una decisión de MARCA (el
+ * nombre de la tienda, del equipo o de una persona) y no debe estar quemada en
+ * el código. Se usa en dos sitios:
+ *  1) Al generar/crear contenido con IA (guías y hubs) se firma con este valor.
+ *  2) El panel PRERRELLENA el campo con él, así aparece lleno desde el inicio
+ *     y el administrador puede cambiarlo entrada por entrada.
+ * Variable: NEXT_PUBLIC_DEFAULT_AUTHOR (pública a propósito: no es un secreto y
+ * el editor —que es cliente— necesita leerla para prerrellenar el campo).
+ */
+export const DEFAULT_AUTHOR = process.env.NEXT_PUBLIC_DEFAULT_AUTHOR?.trim() || 'Equipo editorial'
+
+/**
  * Nº máximo de categorías que muestra la grilla del inicio.
  * POR QUÉ: con 200 categorías, volcarlas todas satura la portada, diluye el
  * enlazado interno y hunde la conversión. Mostramos una vitrina curada + un

@@ -65,6 +65,8 @@ NEXT_PUBLIC_SUPABASE_URL="https://tu-proyecto.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="tu-anon-key"
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="tu-publishable-key"
 SUPABASE_SERVICE_ROLE_KEY="tu-service-role-key"
+# Firma editorial por defecto de guías y hubs de categoría (editable en el panel)
+NEXT_PUBLIC_DEFAULT_AUTHOR="zonadehobbies"
 ```
 
 > Importante: todas las variables deben apuntar al mismo proyecto de Supabase. Si mezclas dos proyectos distintos, la app no podrá conectarse correctamente.
@@ -244,6 +246,8 @@ La aplicación usa Supabase como base de datos y autenticación. Si la conexión
 ## Variables de entorno
 
 El runtime usa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, con fallback a `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Todas las variables deben apuntar al mismo proyecto de Supabase.
+
+`NEXT_PUBLIC_DEFAULT_AUTHOR` es la **firma editorial por defecto** (señal E-E-A-T) que se usa al generar contenido con IA y que **prerrellena el campo "Autor"** en el panel, tanto en las guías (`/guias`) como en los hubs de categoría (`/categoria/[slug]`). Es pública a propósito (no es un secreto) porque el editor —que es cliente— la necesita para prerrellenar el campo. Se puede cambiar contenido por contenido sin tocar el entorno.
 
 ## Supabase
 

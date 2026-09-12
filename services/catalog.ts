@@ -150,6 +150,12 @@ export type Category = {
   seo_intro?: string | null
   /** FAQ del nicho (migración 0047) → schema FAQPage de la categoría. */
   seo_faq?: SeoFaqItem[] | null
+  /**
+   * Firma editorial del hub (migración 0057): autoría visible del contenido
+   * informacional de la categoría (señal E-E-A-T). Por defecto se rellena con
+   * `DEFAULT_AUTHOR` (variable NEXT_PUBLIC_DEFAULT_AUTHOR) y es editable.
+   */
+  autor?: string | null
   // ---------- Internacionalización (migración 0049) ----------
   // El inglés (idioma raíz/puente) sigue en `name`/`slug`; aquí van las
   // traducciones por locale. La resolución con fallback vive en
@@ -1020,7 +1026,7 @@ export async function getCategoriesActivas(locale?: string) {
  */
 export async function getCategoryBySlug(slug: string, locale?: string) {
   const supabase = createPublicClient()
-  const BASE = 'id,name,slug,description,activa,seo_title,seo_intro,seo_faq'
+  const BASE = 'id,name,slug,description,activa,seo_title,seo_intro,seo_faq,autor'
 
   // 1) Coincidencia por el slug BASE (URL histórica, ya indexada).
   const { data, error } = await selectCategoriesConFallback<any>(
@@ -1057,13 +1063,19 @@ export async function getCategorySeo(categoryId: string) {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('categories')
-    .select('id,seo_title,seo_intro,seo_faq')
+    .select('id,seo_title,seo_intro,seo_faq,autor')
     .eq('id', categoryId)
     .maybeSingle()
   if (error) return { data: null, error }
   return {
     data: data as
-      | { id: string; seo_title: string | null; seo_intro: string | null; seo_faq: SeoFaqItem[] | null }
+      | {
+          id: string
+          seo_title: string | null
+          seo_intro: string | null
+          seo_faq: SeoFaqItem[] | null
+          autor: string | null
+        }
       | null,
     error: null,
   }
@@ -1336,7 +1348,13 @@ export async function deleteCategory(id: string) {
  */
 export async function updateCategorySeo(
   id: string,
-  payload: { seo_title?: string | null; seo_intro?: string | null; seo_faq?: SeoFaqItem[] | null },
+  payload: {
+    seo_title?: string | null
+    seo_intro?: string | null
+    seo_faq?: SeoFaqItem[] | null
+    /** Firma editorial del hub (migración 0057). `undefined` = no se toca. */
+    autor?: string | null
+  },
   options: { slug?: string } = {},
 ) {
   const supabase = await createServerClient()
@@ -1344,6 +1362,9 @@ export async function updateCategorySeo(
   if (payload.seo_title !== undefined) row.seo_title = payload.seo_title
   if (payload.seo_intro !== undefined) row.seo_intro = payload.seo_intro
   if (payload.seo_faq !== undefined) row.seo_faq = payload.seo_faq
+  // Solo se escribe si viene la clave: así "undefined" (p. ej. una regeneración
+  // que no habla del autor) NO pisa la firma ya guardada, y `null` sí la limpia.
+  if (payload.autor !== undefined) row.autor = payload.autor
   const result = await supabase.from('categories').update(row).eq('id', id).select('*').single()
   // La landing del hub cambió: se revalida su página y el sitemap al instante.
   if (!result.error) revalidarSitemap({ categoriaSlug: options.slug })

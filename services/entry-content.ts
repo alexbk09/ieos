@@ -17,6 +17,7 @@ import {
   ENTRY_TITLE_MAX_LENGTH,
   ENTRY_TITLE_MIN_LENGTH,
   ENTRY_TYPES,
+  DEFAULT_AUTHOR,
   SEO_TITLE_SIGNATURE_WORDS,
 } from '@/lib/constants'
 import {
@@ -90,6 +91,11 @@ export type GeneratedEntry = {
   categoryIds: string[]
   /** Firma del título: la usa el anti-duplicado del panel. */
   firma: string
+  /**
+   * Firma editorial por defecto (variable NEXT_PUBLIC_DEFAULT_AUTHOR).
+   * Editable después en el panel; nunca queda sin autoría visible.
+   */
+  autor: string
 }
 
 export type GenerateEntryInput = {
@@ -293,6 +299,9 @@ export async function generateEntryContent(input: GenerateEntryInput) {
         productIds: brief.productos.map((producto) => producto.id),
         categoryIds: brief.categorias.map((categoria) => categoria.id),
         firma: firmaTitulo(candidata.titulo, SEO_TITLE_SIGNATURE_WORDS),
+        // Firma editorial por defecto (configurable por entorno, editable luego
+        // en el panel): la autoría visible es una señal E-E-A-T para Google.
+        autor: DEFAULT_AUTHOR,
       }
       return { success: true as const, data }
     }

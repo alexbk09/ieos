@@ -223,6 +223,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
           seo_title: category.seo_title ?? null,
           seo_intro: category.seo_intro ?? null,
           seo_faq: category.seo_faq ?? null,
+          // Firma editorial del hub (autoría visible = E-E-A-T).
+          autor: category.autor ?? null,
         }}
         categories={navCategories}
         products={(products ?? []).map(toCardProduct)}

@@ -224,3 +224,25 @@ Por eso la traducción funciona así:
 3. **Traducir** (opcional): botón de idiomas → traduce solo lo pendiente.
 4. **Publicar**: botón de publicar en la lista → entra a la web y al sitemap.
 5. **Medir**: Search Console + analítica de producto; re-priorizar según impresiones.
+
+---
+
+## 14. Firma editorial (autor) configurable
+
+La autoría visible es una señal **E-E-A-T** que Google valora en contenido
+informacional. En este proyecto es **configurable por entorno** y **editable**
+sin tocar código:
+
+| Pieza | Dónde |
+|---|---|
+| Variable de entorno | `NEXT_PUBLIC_DEFAULT_AUTHOR` (p. ej. `zonadehobbies`) |
+| Constante única | `DEFAULT_AUTHOR` en `lib/constants.ts` |
+| Guías | `seo_entries.autor` (migración 0056) → se muestra «Por {autor}» en `/guias/[slug]` |
+| Hubs de categoría | `categories.autor` (migración 0057) → se muestra «Por {autor}» en `/categoria/[slug]` |
+| Generación con IA | Al generar una guía o un hub se firma con `DEFAULT_AUTHOR` |
+| Panel | El campo **Autor** aparece **prerrellenado** con la variable y se puede cambiar contenido por contenido (o dejarlo vacío para quitar la firma) |
+
+Reglas de escritura (para no pisar la firma por accidente):
+
+- `undefined` = la clave no viaja → **no se toca** el autor guardado.
+- `null` / cadena vacía = el administrador lo dejó en blanco → **se limpia**.

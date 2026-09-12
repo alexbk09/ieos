@@ -5,6 +5,7 @@ import { Loader2, Save, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { FormSubmitButton } from '@/components/ui/form-field'
 import type { SeoFaqItem } from '@/lib/seo-types'
+import { DEFAULT_AUTHOR } from '@/lib/constants'
 
 /** Categoría con su contenido SEO (respuesta de /api/admin/categorias/seo). */
 type CategorySeo = {
@@ -14,6 +15,8 @@ type CategorySeo = {
   seo_title: string | null
   seo_intro: string | null
   seo_faq: SeoFaqItem[] | null
+  /** Firma editorial del hub (migración 0057). */
+  autor: string | null
 }
 
 /**
@@ -34,6 +37,7 @@ export function CategorySeoManager() {
   const [titulo, setTitulo] = useState('')
   const [intro, setIntro] = useState('')
   const [faq, setFaq] = useState<SeoFaqItem[]>([])
+  const [autor, setAutor] = useState('')
 
   const selected = useMemo(() => categories.find((c) => c.id === selectedId) ?? null, [categories, selectedId])
 
@@ -61,10 +65,18 @@ export function CategorySeoManager() {
     setTitulo(selected?.seo_title ?? '')
     setIntro(selected?.seo_intro ?? '')
     setFaq(selected?.seo_faq ?? [])
+    // PRERRELLENO: la firma aparece ya con el autor por defecto del entorno
+    // (NEXT_PUBLIC_DEFAULT_AUTHOR) y el admin puede cambiarla antes de guardar.
+    setAutor(selected?.autor ?? DEFAULT_AUTHOR)
   }, [selected])
 
   /** Guarda los cambios manuales del hub seleccionado. */
-  async function guardar(payload: { seo_title: string; seo_intro: string; seo_faq: SeoFaqItem[] }) {
+  async function guardar(payload: {
+    seo_title: string
+    seo_intro: string
+    seo_faq: SeoFaqItem[]
+    autor: string
+  }) {
     if (!selected) return
     setSaving(true)
     try {
@@ -175,6 +187,21 @@ export function CategorySeoManager() {
               />
             </label>
 
+            {/* Firma editorial del hub: viene prerrellenada con el autor por
+                defecto del entorno y se puede cambiar por categoría. */}
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Autor / firma editorial</span>
+              <input
+                value={autor}
+                onChange={(e) => setAutor(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                placeholder={DEFAULT_AUTHOR}
+              />
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Se muestra como «Por {autor}» en el hub. Por defecto viene de NEXT_PUBLIC_DEFAULT_AUTHOR.
+              </span>
+            </label>
+
             <label className="block">
               <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Guía de compra (HTML)</span>
               <textarea
@@ -204,7 +231,7 @@ export function CategorySeoManager() {
 
             <FormSubmitButton
               loading={saving}
-              onClick={() => guardar({ seo_title: titulo, seo_intro: intro, seo_faq: faq })}
+              onClick={() => guardar({ seo_title: titulo, seo_intro: intro, seo_faq: faq, autor })}
               className="gap-2"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

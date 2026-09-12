@@ -50,6 +50,8 @@ export function CategoryPageView({
     seo_intro?: string | null
     /** FAQ del nicho (visible + schema FAQPage). */
     seo_faq?: SeoFaqItem[] | null
+    /** Firma editorial del hub (autoría visible = señal E-E-A-T). */
+    autor?: string | null
   }
   products: CardProduct[]
   /** Categorías para la navegación cross-categoría (enlazado interno). */
@@ -99,6 +101,10 @@ export function CategoryPageView({
         <header className="mt-7 border-b border-border pb-7">
           <p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">{t('category.eyebrow')}</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-.05em] sm:text-4xl">{category.seo_title?.trim() || category.name}</h1>
+          {/* Autoría visible: firma editorial del hub (E-E-A-T). */}
+          {category.autor && (
+            <p className="mt-3 text-xs text-muted-foreground">{t('entry.by', { author: category.autor })}</p>
+          )}
           {category.description && (
             <p className="mt-4 max-w-3xl leading-7 text-muted-foreground">{category.description}</p>
           )}

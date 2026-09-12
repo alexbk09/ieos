@@ -1,6 +1,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import {
+  DEFAULT_AUTHOR,
   DEFAULT_LOCALE,
   ENTRY_INDEX_PAGE_SIZE,
   ENTRY_MAX_CRITERIA,
@@ -681,6 +682,9 @@ export async function createEntry(payload: EntryInput, relations: EntryRelations
   const supabase = await createServerClient()
   const row = {
     ...payload,
+    // Firma editorial: si el contenido llega sin autor (API/pipeline), se firma
+    // con el autor por defecto del entorno. Nunca queda sin autoría visible.
+    autor: payload.autor ?? DEFAULT_AUTHOR,
     titulo_i18n: { ...rootI18n(payload.titulo), ...(payload.titulo_i18n ?? {}) },
     slug_i18n: { ...rootI18n(payload.slug), ...(payload.slug_i18n ?? {}) },
     resumen_i18n: { ...rootI18n(payload.resumen), ...(payload.resumen_i18n ?? {}) },
