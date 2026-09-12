@@ -31,8 +31,9 @@ const DEFAULT_FOOTER: FooterTexts = {
 }
 
 /**
- * Enlaces fijos del footer (SEO + confianza). Usan anclas de la home y la
- * página /politicas: TODOS resuelven, nunca generan un 404.
+ * Enlaces fijos del footer (SEO + confianza). Usan anclas de la home y los
+ * documentos legales (/terminos, /privacidad, /afiliados): TODOS resuelven,
+ * nunca generan un 404.
  */
 const FOOTER_LINKS = {
   explore: [
@@ -47,9 +48,9 @@ const FOOTER_LINKS = {
     { key: 'footer.whatsapp', href: 'whatsapp' },
   ],
   legal: [
-    { key: 'footer.terms', href: '/politicas#terminos' },
-    { key: 'footer.privacy', href: '/politicas#privacidad' },
-    { key: 'footer.affiliate', href: '/politicas#afiliados' },
+    { key: 'footer.terms', href: '/terminos' },
+    { key: 'footer.privacy', href: '/privacidad' },
+    { key: 'footer.affiliate', href: '/afiliados' },
   ],
 } as const
 

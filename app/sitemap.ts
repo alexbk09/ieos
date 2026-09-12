@@ -6,6 +6,7 @@ import { absoluteUrl, ownOriginAssetUrl } from '@/lib/seo-url'
 import { buildLanguageAlternates } from '@/lib/seo'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { SITEMAP_MAX_IMAGES_PER_URL, SITEMAP_MAX_URLS } from '@/lib/constants'
+import { LEGAL_DOCUMENT_ORDER, legalDocumentPath } from '@/lib/legal-content'
 
 /**
  * Sitemap dinámico accesible en /sitemap.xml (para entregar a Google Search
@@ -67,7 +68,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
       alternates: alternatesFor((l) => buildLocalizedPath('/catalogo', l, { prefixDefaultLocale: false })),
     })
-    // Página legal (términos, privacidad y aviso de afiliado): cambia poco.
+    // Documentos legales (aviso de afiliado, términos y privacidad): cambian
+    // poco. Las rutas salen de la fuente única `lib/legal-content.ts`.
+    for (const key of LEGAL_DOCUMENT_ORDER) {
+      const docPath = legalDocumentPath(key)
+      entries.push({
+        url: absoluteUrl(buildLocalizedPath(docPath, locale, { prefixDefaultLocale: false })),
+        lastModified: generatedAt,
+        changeFrequency: 'monthly',
+        priority: 0.3,
+        alternates: alternatesFor((l) => buildLocalizedPath(docPath, l, { prefixDefaultLocale: false })),
+      })
+    }
+    // Hub legal (/politicas): índice de los documentos, mantiene viva la URL
+    // histórica con sus anclas.
     entries.push({
       url: absoluteUrl(buildLocalizedPath('/politicas', locale, { prefixDefaultLocale: false })),
       lastModified: generatedAt,

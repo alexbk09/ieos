@@ -75,7 +75,11 @@ export const config = {
     '/productos/:path*',
     // Hub y entradas de contenido (guías y comparativas).
     '/guias/:path*',
-    // Página legal (términos, privacidad y aviso de afiliado).
+    // Documentos legales (términos, privacidad y aviso de afiliado) + hub de
+    // políticas. Toda ruta pública nueva DEBE estar aquí o Next responde 404.
+    '/terminos/:path*',
+    '/privacidad/:path*',
+    '/afiliados/:path*',
     '/politicas/:path*',
     '/es/:path*',
   ],
