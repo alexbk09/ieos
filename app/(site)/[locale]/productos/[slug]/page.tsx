@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getSiteSettings } from '@/services/site-settings'
 import { getPublicProductBySlug, getPublicProductSlugs, getRelatedProducts, getCategoryNav, type Product } from '@/services/catalog'
+import { getEntriesForProduct } from '@/services/entries'
 import { ProductDetailPageView, type DetailProduct } from '@/components/product-detail-page'
 import type { CardProduct } from '@/components/product-card'
 import { buildProductSchema, buildBreadcrumbSchema, buildFaqSchema, htmlToPlainText, clampText, toAbsoluteUrl } from '@/lib/schema/product-schema'
@@ -220,15 +221,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   // Origen con prefijo de idioma para el JSON-LD (Product/Offer/Organization).
   const schemaOrigin = locale === DEFAULT_LOCALE ? origin : `${origin}/${locale}`
 
-  // Enlazado interno (SEO): productos relacionados + navegación cross-categoría.
+  // Enlazado interno (SEO): productos relacionados + navegación cross-categoría
+  // + GUÍAS donde aparece el producto (malla bidireccional ficha ↔ entrada).
   // Todo se resuelve en servidor → HTML crawlable por Google.
-  const [relatedResult, { items: navCategories }] = await Promise.all([
+  const [relatedResult, { items: navCategories }, { entries: guides }] = await Promise.all([
     getRelatedProducts({
       productId: product.id,
       categoryIds: (product.categories ?? []).map((c) => c.id),
       locale,
     }),
     getCategoryNav(undefined, locale),
+    getEntriesForProduct(product.id, locale),
   ])
   const related = (relatedResult.products ?? []).map(toCardProduct)
 
@@ -312,6 +315,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <ProductDetailPageView
         product={detailProduct}
         related={related}
+      guides={guides.map((guide) => ({
+        titulo: guide.titulo,
+        slugLocalizado: guide.slug_localizado ?? guide.slug,
+      }))}
         categories={navCategories}
         navLinks={settings.nav_links}
         brand={{

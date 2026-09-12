@@ -83,6 +83,11 @@ type DetailProductProps = {
   product: DetailProduct
   /** Productos relacionados de la misma categoría (enlazado interno SEO). */
   related: CardProduct[]
+  /**
+   * Guías/comparativas donde aparece este producto (enlazado interno
+   * BIDIRECCIONAL ficha ↔ entrada). Opcional: si no hay, no se renderiza.
+   */
+  guides?: { titulo: string; slugLocalizado: string }[]
   /** Categorías para la navegación cross-categoría. */
   categories: CategoryNavItem[]
   navLinks: HeaderNavLink[]
@@ -141,7 +146,7 @@ function StarRating({ value, size = 14, label }: { value: number; size?: number;
  * NO contiene llamadas a Supabase: todo llega serializado desde el
  * Server Component (regla /services de la arquitectura).
  */
-export function ProductDetailPageView({ product, related, categories, navLinks, brand, footer, social, brandAddress }: DetailProductProps) {
+export function ProductDetailPageView({ product, related, guides, categories, navLinks, brand, footer, social, brandAddress }: DetailProductProps) {
   const exchangeRate = useExchangeRate()
   const { cart, add, change, total, count, cartOpen, setCartOpen, popupsBlocked, setPopupsBlocked, finishAffiliateCheckout, clear } = useCart()
   useAgentAddToCart(add)
@@ -508,6 +513,36 @@ export function ProductDetailPageView({ product, related, categories, navLinks, 
             </p>
           </div>
         </div>
+
+        {/* Guías donde aparece ESTE producto: cierra el enlazado bidireccional
+            (entrada → ficha → entrada) y mejora el descubrimiento interno. */}
+        {guides && guides.length > 0 && (
+          <section
+            aria-labelledby="product-guides-heading"
+            className="mx-auto mt-12 max-w-7xl border-t border-border pt-8"
+          >
+            <h2 id="product-guides-heading" className="text-2xl font-semibold tracking-[-.04em]">
+              {t('entry.related')}
+            </h2>
+            <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {guides.map((guide) => (
+                <li key={guide.slugLocalizado}>
+                  <a
+                    href={localizedPath('/guias/' + guide.slugLocalizado)}
+                    className="group flex h-full flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-brand/60"
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-brand">
+                      {t('entry.eyebrow')}
+                    </span>
+                    <span className="mt-2 font-medium leading-snug group-hover:text-brand">
+                      {guide.titulo}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Enlazado interno (SEO): productos de la misma categoría. */}
         <div className="mx-auto max-w-7xl">

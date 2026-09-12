@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getSitemapProducts } from '@/services/aliProducts'
 import { getSitemapCategories } from '@/services/catalog'
+import { getSitemapEntries } from '@/services/entries'
 import { absoluteUrl, ownOriginAssetUrl } from '@/lib/seo-url'
 import { buildLanguageAlternates } from '@/lib/seo'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
@@ -74,6 +75,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
       alternates: alternatesFor((l) => buildLocalizedPath('/politicas', l, { prefixDefaultLocale: false })),
     })
+    // Hub de contenido (guías y comparativas): SIEMPRE indexable, aunque aún no
+    // tenga entradas publicadas, porque es la puerta del cluster temático.
+    entries.push({
+      url: absoluteUrl(buildLocalizedPath('/guias', locale, { prefixDefaultLocale: false })),
+      lastModified: generatedAt,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+      alternates: alternatesFor((l) => buildLocalizedPath('/guias', l, { prefixDefaultLocale: false })),
+    })
   }
 
   // 2) Landings de categoría (/categoria/[slug]) — pSEO con lastmod real y
@@ -122,7 +132,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // 4) Guard defensivo: Google rechaza archivos con más de 50,000 URLs.
+  // 4) Entradas SEO (guías y comparativas): es la capa de contenido
+  //    informacional. Solo entran las PUBLICADAS e INDEXABLES, con su
+  //    lastmod real y su slug LOCALIZADO por idioma (hreflang correcto).
+  const { items: entryItems } = await getSitemapEntries()
+  for (const entry of entryItems) {
+    const slugFor = (locale: string) => entry.slug_i18n?.[locale] ?? entry.slug
+    for (const locale of locales) {
+      entries.push({
+        url: absoluteUrl(buildLocalizedPath(`/guias/${slugFor(locale)}`, locale, { prefixDefaultLocale: false })),
+        lastModified: entry.lastmod,
+        changeFrequency: 'monthly',
+        priority: 0.6,
+        alternates: alternatesFor((l) => buildLocalizedPath(`/guias/${slugFor(l)}`, l, { prefixDefaultLocale: false })),
+      })
+    }
+  }
+
+  // 5) Guard defensivo: Google rechaza archivos con más de 50,000 URLs.
   //    (Si el catálogo crece, dividir en un sitemap index.)
   if (entries.length > SITEMAP_MAX_URLS) {
     console.warn(

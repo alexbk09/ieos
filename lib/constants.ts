@@ -248,6 +248,9 @@ export const ALI_PIPELINE_MODULE_SLUG = 'ali_pipeline'
 /** Slug del módulo admin "SEO de Categorías" (hubs pSEO) para permisos RBAC. */
 export const CATEGORY_SEO_MODULE_SLUG = 'categorias_seo'
 
+/** Slug del módulo admin "Guías y Comparativas" (entradas SEO) para permisos RBAC. */
+export const ENTRY_MODULE_SLUG = 'guias_comparativas'
+
 /** Endpoint de la API de ScraperAPI (renderizado JS remoto). */
 export const SCRAPERAPI_ENDPOINT = 'https://api.scraperapi.com'
 
@@ -530,6 +533,124 @@ export const CATEGORY_NAV_LIMIT = 12
 
 /** Número de palabras iniciales que forman la "firma" anti-duplicado de un título. */
 export const SEO_TITLE_SIGNATURE_WORDS = 4
+
+// ---------- Entradas SEO (guías y comparativas) ----------
+// Parametrizan el gate de calidad de las entradas pSEO. La fuente única es
+// este archivo: lib/entry-rules.mjs recibe TODO por parámetro, así que los
+// tests validan la lógica sin depender de constantes quemadas.
+
+/**
+ * Tipos de entrada soportados. DEBEN coincidir con el CHECK de la migración
+ * 0056 (`seo_entries.tipo`) para que la IA nunca proponga un tipo inválido.
+ */
+export const ENTRY_TYPES = [
+  'comparativa',
+  'top_lista',
+  'guia_compra',
+  'caso_uso',
+  'vale_la_pena',
+  'problema_solucion',
+  'mito_realidad',
+  'regalo',
+] as const
+
+/**
+ * Estados del ciclo editorial. Reflejan el CHECK de la migración 0056.
+ * Solo 'publicado' es visible en público y entra al sitemap.
+ */
+export const ENTRY_STATUSES = ['borrador', 'revision', 'publicado', 'archivado'] as const
+
+/**
+ * Temperatura del LLM al redactar entradas: MÁS ALTA que la de fichas porque
+ * aquí queremos voz editorial propia (no plantillas repetidas entre entradas).
+ */
+export const ENTRY_TEMPERATURE = 0.75
+
+/** Máximo de tokens de salida (artículo + comparativa + FAQ). */
+export const ENTRY_MAX_TOKENS = 4000
+
+/** Longitud del título SEO de la entrada (Google trunca por encima de ~65). */
+export const ENTRY_TITLE_MIN_LENGTH = 30
+export const ENTRY_TITLE_MAX_LENGTH = 65
+
+/** Longitud de la meta description (resumen) que se muestra en Google. */
+export const ENTRY_RESUMEN_MIN_LENGTH = 110
+export const ENTRY_RESUMEN_MAX_LENGTH = 160
+
+/**
+ * Mínimo de palabras del cuerpo del artículo. Es el gate ANTI "thin content":
+ * por debajo de este umbral, Google considera la página de bajo valor.
+ */
+export const ENTRY_MIN_WORDS = 450
+
+/**
+ * Secciones H2 obligatorias del artículo. Reproducen el recorrido mental del
+ * comprador (contexto → comparación → para quién → cómo elegir → dudas), que es
+ * la estructura que Google usa para entender la página.
+ */
+export const ENTRY_REQUIRED_SECTIONS = [
+  'Por qué sí comprarlo',
+  'Comparativa',
+  'Para quién es',
+  'Cómo elegir',
+  'Preguntas Frecuentes',
+] as const
+
+/** Rango de preguntas frecuentes por entrada (alimentan el schema FAQPage). */
+export const ENTRY_MIN_FAQ = 3
+export const ENTRY_MAX_FAQ = 6
+
+/** Rango de palabras clave long-tail objetivo por entrada. */
+export const ENTRY_MIN_KEYWORDS = 3
+export const ENTRY_MAX_KEYWORDS = 12
+
+/**
+ * Rango de productos reales que una entrada debe comparar/mencionar.
+ * El mínimo 2 evita "entradas hueco" que no aportan nada a la comparación.
+ */
+export const ENTRY_MIN_PRODUCTS = 2
+export const ENTRY_MAX_PRODUCTS = 5
+
+/** Máximo de criterios en la tabla comparativa (legibilidad móvil). */
+export const ENTRY_MAX_CRITERIA = 8
+
+/**
+ * Tope de entradas por categoría (anti "doorway/spam a escala"): fuerza a
+ * cubrir ángulos distintos en vez de inundar un nicho con variaciones.
+ */
+export const ENTRY_MAX_PER_CATEGORY = 6
+
+/** Productos relacionados máximos sobre los que el brief propone pares. */
+export const ENTRY_MAX_PAIRS = 6
+
+/** Entradas relacionadas que se muestran al pie de una entrada. */
+export const ENTRY_RELATED_LIMIT = 3
+
+/**
+ * Entradas que muestra el índice /guias por página. Se mantiene moderado para
+ * que el hub cargue rápido y para que el usuario explore en profundidad (mejor
+ * UX y mejor distribución de autoridad interna que volcar todo).
+ */
+export const ENTRY_INDEX_PAGE_SIZE = 12
+
+/** Velocidad media de lectura (palabras por minuto) para el tiempo estimado. */
+export const ENTRY_READING_WORDS_PER_MINUTE = 200
+
+/**
+ * Muletillas y clichés de IA prohibidos en las entradas. Son la huella digital
+ * del "contenido basura generado a escala": si aparecen, el gate rechaza la
+ * entrada para que se reescriba.
+ */
+export const ENTRY_BANNED_PHRASES = [
+  'en el mundo actual',
+  'en la era digital',
+  'sumergete',
+  'no busques mas',
+  'como todos sabemos',
+  'en conclusion',
+  'sin duda alguna',
+  'hoy en dia en el mercado',
+] as const
 
 // ---------- Merchant / Rich Results (schema JSON-LD) ----------
 

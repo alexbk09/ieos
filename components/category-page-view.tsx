@@ -32,6 +32,7 @@ export function CategoryPageView({
   category,
   products,
   categories,
+  guides,
   navLinks,
   brand,
   footer,
@@ -52,6 +53,11 @@ export function CategoryPageView({
   products: CardProduct[]
   /** Categorías para la navegación cross-categoría (enlazado interno). */
   categories: CategoryNavItem[]
+  /**
+   * Guías/comparativas del nicho (enlazado interno BIDIRECCIONAL).
+   * Es opcional: si el nicho aún no tiene guías, el bloque no se renderiza.
+   */
+  guides?: { titulo: string; slugLocalizado: string; resumen: string | null }[]
   navLinks: HeaderNavLink[]
   brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null; whatsapp?: string }
   footer: { copyright?: string; slogan?: string }
@@ -143,6 +149,41 @@ export function CategoryPageView({
                 </div>
               ))}
             </dl>
+          </section>
+        )}
+
+        {/* Guías del nicho: cierra la malla BIDIRECCIONAL hub ↔ entrada ↔ ficha.
+            Google descubre e indexa antes lo que está bien enlazado por ambos lados. */}
+        {guides && guides.length > 0 && (
+          <section
+            aria-labelledby="category-guides-heading"
+            className="mt-12 border-t border-border pt-8"
+          >
+            <h2 id="category-guides-heading" className="text-2xl font-semibold tracking-[-.04em]">
+              {t('entry.related')}
+            </h2>
+            <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {guides.map((guide) => (
+                <li key={guide.slugLocalizado}>
+                  <a
+                    href={localizedPath('/guias/' + guide.slugLocalizado)}
+                    className="group flex h-full flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-brand/60"
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-brand">
+                      {t('entry.eyebrow')}
+                    </span>
+                    <span className="mt-2 font-medium leading-snug group-hover:text-brand">
+                      {guide.titulo}
+                    </span>
+                    {guide.resumen && (
+                      <span className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                        {guide.resumen}
+                      </span>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

@@ -10,6 +10,7 @@ import {
   getProductsByCategorySlug,
   type Product,
 } from '@/services/catalog'
+import { getEntriesForCategory } from '@/services/entries'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
@@ -153,6 +154,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
   // 404 real si la categoría no existe o está inactiva.
   if (!category) notFound()
 
+  // Guías del nicho: completa el enlazado interno BIDIRECCIONAL (hub ↔ entrada).
+  // Se consulta DESPUÉS porque necesita el id de la categoría ya resuelta.
+  const { entries: guides } = await getEntriesForCategory(category.id, locale)
+
   const brandName = settings.company_name || 'zonadehobbies'
   const origin = absoluteUrl('/').replace(/\/+$/, '')
   // URL canónica del idioma: usa el slug LOCALIZADO (SEO por idioma).
@@ -221,6 +226,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
         }}
         categories={navCategories}
         products={(products ?? []).map(toCardProduct)}
+        guides={guides.map((guide) => ({
+          titulo: guide.titulo,
+          slugLocalizado: guide.slug_localizado ?? guide.slug,
+          resumen: guide.resumen,
+        }))}
         navLinks={settings.nav_links}
         brand={{
           name: brandName,

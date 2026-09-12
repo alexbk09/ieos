@@ -1,6 +1,7 @@
 import { getSiteSettings } from '@/services/site-settings'
 import { getSitemapProducts } from '@/services/aliProducts'
 import { getSitemapCategories } from '@/services/catalog'
+import { getSitemapEntries } from '@/services/entries'
 import { absoluteUrl } from '@/lib/seo-url'
 import { SITEMAP_REVALIDATE_SECONDS } from '@/lib/constants'
 
@@ -20,10 +21,11 @@ import { SITEMAP_REVALIDATE_SECONDS } from '@/lib/constants'
 export const revalidate = 3600
 
 export async function GET() {
-  const [{ settings }, { items: categories }, products] = await Promise.all([
+  const [{ settings }, { items: categories }, products, { items: entries }] = await Promise.all([
     getSiteSettings(),
     getSitemapCategories(),
     getSitemapProducts(),
+    getSitemapEntries(),
   ])
 
   const name = settings.company_name || 'zonadehobbies'
@@ -58,10 +60,24 @@ export async function GET() {
   }
   lines.push('')
 
+  // Entradas SEO: guías y comparativas (contenido informacional; ayuda a los
+  // motores de IA a entender los clusters temáticos del sitio).
+  lines.push('## Guias y comparativas')
+  lines.push('')
+  if (entries.length === 0) {
+    lines.push('- Sin guias publicadas todavia.')
+  } else {
+    for (const entry of entries) {
+      lines.push('- ' + entry.slug + ': ' + absoluteUrl('/guias/' + entry.slug))
+    }
+  }
+  lines.push('')
+
   lines.push('## Recursos')
   lines.push('')
   lines.push('- Sitemap: ' + absoluteUrl('/sitemap.xml'))
   lines.push('- Catalogo: ' + absoluteUrl('/catalogo'))
+  lines.push('- Guias: ' + absoluteUrl('/guias'))
 
   return new Response(lines.join('\n'), {
     headers: {

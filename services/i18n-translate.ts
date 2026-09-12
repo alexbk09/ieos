@@ -4,11 +4,14 @@ import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 import {
   TARGET_LOCALES,
   buildCategoryMessages,
+  buildEntryMessages,
   buildProductMessages,
+  mergeCategoryTranslations,
+  mergeEntryTranslations,
+  mergeProductTranslations,
+  missingEntryLocales,
   parseTranslationResponse,
   requestTranslation,
-  mergeCategoryTranslations,
-  mergeProductTranslations,
 } from '@/lib/i18n-translate'
 import {
   SOURCE_LOCALE,
@@ -228,3 +231,76 @@ export async function traducirProducto(
 
 /** Reexporta el idioma raíz para consumidores que lo necesiten. */
 export { SOURCE_LOCALE }
+
+/** Resultado de una traducción de entrada SEO. */
+export type TraduccionEntradaResult =
+  | { success: true; data: { traducidos: string[] } }
+  | { success: false; error: string }
+
+/**
+ * Traduce y persiste los idiomas que falten de una ENTRADA SEO.
+ * Cubre título, resumen (meta description), cuerpo del artículo y FAQ.
+ * El idioma raíz nunca se traduce (se hereda del dato base) y el slug localizado
+ * se genera en local: la URL ya indexada permanece intacta al añadir idiomas.
+ * @param entradaId UUID de la entrada.
+ * @param options.locales Locales concretos a traducir (por defecto, todos los destino).
+ */
+export async function traducirEntrada(
+  entradaId: string,
+  options: { locales?: string[] } = {},
+): Promise<TraduccionEntradaResult> {
+  try {
+    const apiKey = getTranslationApiKey()
+    if (!apiKey) return { success: false, error: 'Falta la clave del motor de traducción.' }
+
+    const supabase = await createServerClient()
+    const { data: row, error: readError } = await supabase
+      .from('seo_entries')
+      .select(
+        'id,titulo,slug,resumen,cuerpo_html,faq,titulo_i18n,slug_i18n,resumen_i18n,cuerpo_html_i18n,faq_i18n',
+      )
+      .eq('id', entradaId)
+      .maybeSingle()
+    if (readError) return { success: false, error: readError.message }
+    if (!row) return { success: false, error: 'La entrada no existe.' }
+
+    const permitidos = options.locales ?? TARGET_LOCALES
+    // Solo se traduce lo que FALTA: si ya está todo, coste cero (ni una llamada).
+    const pendientes = missingEntryLocales(row).filter((locale) => permitidos.includes(locale))
+    if (pendientes.length === 0) return { success: true, data: { traducidos: [] } }
+
+    const respuesta = await requestTranslation({
+      apiKey,
+      apiUrl: TRANSLATION_API_URL,
+      model: TRANSLATION_MODEL,
+      temperature: TRANSLATION_TEMPERATURE,
+      maxTokens: TRANSLATION_MAX_TOKENS,
+      messages: buildEntryMessages({
+        titulo: row.titulo,
+        resumen: row.resumen ?? '',
+        cuerpoHtml: row.cuerpo_html ?? '',
+        faq: row.faq ?? null,
+        locales: pendientes,
+      }),
+    })
+    if (!respuesta.success) return { success: false, error: respuesta.error }
+
+    const parsed = parseTranslationResponse(respuesta.text)
+    if (!parsed.success) return { success: false, error: parsed.error }
+
+    const mapas = mergeEntryTranslations(row, parsed.data)
+    const { error: updateError } = await supabase
+      .from('seo_entries')
+      .update(mapas)
+      .eq('id', entradaId)
+    if (updateError) return { success: false, error: updateError.message }
+
+    // Cambió el idioma de la entrada: se revalida su página y el sitemap.
+    revalidarSitemap({ entradaSlug: row.slug })
+
+    return { success: true, data: { traducidos: pendientes } }
+  } catch (err: any) {
+    console.error('[i18n-translate] traducirEntrada:', err?.message)
+    return { success: false, error: err?.message ?? 'Error traduciendo la entrada.' }
+  }
+}

@@ -14,12 +14,23 @@ import { revalidatePath } from 'next/cache'
  *
  * @param opciones Rutas específicas a revalidar además del sitemap.
  */
-export function revalidarSitemap(opciones?: { productoSlug?: string | null; categoriaSlug?: string | null }) {
+export function revalidarSitemap(opciones?: {
+  productoSlug?: string | null
+  categoriaSlug?: string | null
+  /** Slug de la entrada SEO (guía/comparativa) publicada o editada. */
+  entradaSlug?: string | null
+}) {
   try {
     // El sitemap SIEMPRE se revalida: es la fuente que Google recrawlea.
     revalidatePath('/sitemap.xml')
     if (opciones?.productoSlug) revalidatePath('/productos/' + opciones.productoSlug)
     if (opciones?.categoriaSlug) revalidatePath('/categoria/' + opciones.categoriaSlug)
+    // Entradas SEO: se revalida la URL de la guía Y el hub /guias, porque su
+    // listado debe reflejar altas/bajas/publicaciones al instante.
+    if (opciones?.entradaSlug) {
+      revalidatePath('/guias/' + opciones.entradaSlug)
+      revalidatePath('/guias')
+    }
   } catch (err: unknown) {
     // Fuera de request scope (ej. build): se ignora sin romper la escritura.
     console.warn('[sitemap-revalidate] No se pudo revalidar:', err instanceof Error ? err.message : err)

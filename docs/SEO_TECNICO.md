@@ -12,6 +12,8 @@ de afiliados. Describe qué se cumple, dónde vive cada pieza y cómo se mantien
 | `/` | ISR 300s | Hero configurable | Organization, WebSite+SearchAction, ItemList, FAQPage | index |
 | `/catalogo` | SSG+ISR | Catálogo | — | index |
 | `/categoria/[slug]` | SSG+ISR | H1 largo del hub (`categories.seo_title` o nombre) | BreadcrumbList, ItemList, FAQPage | index |
+| `/guias` | SSG+ISR | Hub de guías y comparativas | BreadcrumbList, ItemList | index |
+| `/guias/[slug]` | SSG+ISR | Título de la entrada (único) | Article, ItemList, FAQPage, BreadcrumbList | index/noindex según `indexado_google` |
 | `/productos/[slug]` | SSG+ISR | Nombre del producto (único) | Product (+Offer), BreadcrumbList, FAQPage | index/noindex según `indexado_google` |
 | `/sitemap.xml` | ISR 1h + on-demand | — | Sitemap (+ imágenes) | — |
 | `/robots.txt` | dinámico | — | — | — |
@@ -66,9 +68,14 @@ avisa al modelo (`evitarTitulos`) para no publicar clones.
 
 - `app/sitemap.ts` es data-driven: incluye rutas estáticas, hubs y fichas con
   `indexado_google = true`, con `<lastmod>` real e imagen por producto.
+- **Entradas SEO** (`/guias/[slug]`): solo las PUBLICADAS e indexables entran al
+  sitemap, con su slug localizado por idioma (hreflang por mercado) y `lastmod`
+  real. Detalle completo del módulo: [PLAN_ENTRADAS_SEO.md](PLAN_ENTRADAS_SEO.md).
 - `lib/sitemap-revalidate.ts` (`revalidarSitemap`) se invoca en
-  `createProduct`, `updateProduct`, `deleteProduct`, `createProductsBulk` y
-  `updateCategorySeo` → **el sitemap se actualiza al instante** tras cualquier cambio.
+  `createProduct`, `updateProduct`, `deleteProduct`, `createProductsBulk`,
+  `updateCategorySeo` **y en el ciclo de vida de las entradas** (`createEntry`,
+  `updateEntry`, `updateEntryEstado`, `deleteEntry`, `traducirEntrada`) → el
+  sitemap se actualiza al instante tras cualquier cambio.
 
 ---
 
@@ -97,6 +104,10 @@ avisa al modelo (`evitarTitulos`) para no publicar clones.
 | `services/catalog.ts` | Lectura/escritura + relacionados + revalidación |
 | `app/sitemap.ts`, `app/robots.ts`, `app/llms.txt/route.ts` | Archivos SEO |
 | `app/api/admin/categorias/seo/route.ts` | API RBAC del SEO de categorías |
+| `services/entries.ts` | Capa única de datos de las entradas SEO (lecturas + panel) |
+| `services/entry-content.ts` | Generación de artículos con IA (gate de calidad + reintento) |
+| `lib/entry-rules.mjs` / `.d.ts` | Lógica pura de entradas (gate, pares, comparativa, schema) |
+| `app/(site)/[locale]/guias/**` | Rutas públicas del hub y de las entradas |
 
 ---
 
@@ -107,3 +118,11 @@ reglas de calidad del contenido y constructores de `BreadcrumbList`/`FAQPage`.
 
 `tests/reviews.test.mjs` valida el parseo real de valoraciones (`"97.6%"` → 4.88,
 `"4.8"` → 4.8, coma decimal) y el saneo/tope de las reseñas.
+
+`tests/entry-rules.test.mjs` valida (20 casos) el gate de calidad de las entradas
+(clichés, secciones H2 obligatorias, thin content, H1 único, slug/título/resumen,
+FAQ, keywords y anclaje a productos reales), la selección determinista de pares
+comparables dentro de una misma categoría, la tabla comparativa construida con
+especificaciones reales y los constructores de schema (`Article`, `ItemList` y el
+`@graph` completo). `tests/i18n.test.mjs` cubre además la traducción de entradas
+(siembra del idioma raíz, slug localizado y conservación de traducciones).

@@ -91,3 +91,32 @@ export function mergeProductTranslations(
   string,
   { name?: string; titulo_seo?: string; description?: string; seo_faq?: FaqItemLike[] }
 >
+
+// ---------- Entradas SEO (comparativas y guías) ----------
+
+/** Idiomas destino que faltan por traducir en una entrada SEO (fuente única). */
+export function missingEntryLocales(row: any, force?: boolean): string[]
+
+/** Mensajes del modelo para traducir una entrada (título, resumen, cuerpo y FAQ). */
+export function buildEntryMessages(input: {
+  titulo: string
+  resumen?: string
+  cuerpoHtml?: string
+  faq?: FaqItemLike[] | null
+  locales: string[]
+}): ChatMessage[]
+
+/** Fusiona la traducción nueva con el estado actual de una entrada SEO. */
+export function mergeEntryTranslations(
+  row: any,
+  traduccion: Record<
+    string,
+    { titulo?: string; resumen?: string; cuerpo_html?: string; faq?: FaqItemLike[] }
+  >,
+): {
+  titulo_i18n: Record<string, string>
+  slug_i18n: Record<string, string>
+  resumen_i18n: Record<string, string>
+  cuerpo_html_i18n: Record<string, string>
+  faq_i18n: Record<string, FaqItemLike[]>
+}

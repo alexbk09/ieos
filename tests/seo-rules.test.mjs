@@ -38,6 +38,8 @@ test('firmaTitulo toma las primeras N palabras significativas', () => {
 
 test('stripHtml limpia etiquetas para las respuestas de FAQ', () => {
   assert.equal(stripHtml('<p>Hola <strong>mundo</strong></p>'), 'Hola mundo')
+  // La etiqueta sustituida por un espacio no puede dejar hueco antes del punto.
+  assert.equal(stripHtml('<p>Depende del <strong>uso</strong>.</p>'), 'Depende del uso.')
 })
 
 // ---------- Validación de calidad ----------

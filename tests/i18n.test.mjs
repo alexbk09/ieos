@@ -26,6 +26,9 @@ const { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations,
 )
 const { resolveSiteSettings, TRANSLATABLE_SETTINGS_KEYS } = await import('../lib/site-settings-i18n.mjs')
 const { slugify } = await import('../lib/slug.mjs')
+const { missingEntryLocales, mergeEntryTranslations, buildEntryMessages } = await import(
+  '../lib/i18n-translate.mjs'
+)
 
 // ---------- slugify (fuente única, re-exportada por services/catalog.ts) ----------
 
@@ -576,4 +579,98 @@ test('createTranslator interpola variables y conserva los marcadores sin valor',
 
 
 
+
+
+// ---------- Entradas SEO: traducción (estabilidad de URL = SEO crítico) ----------
+
+test('missingEntryLocales exige título, resumen, cuerpo y FAQ en cada idioma destino', () => {
+  const row = {
+    titulo: 'LED RGB vs LED direccionable',
+    slug: 'led-rgb-vs-led-direccionable',
+    resumen: 'Comparativa con datos reales.',
+    cuerpo_html: '<h2>Comparativa</h2>',
+    faq: [{ pregunta: '¿Cual elegir?', respuesta: 'Depende del uso.' }],
+    titulo_i18n: { es: 'LED RGB vs LED direccionable', en: 'LED RGB vs addressable LED' },
+    slug_i18n: { es: 'led-rgb-vs-led-direccionable', en: 'led-rgb-vs-addressable-led' },
+    resumen_i18n: { es: 'Comparativa con datos reales.', en: 'Comparison with real data.' },
+    // Falta cuerpo y FAQ en 'en' -> debe seguir pendiente.
+    cuerpo_html_i18n: { es: '<h2>Comparativa</h2>' },
+    faq_i18n: { es: [{ pregunta: '¿Cual elegir?', respuesta: 'Depende del uso.' }] },
+  }
+  const pendientes = missingEntryLocales(row)
+  assert.ok(pendientes.includes('en'))
+  // Con force, TODOS los idiomas destino vuelven a considerarse pendientes.
+  assert.ok(missingEntryLocales(row, true).includes('fr'))
+})
+
+test('mergeEntryTranslations siembra el idioma raíz y genera el slug localizado', () => {
+  const row = {
+    titulo: 'LED RGB vs LED direccionable',
+    slug: 'led-rgb-vs-led-direccionable',
+    resumen: 'Comparativa con datos reales.',
+    cuerpo_html: '<h2>Comparativa</h2><p>Texto base.</p>',
+    faq: [{ pregunta: '¿Cual elegir?', respuesta: 'Depende del uso.' }],
+    titulo_i18n: null,
+    slug_i18n: null,
+    resumen_i18n: null,
+    cuerpo_html_i18n: null,
+    faq_i18n: null,
+  }
+  const mapas = mergeEntryTranslations(row, {
+    fr: {
+      titulo: 'LED RGB ou LED adressable',
+      resumen: 'Comparaison avec des donnees reelles.',
+      cuerpo_html: '<h2>Comparatif</h2><p>Texte traduit.</p>',
+      faq: [{ pregunta: 'Lequel choisir ?', respuesta: "Depend de l'usage." }],
+    },
+  })
+
+  // El idioma raíz se hereda del dato base (nunca se traduce a sí mismo).
+  assert.equal(mapas.titulo_i18n.es, 'LED RGB vs LED direccionable')
+  assert.equal(mapas.slug_i18n.es, 'led-rgb-vs-led-direccionable')
+  // El slug localizado se deriva del título traducido (URL del idioma).
+  assert.equal(mapas.slug_i18n.fr, 'led-rgb-ou-led-adressable')
+  assert.equal(mapas.cuerpo_html_i18n.fr, '<h2>Comparatif</h2><p>Texte traduit.</p>')
+  assert.equal(mapas.faq_i18n.fr.length, 1)
+})
+
+test('mergeEntryTranslations ignora idiomas con datos vacíos (no borra lo existente)', () => {
+  const row = {
+    titulo: 'Titulo base',
+    slug: 'titulo-base',
+    resumen: 'Resumen base.',
+    cuerpo_html: '<p>Base.</p>',
+    faq: [],
+    titulo_i18n: { en: 'Existing english title' },
+    slug_i18n: { en: 'existing-english-title' },
+    resumen_i18n: { en: 'Existing english summary.' },
+    cuerpo_html_i18n: { en: '<p>Existing.</p>' },
+    faq_i18n: null,
+  }
+  const mapas = mergeEntryTranslations(row, { en: { titulo: '', resumen: '' } })
+  // Un campo vacío del modelo conserva el valor ya guardado.
+  assert.equal(mapas.titulo_i18n.en, 'Existing english title')
+  assert.equal(mapas.slug_i18n.en, 'existing-english-title')
+  assert.equal(mapas.cuerpo_html_i18n.en, '<p>Existing.</p>')
+})
+
+test('buildEntryMessages pide las claves de idioma exactas y conserva la FAQ', () => {
+  const messages = buildEntryMessages({
+    titulo: 'LED RGB vs LED direccionable',
+    resumen: 'Comparativa con datos reales.',
+    cuerpoHtml: '<h2>Comparativa</h2><p>Texto.</p>',
+    faq: [
+      { pregunta: '¿Cual elegir?', respuesta: 'Depende del uso.' },
+      { pregunta: '   ', respuesta: '' },
+    ],
+    locales: ['en', 'fr'],
+  })
+  assert.equal(messages.length, 2)
+  assert.equal(messages[0].role, 'system')
+  const payload = JSON.parse(messages[1].content)
+  assert.deepEqual(payload.idiomas_destino, ['en', 'fr'])
+  // La FAQ vacía se filtra antes de enviarla al modelo.
+  assert.equal(payload.faq_origen.length, 1)
+  assert.ok(messages[0].content.includes('cuerpo_html'))
+})
 
