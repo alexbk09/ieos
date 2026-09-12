@@ -36,6 +36,16 @@ export function ComparisonTable({
   // Sin criterios ni productos no hay nada que comparar: no se renderiza.
   if (!comparison || comparison.criterios.length === 0 || products.length === 0) return null
 
+  // Se cuentan los productos que aportan AL MENOS un valor. Comparar con datos
+  // de un solo producto no es una comparación: en ese caso la tabla se oculta
+  // (evita mostrar una columna llena de guiones).
+  const productosConDatos = products.filter((producto) =>
+    comparison.criterios.some((fila) =>
+      fila.valores.some((valor) => valor.slug === producto.slug && valor.valor),
+    ),
+  ).length
+  if (productosConDatos < 2) return null
+
   return (
     <section aria-labelledby="entry-comparison-heading" className="mt-12">
       <h2 id="entry-comparison-heading" className="text-2xl font-semibold tracking-[-.04em] sm:text-3xl">

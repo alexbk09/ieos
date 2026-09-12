@@ -60,6 +60,7 @@ export function EntryPageView({
   products,
   categories,
   related,
+  faqEnCuerpo,
   navLinks,
   brand,
   footer,
@@ -71,6 +72,11 @@ export function EntryPageView({
   products: EntryViewProduct[]
   categories: EntryViewCategory[]
   related: EntryCardData[]
+  /**
+   * TRUE si el artículo ya trae su propia sección de FAQ dentro del cuerpo.
+   * En ese caso NO se pinta el bloque estructurado (evita duplicar preguntas).
+   */
+  faqEnCuerpo?: boolean
   navLinks: HeaderNavLink[]
   brand: { name: string; tagline: string; logoUrl: string | null; iconUrl: string | null; whatsapp?: string }
   footer: { copyright?: string; slogan?: string }
@@ -262,8 +268,10 @@ export function EntryPageView({
           </aside>
         </div>
 
-        {/* FAQ visible: espejo EXACTO del schema FAQPage que inyecta la página. */}
-        {entry.faq && entry.faq.length > 0 && (
+        {/* FAQ visible: espejo EXACTO del schema FAQPage que inyecta la página.
+            Se OMITE si el propio artículo ya trae su sección de preguntas: así el
+            usuario no las ve dos veces y la página no repite contenido. */}
+        {!faqEnCuerpo && entry.faq && entry.faq.length > 0 && (
           <section aria-labelledby="entry-faq-heading" className="mt-14 max-w-3xl border-t border-border pt-8">
             <h2 id="entry-faq-heading" className="text-2xl font-semibold tracking-[-.04em]">
               {t('entry.faq')}

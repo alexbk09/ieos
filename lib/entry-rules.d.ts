@@ -94,6 +94,9 @@ export function contarPalabras(html: string): number
 /** Calcula el tiempo de lectura estimado en minutos (siempre ≥ 1). */
 export function calcularMinutosLectura(html: string, palabrasPorMinuto?: number): number
 
+/** TRUE si el cuerpo HTML ya incluye la sección con ese título (<h2>). */
+export function tieneSeccionEnCuerpo(html: string, titulo: string): boolean
+
 /** Valida el fondo de una entrada (gate anti "thin content" y anti plantilla). */
 export function validarCalidadEntrada(
   data: EntryQualityInput,

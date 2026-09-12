@@ -15,8 +15,8 @@ import { MESSAGES, createTranslator } from '@/lib/i18n-messages'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteAssetUrl, absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
-import { OG_IMAGE_PATH } from '@/lib/constants'
-import { buildEntryJsonLd } from '@/lib/entry-rules'
+import { OG_IMAGE_PATH, ENTRY_REQUIRED_SECTIONS } from '@/lib/constants'
+import { buildEntryJsonLd, tieneSeccionEnCuerpo } from '@/lib/entry-rules'
 import { clampText, htmlToPlainText } from '@/lib/schema/product-schema'
 
 /**
@@ -140,6 +140,14 @@ export default async function EntryPage({
   // Imagen principal: la propia de la entrada o la del primer producto comparado.
   const heroImage = entryHeroImage(entry)
 
+  // Si el artículo YA incluye su sección de "Preguntas Frecuentes" dentro del
+  // cuerpo, el bloque estructurado del pie se oculta: mostrar ambos duplicaría
+  // las mismas preguntas (mala UX y contenido repetido en la misma página).
+  const faqEnCuerpo = tieneSeccionEnCuerpo(
+    entry.cuerpo_html ?? '',
+    ENTRY_REQUIRED_SECTIONS[ENTRY_REQUIRED_SECTIONS.length - 1],
+  )
+
   // JSON-LD en servidor: un único @graph con artículo, productos, FAQ y migas.
   const jsonLd = buildEntryJsonLd({
     article: {
@@ -209,6 +217,7 @@ export default async function EntryPage({
         products={products}
         categories={categories}
         related={related.map(toCard)}
+        faqEnCuerpo={faqEnCuerpo}
         navLinks={settings.nav_links}
         brand={{
           name: brandName,

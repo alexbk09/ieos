@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 const {
   contarPalabras,
   calcularMinutosLectura,
+  tieneSeccionEnCuerpo,
   validarCalidadEntrada,
   seleccionarParesComparables,
   construirComparativa,
@@ -368,4 +369,18 @@ test('buildEntryJsonLd agrupa en @graph y descarta los bloques vacíos', () => {
 test('buildEntryJsonLd devuelve null si no hay ninguna pieza válida', () => {
   assert.equal(buildEntryJsonLd({}), null)
   assert.equal(buildEntryJsonLd({ faq: [], items: [], breadcrumb: [] }), null)
+})
+
+// ---------- Detección de secciones ya presentes en el cuerpo ----------
+
+test('tieneSeccionEnCuerpo detecta la FAQ ya redactada dentro del artículo', () => {
+  // El artículo generado ya incluye su propia sección de FAQ: la vista debe
+  // ocultar el bloque estructurado para no duplicar las preguntas.
+  assert.equal(tieneSeccionEnCuerpo(cuerpoValido(), 'Preguntas Frecuentes'), true)
+  assert.equal(tieneSeccionEnCuerpo('<h2>Comparativa</h2><p>Solo esto.</p>', 'Preguntas Frecuentes'), false)
+  assert.equal(tieneSeccionEnCuerpo('', 'Preguntas Frecuentes'), false)
+  assert.equal(tieneSeccionEnCuerpo(null, 'Preguntas Frecuentes'), false)
+  // La sección existe aunque el <h2> traiga atributos o mayúsculas.
+  const conAtributos = '<h2 class="x">PREGUNTAS FRECUENTES</h2><h3>¿Algo?</h3><p>Si.</p>'
+  assert.equal(tieneSeccionEnCuerpo(conAtributos, 'Preguntas Frecuentes'), true)
 })
