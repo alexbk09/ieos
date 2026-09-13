@@ -19,6 +19,30 @@ import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 import type { SeoFaqItem } from '@/lib/seo-types'
 
 /**
+ * Avisa a los buscadores que una guía o comparativa se PUBLICÓ o cambió.
+ * ------------------------------------------------------------------
+ * - Solo se anuncia lo publicado: un borrador no está en el sitemap y no debe
+ *   gastar cuota ni anunciar una URL que aún no es pública.
+ * - Import dinámico: rompe el ciclo de módulos con services/seo-indexing, que
+ *   usa este servicio como respaldo de su sincronización.
+ * - Nunca lanza: la indexación jamás debe romper la publicación.
+ * @param slug Slug de la entrada.
+ * @param estado Estado editorial resultante ('publicado' para anunciar).
+ */
+async function notificarIndexacionDeEntrada(
+  slug: string | null | undefined,
+  estado?: string | null,
+): Promise<void> {
+  if (!slug || estado !== 'publicado') return
+  try {
+    const { notificarPublicacionIndexable } = await import('@/services/seo-indexing')
+    await notificarPublicacionIndexable({ tipo: 'guia', slug })
+  } catch (err: any) {
+    console.warn('[entries] no se pudo notificar la indexación:', err?.message ?? err)
+  }
+}
+
+/**
  * Servicio de ENTRADAS SEO (comparativas y guías): capa ÚNICA de acceso a
  * Supabase para `seo_entries` y sus relaciones.
  * ------------------------------------------------------------------
@@ -789,6 +813,8 @@ export async function createEntry(payload: EntryInput, relations: EntryRelations
 
   // El sitemap se refresca al instante (regla del proyecto: nunca esperar la ISR).
   revalidarSitemap({ entradaSlug: data.slug })
+  // Si nace publicada, se anuncia YA a los buscadores (IndexNow).
+  await notificarIndexacionDeEntrada(data.slug, payload.estado ?? 'borrador')
   return { entry: data as { id: string; slug: string }, error: null }
 }
 
@@ -821,6 +847,8 @@ export async function updateEntry(
   await asegurarComparativa(id)
 
   revalidarSitemap({ entradaSlug: data.slug })
+  // Si la edición la dejó publicada, el cambio se anuncia a los buscadores.
+  await notificarIndexacionDeEntrada(data.slug, payload.estado)
   return { entry: data as { id: string; slug: string }, error: null }
 }
 
@@ -841,6 +869,9 @@ export async function updateEntryEstado(id: string, estado: EntryEstado) {
   if (error) return { entry: null, error }
 
   revalidarSitemap({ entradaSlug: data.slug })
+  // Al PUBLICAR (o republicar) la entrada se anuncia de inmediato a los
+  // buscadores; al despublicar/archivar no se anuncia nada.
+  await notificarIndexacionDeEntrada(data.slug, estado)
   return { entry: data as { id: string; slug: string; estado: EntryEstado }, error: null }
 }
 

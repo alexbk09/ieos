@@ -944,3 +944,134 @@ export const TRANSLATION_API_URL = 'https://api.deepseek.com/v1/chat/completions
 
 /** Modelo de chat usado para traducir contenido. */
 export const TRANSLATION_MODEL = 'deepseek-chat'
+
+// ---------- Indexación en buscadores (Google / IndexNow) ----------
+
+/**
+ * Slug del módulo admin "Indexación en Buscadores" para permisos RBAC.
+ * Los botones de envío a buscadores y el vaciado de la cola se protegen con
+ * este slug (read = ver el panel; write = sincronizar/enviar lotes/auditar;
+ * delete = limpiar históricos).
+ */
+export const SEO_INDEXING_MODULE_SLUG = 'seo_indexing'
+
+/**
+ * Tope diario de envíos a buscadores (IndexNow / Indexing API) desde el panel.
+ * ------------------------------------------------------------------
+ * POR QUÉ 100 por defecto: se mantiene muy por debajo de las cuotas de los
+ * buscadores (IndexNow admite lotes enormes y la Indexing API arranca en
+ * 200/día) para no parecer "spam a escala" ni agotar la cuota de pruebas de
+ * Google. El panel muestra la cuota restante en vivo y bloquea al agotarse.
+ *
+ * Configurable por instalación con `NEXT_PUBLIC_INDEXING_DAILY_LIMIT` (se usa
+ * el prefijo NEXT_PUBLIC para que el servidor y la interfaz lean EXACTAMENTE el
+ * mismo número; si se sube mucho, los buscadores pueden marcar la práctica
+ * como abusiva y limitar el acceso).
+ */
+export const INDEXING_DAILY_LIMIT = Number(process.env.NEXT_PUBLIC_INDEXING_DAILY_LIMIT) || 100
+
+/**
+ * URLs que se envían (o inspeccionan) por tanda desde el panel.
+ * El cliente repite tandas hasta vaciar la cola, igual que en traducciones.
+ * Configurable por instalación con `NEXT_PUBLIC_INDEXING_BATCH_SIZE`.
+ */
+export const SEO_INDEXING_BATCH_SIZE = Number(process.env.NEXT_PUBLIC_INDEXING_BATCH_SIZE) || 25
+
+/**
+ * Máximo de URLs del sitemap que se importan a la cola en una sincronización.
+ * Evita traer miles de filas de golpe (lotes de 25 en 25 hasta completar).
+ */
+export const SEO_INDEXING_SYNC_LIMIT = 1000
+
+/**
+ * Reintentos máximos por URL antes de marcarla como `error` definitivo.
+ * 3 cubre caídas puntuales de red o un 429 sin castigar la cuota.
+ */
+export const SEO_INDEXING_MAX_ATTEMPTS = 3
+
+/** Milisegundos que se espera como MÁXIMO por una llamada a un buscador en el
+ * camino de publicación. Si el buscador tarda más, la publicación NO se
+ * bloquea: la URL queda en cola y el panel la reintenta.
+ */
+export const SEO_INDEXING_REQUEST_TIMEOUT_MS = 8000
+
+/**
+ * Milisegundos máximos de espera al leer el sitemap publicado (/sitemap.xml).
+ * Es la fuente de verdad de la sincronización; si tarda más (build/offline),
+ * se cae al origen de datos interno (los mismos servicios que generan el XML).
+ */
+export const SEO_INDEXING_SITEMAP_TIMEOUT_MS = 10_000
+
+/**
+ * Prioridad que recibe una URL publicada por la IA o el panel.
+ * Se envía ANTES que el histórico del sitemap (prioridad 0), que se envía por
+ * tandas hasta vaciarse.
+ */
+export const INDEXING_PUBLICATION_PRIORITY = 100
+
+/**
+ * Rutas estáticas que también entran al sitemap y, por tanto, se auditan.
+ * Se usan como respaldo cuando no se puede leer el sitemap publicado.
+ */
+export const INDEXING_STATIC_PAGE_PATHS = ['/', '/catalogo', '/guias'] as const
+
+/**
+ * Minutos tras los cuales un lote marcado 'enviando' se considera abandonado
+ * (request caída/timeout) y se devuelve a 'pendiente' para reintentarlo.
+ */
+export const INDEXING_STALE_BATCH_MINUTES = 15
+
+/** Endpoint de IndexNow (protocolo compartido por Bing, Yandex, Seznam y Naver). */
+export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
+
+/** Endpoint de la Indexing API de Google (solo JobPosting/BroadcastEvent). */
+export const GOOGLE_INDEXING_API_ENDPOINT = 'https://indexing.googleapis.com/v3/urlNotifications'
+
+/** Endpoint de la URL Inspection API de Search Console (SOLO lectura). */
+export const GOOGLE_URL_INSPECTION_ENDPOINT =
+  'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect'
+
+/** Endpoint de la API de sitemaps de Search Console (re-envío del sitemap). */
+export const GOOGLE_SEARCH_CONSOLE_SITEMAPS_ENDPOINT = 'https://searchconsole.googleapis.com/webmasters/v3/sites'
+
+/** Endpoint OAuth2 de Google para canjear el JWT de la cuenta de servicio. */
+export const GOOGLE_OAUTH_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
+
+/** Alcances (scopes) que solicita la cuenta de servicio de indexación. */
+export const GOOGLE_INDEXING_OAUTH_SCOPES = [
+  'https://www.googleapis.com/auth/indexing',
+  'https://www.googleapis.com/auth/webmasters',
+] as const
+
+/** Validez en segundos del token OAuth2 cacheado en memoria (Google da 1 hora). */
+export const GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 3300
+
+/** Validez en segundos de la caché del token: se renueva 5 min antes por seguridad. */
+export const GOOGLE_OAUTH_TOKEN_REFRESH_MARGIN_SECONDS = 300
+
+/** Ruta pública del sitemap (fuente de verdad de las URLs que "deben" indexarse). */
+export const SITEMAP_PATH = '/sitemap.xml'
+
+/**
+ * Etiquetas legibles de los tipos de contenido indexable.
+ * Se usan en el panel y en los registros para no quemar literales en la UI.
+ */
+export const INDEXING_CONTENT_TYPE_LABELS = {
+  producto: 'Producto',
+  categoria: 'Categoría',
+  guia: 'Guía o comparativa',
+  pagina: 'Página',
+  job_posting: 'Oferta de empleo',
+  broadcast_event: 'Emisión en directo',
+} as const
+
+/** Etiquetas legibles de los estados de la cola de indexación. */
+export const INDEXING_STATUS_LABELS = {
+  pendiente: 'Pendiente',
+  enviado: 'Enviado',
+  indexado: 'Indexado',
+  no_indexado: 'Sin indexar',
+  excluido: 'Excluido (noindex)',
+  error: 'Error',
+} as const
+

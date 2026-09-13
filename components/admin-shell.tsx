@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, Bot, Building2, FolderTree, Globe2, Languages, LineChart, LogOut, Menu, Package, Search, Settings2, ShieldCheck, Tag, UserRound, Users, X } from 'lucide-react'
+import { BarChart3, Bot, Building2, FolderTree, Globe2, Languages, LineChart, LogOut, Menu, Package, Radar, Search, Settings2, ShieldCheck, Tag, UserRound, Users, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -17,6 +17,7 @@ import {
   CATEGORY_SEO_MODULE_SLUG,
   ENTRY_MODULE_SLUG,
   SCRAPER_ALIEXPRESS_MODULE_SLUG,
+  SEO_INDEXING_MODULE_SLUG,
   isModuleHidden,
 } from '@/lib/constants'
 
@@ -66,6 +67,7 @@ const navGroups: NavGroup[] = [
       { href: '/admin/ali-pipeline', label: 'Pipeline AliExpress', icon: Bot, moduleSlug: ALI_PIPELINE_MODULE_SLUG },
       { href: '/admin/seo-categorias', label: 'SEO de Categorías', icon: Globe2, moduleSlug: CATEGORY_SEO_MODULE_SLUG },
       { href: '/admin/entradas', label: 'Guías y Comparativas', icon: Bot, moduleSlug: ENTRY_MODULE_SLUG },
+      { href: '/admin/seo-indexing', label: 'Indexación en Buscadores', icon: Radar, moduleSlug: SEO_INDEXING_MODULE_SLUG },
       { href: '/admin/idiomas', label: 'Idiomas', icon: Languages, moduleSlug: CATEGORY_I18N_MODULE_SLUG },
     ],
   },

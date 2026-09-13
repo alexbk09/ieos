@@ -26,8 +26,33 @@ import type { AliEstadoDisponibilidad } from '@/lib/ali-availability'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
 // Invalidación on-demand de la caché de datos públicos (navegación de categorías).
 import { revalidarCacheDeDatos } from '@/lib/cache-revalidate'
+// Notificación a buscadores al publicar (cola + IndexNow). Import dinámico
+// dentro de las funciones: seo-indexing también importa este servicio como
+// respaldo de su sincronización, así que un import estático crearía un ciclo.
 // Fuente única de slugs (lógica pura .mjs reutilizable por scripts y tests).
 import { slugify } from '@/lib/slug'
+
+/**
+ * Avisa a los buscadores que un producto o una categoría acaba de publicarse
+ * (o cambió). Encapsula el import dinámico y el manejo defensivo:
+ *  - Import dinámico: rompe el ciclo de módulos con services/seo-indexing,
+ *    que consume este servicio como respaldo de su sincronización.
+ *  - Nunca lanza: un problema de indexación JAMÁS debe romper el guardado.
+ * @param tipo Tipo de contenido publicado.
+ * @param slug Slug del contenido (si falta, no se hace nada).
+ */
+async function notificarIndexacionDeContenido(
+  tipo: 'producto' | 'categoria',
+  slug: string | null | undefined,
+): Promise<void> {
+  if (!slug) return
+  try {
+    const { notificarPublicacionIndexable } = await import('@/services/seo-indexing')
+    await notificarPublicacionIndexable({ tipo, slug })
+  } catch (err: any) {
+    console.warn('[catalog] no se pudo notificar la indexación:', err?.message ?? err)
+  }
+}
 
 /**
  * Servicio de catálogo.
@@ -786,7 +811,12 @@ export async function createProduct(
 
   const { data: full } = await supabase.from('products').select(PRODUCT_SELECT).eq('id', data.id).single()
   // Sitemap al día al instante (salvo en carga masiva, que revalida una vez).
-  if (options.revalidar !== false) revalidarSitemap({ productoSlug: payload.slug })
+  if (options.revalidar !== false) {
+    revalidarSitemap({ productoSlug: payload.slug })
+    // Indexación: la IA (o el panel) acaba de publicar esta ficha → se avisa
+    // a los buscadores. En carga masiva se omite y el panel la envía en lotes.
+    await notificarIndexacionDeContenido('producto', payload.slug)
+  }
   // i18n: el producto nace internacional (traducción inmediata al crearlo).
   if (options.traducir !== false) await traducirFichaProducto(data.id)
   return { data: mapProduct(full ?? data) }
@@ -833,6 +863,8 @@ export async function updateProduct(id: string, payload: ProductInput) {
   const { data: full } = await supabase.from('products').select(PRODUCT_SELECT).eq('id', id).single()
   // La url/última modificación cambió: sitemap y ficha al instante.
   revalidarSitemap({ productoSlug: payload.slug })
+  // El contenido cambió: se vuelve a avisar a los buscadores (URL_UPDATED).
+  await notificarIndexacionDeContenido('producto', payload.slug)
   return { data: mapProduct(full ?? data) }
 }
 
@@ -1461,6 +1493,8 @@ export async function createCategory(payload: CategoryInput) {
   // La nueva landing de categoría debe entrar al sitemap al instante.
   if (!result.error) {
     revalidarSitemap({ categoriaSlug: payload.slug })
+    // La categoría recién creada también se avisa a los buscadores.
+    await notificarIndexacionDeContenido('categoria', payload.slug)
     // La navegación cross-categoría tiene que incluirla ya (no esperar 5 min).
     revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
   }
@@ -1500,6 +1534,8 @@ export async function updateCategory(id: string, payload: CategoryInput) {
   // La URL/meta de la categoría cambió: sitemap y landing al instante.
   if (!result.error) {
     revalidarSitemap({ categoriaSlug: payload.slug })
+    // El hub cambió: se re-avisa a los buscadores (URL_UPDATED).
+    await notificarIndexacionDeContenido('categoria', payload.slug)
     // El nombre/slug traducido también alimenta la navegación cross-categoría.
     revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
   }
@@ -1545,6 +1581,10 @@ export async function updateCategorySeo(
   if (payload.autor !== undefined) row.autor = payload.autor
   const result = await supabase.from('categories').update(row).eq('id', id).select('*').single()
   // La landing del hub cambió: se revalida su página y el sitemap al instante.
-  if (!result.error) revalidarSitemap({ categoriaSlug: options.slug })
+  if (!result.error) {
+    revalidarSitemap({ categoriaSlug: options.slug })
+    // El hub pSEO acaba de cambiar de contenido: se avisa a los buscadores.
+    await notificarIndexacionDeContenido('categoria', options.slug)
+  }
   return result
 }
