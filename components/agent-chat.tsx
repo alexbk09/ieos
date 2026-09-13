@@ -267,7 +267,7 @@ export function AgentChat() {
                 <p className="text-xs text-navy-muted">{t('agent.subtitle')}</p>
               </div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label={t('common.close')}><X size={18} /></button>
+            <button onClick={() => setOpen(false)} aria-label={t('common.close')} className="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><X size={18} /></button>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -391,15 +391,20 @@ export function AgentChat() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-border p-3">
+            {/* aria-label: el placeholder no es un nombre accesible válido para
+                lectores de pantalla, así el campo se anuncia correctamente. */}
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('agent.placeholder')}
-              className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand disabled:opacity-50"
+              aria-label={t('agent.placeholder')}
+              className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
               disabled={isStreaming}
             />
+            {/* hover:brightness en lugar de hover:bg-brand-strong: el acento oscuro
+                que exige AA como texto deja el texto del botón por debajo de 4.5:1. */}
             <button type="submit" disabled={isStreaming || !input.trim()} aria-label={t('agent.send')}
-              className="grid size-10 place-items-center rounded-full bg-brand text-brand-foreground transition-colors hover:bg-brand-strong disabled:pointer-events-none disabled:opacity-50">
+              className="grid size-10 place-items-center rounded-full bg-brand text-brand-foreground transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
               {isStreaming ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />}
             </button>
           </form>

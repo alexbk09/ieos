@@ -60,11 +60,13 @@ export function EntryCard({ entry }: { entry: EntryCardData }) {
 
       <div className="flex flex-1 flex-col p-5">
         {entry.angulo && (
-          <span className="mb-2 self-start rounded-full bg-brand/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-brand">
+          <span className="mb-2 self-start rounded-full bg-brand/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-brand-strong">
             {entry.angulo}
           </span>
         )}
-        <h3 className="text-lg font-semibold leading-snug tracking-[-.02em] transition group-hover:text-brand">
+        {/* El acento de texto usa brand-strong: --brand puro no alcanza 4.5:1
+            sobre fondo claro (era el fallo de contraste del listado de guías). */}
+        <h3 className="text-lg font-semibold leading-snug tracking-[-.02em] transition group-hover:text-brand-strong">
           {entry.titulo}
         </h3>
         {entry.resumen && (
@@ -79,7 +81,7 @@ export function EntryCard({ entry }: { entry: EntryCardData }) {
           ) : (
             <span />
           )}
-          <span className="inline-flex items-center gap-1 font-medium text-brand">
+          <span className="inline-flex items-center gap-1 font-medium text-brand-strong">
             {t('entry.guideLink')}
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </span>

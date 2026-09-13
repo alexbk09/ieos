@@ -251,8 +251,9 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
           <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Catálogo {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Explora y compara productos</h2></div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"><Search size={16} className="text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
+            <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"><Search size={16} className="text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" aria-label={t('catalog.searchLabel')} className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
+            {/* aria-label: sin él el select no tenía nombre accesible (auditoría select-name). */}
+            <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('catalog.allCategories')} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
           </div>
         </div>
         {filtered.length > 0 ? (
@@ -289,23 +290,25 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
           </div>
 
           <div className="mt-3 flex gap-3">
-            {cfg.social.instagram && <a href={cfg.social.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand hover:text-brand"><Camera size={17} /></a>}
-            {cfg.social.linkedin && <a href={cfg.social.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand hover:text-brand"><Briefcase size={17} /></a>}
-            {cfg.social.email && <a href={cfg.social.email} aria-label={t('footer.sendEmail')} className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand hover:text-brand"><Mail size={17} /></a>}
+            {cfg.social.instagram && <a href={cfg.social.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand-strong hover:text-brand-strong"><Camera size={17} /></a>}
+            {cfg.social.linkedin && <a href={cfg.social.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand-strong hover:text-brand-strong"><Briefcase size={17} /></a>}
+            {cfg.social.email && <a href={cfg.social.email} aria-label={t('footer.sendEmail')} className="grid size-10 place-items-center rounded-full border border-border transition-colors hover:border-brand-strong hover:text-brand-strong"><Mail size={17} /></a>}
           </div>
         </div>
 
         <form onSubmit={handleContactSubmit} className="grid gap-3">
-          <input value={contactName} onChange={(e) => setContactName(e.target.value)} required placeholder={cfg.contact.formNamePlaceholder ?? 'Tu nombre'} className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand" />
-          <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required type="email" placeholder={cfg.contact.formEmailPlaceholder ?? 'Correo electrónico'} className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand" />
-          <textarea value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} required placeholder={cfg.contact.formMessagePlaceholder ?? 'Cuéntanos sobre tu proyecto'} rows={4} className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand" />
+          <input value={contactName} onChange={(e) => setContactName(e.target.value)} required placeholder={cfg.contact.formNamePlaceholder ?? 'Tu nombre'} aria-label={cfg.contact.formNamePlaceholder ?? 'Tu nombre'} className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+          <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required type="email" placeholder={cfg.contact.formEmailPlaceholder ?? 'Correo electrónico'} aria-label={cfg.contact.formEmailPlaceholder ?? 'Correo electrónico'} className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+          <textarea value={contactMessage} onChange={(e) => setContactMessage(e.target.value)} required placeholder={cfg.contact.formMessagePlaceholder ?? 'Cuéntanos sobre tu proyecto'} aria-label={cfg.contact.formMessagePlaceholder ?? 'Cuéntanos sobre tu proyecto'} rows={4} className="rounded-2xl border border-border bg-transparent px-5 py-4 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
 
           <CaptchaWidget onChange={handleCaptchaChange} />
 
           {contactError && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">{contactError}</p>}
           {contactSent && <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400"><CheckCircle2 size={16} /> ¡Mensaje enviado! Te responderemos pronto.</p>}
 
-          <button type="submit" disabled={contactSending} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-foreground transition-all hover:bg-brand-strong active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60">
+          {/* hover:brightness en lugar de hover:bg-brand-strong: el acento oscuro
+              (necesario para AA como texto) dejaría este CTA por debajo de 4.5:1. */}
+          <button type="submit" disabled={contactSending} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-foreground transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60">
             {contactSending ? <><LoaderCircle size={16} className="animate-spin" /> Enviando…</> : <><Send size={15} /> {cfg.contact.formButton ?? 'Enviar mensaje'}</>}
           </button>
         </form>

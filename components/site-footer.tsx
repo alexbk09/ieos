@@ -194,17 +194,17 @@ function BrandColumn({ name, slogan, social, logoUrl, iconUrl, t }: {
       {(social?.instagram || social?.linkedin || social?.email) && (
         <div className="flex items-center gap-2">
           {social.instagram && (
-            <a href={social.instagram} aria-label="Instagram" target="_blank" rel="noreferrer" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+            <a href={social.instagram} aria-label="Instagram" target="_blank" rel="noreferrer" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand-strong hover:text-brand-strong">
               <Camera size={16} />
             </a>
           )}
           {social.linkedin && (
-            <a href={social.linkedin} aria-label="LinkedIn" target="_blank" rel="noreferrer" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+            <a href={social.linkedin} aria-label="LinkedIn" target="_blank" rel="noreferrer" className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand-strong hover:text-brand-strong">
               <Briefcase size={16} />
             </a>
           )}
           {social.email && (
-            <a href={social.email} aria-label={t('footer.sendEmail')} className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+            <a href={social.email} aria-label={t('footer.sendEmail')} className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand-strong hover:text-brand-strong">
               <Mail size={16} />
             </a>
           )}

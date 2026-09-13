@@ -498,7 +498,7 @@ export function CatalogView({
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="text-xs font-medium text-brand-strong underline underline-offset-4 transition-colors hover:text-brand"
+                    className="text-xs font-medium text-brand-strong underline underline-offset-4 transition-colors hover:text-foreground"
                   >
                     {t('catalog.clearAll')}
                   </button>

@@ -96,7 +96,7 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
           </button>
           <button
             onClick={handleDone}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-strong"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-foreground transition hover:brightness-110"
           >
             {t('cart.doneBuying')} <ArrowUpRight size={15} />
           </button>

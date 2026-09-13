@@ -136,7 +136,7 @@ export function EntryPageView({
           <article className="min-w-0">
             {/* H1 ÚNICO de la página (el cuerpo del artículo nunca trae <h1>). */}
             <header>
-              <p className="font-mono text-[11px] uppercase tracking-wider text-brand">{t('entry.eyebrow')}</p>
+              <p className="font-mono text-[11px] uppercase tracking-wider text-brand-strong">{t('entry.eyebrow')}</p>
               <h1 className="mt-2 text-3xl font-semibold leading-tight tracking-[-.04em] sm:text-4xl">
                 {entry.titulo}
               </h1>
@@ -162,7 +162,7 @@ export function EntryPageView({
                   </span>
                 )}
                 {entry.angulo && (
-                  <span className="rounded-full bg-brand/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-brand">
+                  <span className="rounded-full bg-brand/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-brand-strong">
                     {entry.angulo}
                   </span>
                 )}
@@ -229,7 +229,7 @@ export function EntryPageView({
                       <div className="min-w-0">
                         <a
                           href={productLink(product)}
-                          className="line-clamp-2 text-sm font-medium transition hover:text-brand"
+                          className="line-clamp-2 text-sm font-medium transition hover:text-brand-strong"
                         >
                           {product.nombre}
                         </a>
@@ -256,7 +256,7 @@ export function EntryPageView({
                     <li key={categoria.slugLocalizado}>
                       <a
                         href={localizedPath('/categoria/' + categoria.slugLocalizado)}
-                        className="inline-flex rounded-full border border-border px-3 py-1.5 text-xs font-medium transition hover:border-brand/60 hover:text-brand"
+                        className="inline-flex rounded-full border border-border px-3 py-1.5 text-xs font-medium transition hover:border-brand/60 hover:text-brand-strong"
                       >
                         {categoria.nombre}
                       </a>
@@ -296,7 +296,7 @@ export function EntryPageView({
               </h2>
               <a
                 href={localizedPath('/guias')}
-                className="text-sm font-medium text-brand transition hover:text-brand-strong"
+                className="text-sm font-medium text-brand-strong transition hover:underline"
               >
                 {t('entry.allGuides')}
               </a>

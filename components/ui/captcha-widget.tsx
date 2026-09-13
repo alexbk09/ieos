@@ -116,7 +116,7 @@ export function CaptchaWidget({
 
   return (
     <div role="group" aria-label="Verificación anti-robots" className={cn('grid gap-2', className)}>
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <ShieldCheck size={13} className="text-cyan-600" /> Verificación anti-robots
       </div>
 
@@ -133,7 +133,7 @@ export function CaptchaWidget({
         {/* Fila: expresión + campo de respuesta + regenerar */}
         <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
           {state === 'loading' ? (
-            <div className="flex h-9 flex-1 items-center justify-center gap-2 text-sm text-slate-400">
+            <div className="flex h-9 flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
               <LoaderCircle size={16} className="animate-spin" /> Cargando…
             </div>
           ) : (
@@ -141,7 +141,7 @@ export function CaptchaWidget({
               <span className="font-mono text-lg font-semibold tabular-nums text-blue-950 dark:text-cyan-300">
                 {expression || '—'}
               </span>
-              <span className="text-slate-400">=</span>
+              <span className="text-muted-foreground">=</span>
               <input
                 value={answer}
                 onChange={(e) => {
@@ -164,7 +164,7 @@ export function CaptchaWidget({
                 type="button"
                 onClick={loadCaptcha}
                 aria-label="Nueva operación"
-                className="grid size-9 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-blue-950 dark:border-slate-600 dark:hover:bg-slate-800"
+                className="grid size-9 shrink-0 place-items-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <RefreshCw size={15} />
               </button>
@@ -206,7 +206,7 @@ export function CaptchaWidget({
             tabIndex={0}
           >
             {/* Label centrado */}
-            <span className="pointer-events-none absolute inset-x-0 text-center text-xs font-medium text-slate-500">
+            <span className="pointer-events-none absolute inset-x-0 text-center text-xs font-medium text-muted-foreground">
               {percent === 0 ? 'Escribe el resultado y arrastra →' : 'Suelta para verificar'}
             </span>
             {/* Barra de progreso */}
@@ -216,7 +216,7 @@ export function CaptchaWidget({
             />
             {/* Control deslizable */}
             <div
-              className="pointer-events-none absolute bottom-1.5 left-1.5 z-10 flex h-8 items-center justify-center rounded-xl bg-cyan-500 px-4 text-xs font-bold text-white shadow-md"
+              className="pointer-events-none absolute bottom-1.5 left-1.5 z-10 flex h-8 items-center justify-center rounded-xl bg-cyan-700 px-4 text-xs font-bold text-white shadow-md"
               style={{
                 left: `min(calc(${percent}% - ${percent === 0 ? 0 : 40}px), calc(100% - 56px))`,
               }}
@@ -227,7 +227,9 @@ export function CaptchaWidget({
         )}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-slate-400">
+      {/* Antes text-slate-400 (2.5:1 sobre blanco): usamos el token del tema,
+          que garantiza contraste AA y respeta el modo oscuro. */}
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         Protegemos el formulario contra robots. Resuelve la operación y arrastra el control color cian hasta el final.
       </p>
     </div>

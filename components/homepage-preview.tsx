@@ -170,7 +170,7 @@ export function HomepagePreview({ config, heroTexts, heroImage }: {
               {heroTexts.eyebrow && <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.25em] text-brand-strong"><Sparkles size={12} /> {heroTexts.eyebrow}</p>}
               <p className="text-3xl font-semibold leading-[1.05] tracking-[-.04em] sm:text-4xl">
                 {heroTexts.title}
-                {heroTexts.titleHighlight && <span className="text-brand">{heroTexts.titleHighlight}</span>}
+                {heroTexts.titleHighlight && <span className="text-brand-strong">{heroTexts.titleHighlight}</span>}
               </p>
               {heroTexts.description && <p className="max-w-md text-sm leading-6 text-muted-foreground">{heroTexts.description}</p>}
               {(heroTexts.primaryButton || heroTexts.secondaryButton) && (

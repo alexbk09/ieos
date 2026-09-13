@@ -134,7 +134,7 @@ export function CategoryPageView({
           ) : (
             <div className="grid place-items-center rounded-3xl border border-dashed border-border py-20 text-center">
               <p className="text-muted-foreground">{t('category.empty')}</p>
-              <a href="/catalogo" className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-brand-foreground transition hover:bg-brand-strong">
+              <a href="/catalogo" className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-brand-foreground transition hover:brightness-110">
                 {t('category.seeAll')}
               </a>
             </div>
@@ -172,7 +172,7 @@ export function CategoryPageView({
             </h2>
             <a
               href={localizedPath('/guias')}
-              className="text-sm font-medium text-brand transition hover:text-brand-strong"
+              className="text-sm font-medium text-brand-strong transition hover:underline"
             >
               {t('entry.allGuides')}
             </a>
@@ -202,10 +202,10 @@ export function CategoryPageView({
                       )}
                     </span>
                     <span className="flex flex-1 flex-col p-5">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-brand">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-brand-strong">
                         {t('entry.eyebrow')}
                       </span>
-                      <span className="mt-2 font-medium leading-snug group-hover:text-brand">
+                      <span className="mt-2 font-medium leading-snug group-hover:text-brand-strong">
                         {guide.titulo}
                       </span>
                       {guide.resumen && (

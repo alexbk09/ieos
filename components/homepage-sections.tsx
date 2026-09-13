@@ -79,7 +79,7 @@ const SEGMENT_DEFAULT_ANCHORS: Record<string, string> = {
 function Stars({ rating }: { rating?: number }) {
   const value = Math.max(0, Math.min(5, Math.round(rating ?? 0)))
   return (
-    <div className="flex gap-0.5" aria-label={`${value} de 5 estrellas`}>
+    <div className="flex gap-0.5" role="img" aria-label={`${value} de 5 estrellas`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star key={i} size={14} className={i < value ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'} />
       ))}
@@ -420,7 +420,7 @@ export function HomepageHero({ config, hero, heroImage, brandTagline, brandName,
         <div className={`mx-auto grid max-w-7xl gap-12 ${showImage ? gridCols : 'grid-cols-1'} lg:items-center`}>
           <div className={`flex flex-col gap-5 ${align}`}>
             {hero.eyebrow && <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[.28em] text-brand-strong"><Sparkles size={14} /> {hero.eyebrow}</p>}
-            <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.07em] sm:text-7xl">{hero.title ?? 'Las mejores ofertas de AliExpress, '}<span className="text-brand">{hero.titleHighlight ?? 'curadas para ti.'}</span></h1>
+            <h1 className="max-w-3xl text-balance text-5xl font-semibold leading-[.98] tracking-[-.07em] sm:text-7xl">{hero.title ?? 'Las mejores ofertas de AliExpress, '}<span className="text-brand-strong">{hero.titleHighlight ?? 'curadas para ti.'}</span></h1>
             {hero.description && <p className="max-w-xl text-base leading-7 text-muted-foreground">{hero.description}</p>}
             {(hero.primaryButton || hero.secondaryButton) && (
               <div className="flex flex-wrap gap-3">

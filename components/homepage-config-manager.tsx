@@ -108,9 +108,9 @@ export function HomepageConfigManager({
           <p className="mt-1 text-xs text-muted-foreground">Elige cómo se distribuyen el texto y la imagen.</p>
           <div className="mt-4 grid gap-2">
             {HERO_LAYOUTS.map((opt) => (
-              <button key={opt.value} onClick={() => setHeroField('layout', opt.value)} className={cn('flex items-center justify-between rounded-2xl border px-4 py-2.5 text-left text-sm font-medium transition-colors', value.hero.layout === opt.value ? 'border-brand bg-brand/10 text-brand' : 'border-border hover:bg-muted')}>
+              <button key={opt.value} onClick={() => setHeroField('layout', opt.value)} className={cn('flex items-center justify-between rounded-2xl border px-4 py-2.5 text-left text-sm font-medium transition-colors', value.hero.layout === opt.value ? 'border-brand bg-brand/10 text-brand-strong' : 'border-border hover:bg-muted')}>
                 {opt.label}
-                {value.hero.layout === opt.value && <span className="text-brand">✓</span>}
+                {value.hero.layout === opt.value && <span className="text-brand-strong">✓</span>}
               </button>
             ))}
           </div>

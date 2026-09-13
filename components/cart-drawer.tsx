@@ -73,7 +73,15 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
             <h2 className="mt-1 text-2xl font-semibold">{t('cart.title')}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">{t('cart.subtitle')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('cart.closeAria')}><X size={20} /></button>
+          {/* Área táctil de 40px (antes era solo el icono de 20px) + nombre
+              accesible: mejora el uso en móvil y con lectores de pantalla. */}
+          <button
+            onClick={onClose}
+            aria-label={t('cart.closeAria')}
+            className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <div className="mt-6 flex-1 space-y-4 overflow-y-auto">
@@ -103,9 +111,25 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
                   {' · '}{moneyForProduct(lineAmount(item), esItemAfiliado(item))} <span className="opacity-60">{t('cart.ref')}</span>
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  <button onClick={() => onChange(item.cartItemId, -1)} className="grid size-6 place-items-center rounded-full border border-border"><Minus size={12} /></button>
+                  {/* Botones ±: 32px de área táctil y nombre accesible que incluye
+                      el producto (antes 24px y sin nombre para lectores de pantalla). */}
+                  <button
+                    type="button"
+                    onClick={() => onChange(item.cartItemId, -1)}
+                    aria-label={t('cart.decreaseQty', { name: item.name })}
+                    className="grid size-8 place-items-center rounded-full border border-border transition-colors hover:bg-muted"
+                  >
+                    <Minus size={13} />
+                  </button>
                   <span className="w-16 text-center text-xs">{qtyLabel(item)}</span>
-                  <button onClick={() => onChange(item.cartItemId, 1)} className="grid size-6 place-items-center rounded-full border border-border"><Plus size={12} /></button>
+                  <button
+                    type="button"
+                    onClick={() => onChange(item.cartItemId, 1)}
+                    aria-label={t('cart.increaseQty', { name: item.name })}
+                    className="grid size-8 place-items-center rounded-full border border-border transition-colors hover:bg-muted"
+                  >
+                    <Plus size={13} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -116,8 +140,10 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
           {/* Total de REFERENCIA: nunca es un cobro local */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{t('cart.estimatedTotal')}<span className="text-muted-foreground/70"> {t('cart.reference')}</span></p>
-              <p className="text-xs text-muted-foreground/70">{t('cart.finalChargeNote')}</p>
+              {/* Sin opacidad reducida: mezclar el texto con el fondo bajaba el
+                  contraste por debajo de 4.5:1 (fallo de WCAG AA / Lighthouse). */}
+              <p className="text-sm text-muted-foreground">{t('cart.estimatedTotal')}<span> {t('cart.reference')}</span></p>
+              <p className="text-xs text-muted-foreground">{t('cart.finalChargeNote')}</p>
             </div>
             <div className="text-right">
               <p className="font-semibold">{moneyForProduct(total, totalEsAfiliado)}</p>
@@ -131,11 +157,13 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
             </p>
           )}
 
-          {/* Botón principal: NO es un pago local, es salida segura al marketplace */}
+          {/* Botón principal: NO es un pago local, es salida segura al marketplace.
+              El rojo es #d32a03 y no el #e62e04 anterior: con blanco daba 4.41:1
+              (por debajo de 4.5:1) y el CTA principal no puede ser ilegible. */}
           <button
             disabled={!cart.length}
             onClick={onFinishCheckout}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#e62e04] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#d32a03] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShieldCheck size={17} />
             {t('cart.checkout')}

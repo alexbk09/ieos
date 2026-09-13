@@ -126,7 +126,7 @@ function DetailChip({ label, value }: { label: string; value: string }) {
 function StarRating({ value, size = 14, label }: { value: number; size?: number; label?: string }) {
   const redondeada = Math.round(Math.min(Math.max(Number(value) || 0, 0), 5))
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={label ?? `Valoración ${Number(value).toFixed(1)} de 5`}>
+    <span className="inline-flex items-center gap-0.5" role="img" aria-label={label ?? `Valoración ${Number(value).toFixed(1)} de 5`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
@@ -226,7 +226,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
       {fichaTecnicaHtml && <RichDescription html={fichaTecnicaHtml} />}
       {fichaTecnica.length > 0 && (
         <div>
-          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.dataTitle')}</h2>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{t('product.dataTitle')}</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {fichaTecnica.map((dato) => (
               <DetailChip key={dato.label} label={dato.label} value={dato.value} />
@@ -236,7 +236,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
       )}
       {especificaciones.length > 0 && (
         <div>
-          <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.specsExtra')}</h2>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{t('product.specsExtra')}</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
             {especificaciones.map(([key, value]) => (
               <DetailChip key={key} label={key} value={value} />
@@ -377,7 +377,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
               </span>
             </div>
             {/* Referencia en bolívares (tasa oficial USD→Bs) + aviso de variación. */}
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· {t('cart.rate', { rate: formatRate(exchangeRate) })}</span>
             </p>
             {esAfiliado && (
@@ -454,7 +454,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
                 Nunca se inventan reseñas: si no hay dato real, se invita a
                 consultar las valoraciones directamente en el marketplace. */}
             <section className="mt-7">
-              <h2 className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.reviews')}</h2>
+              <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{t('product.reviews')}</h2>
 
               {typeof product.rating_average === 'number' && (
                 <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -479,7 +479,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{resena.texto}</p>
                       {resena.fecha && (
-                        <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                        <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                           {resena.fecha}
                         </p>
                       )}
@@ -539,7 +539,7 @@ export function ProductDetailPageView({ product, related, guides, categories, na
                       // Analítica: registro de salida real al marketplace de afiliado.
                       trackAffiliateClick(product.id, affiliateUrl)
                     }}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-strong active:scale-[0.99]"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:brightness-110 active:scale-[0.99]"
                   >
                     {affiliateUrl ? <><ExternalLink size={16} /> {ctaLabel}</> : <>{t('product.addToSelection')} <Plus size={16} /></>}
                   </a>

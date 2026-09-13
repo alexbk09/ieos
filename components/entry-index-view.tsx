@@ -67,7 +67,7 @@ export function EntryIndexView({
 
         {/* H1 único del hub: agrupa el cluster de guías bajo un tema claro. */}
         <header className="mt-6 max-w-3xl">
-          <p className="font-mono text-[11px] uppercase tracking-wider text-brand">{t('entry.eyebrow')}</p>
+          <p className="font-mono text-[11px] uppercase tracking-wider text-brand-strong">{t('entry.eyebrow')}</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">{t('entry.indexTitle')}</h1>
           <p className="mt-3 text-base leading-7 text-muted-foreground">{t('entry.indexSubtitle')}</p>
         </header>
@@ -84,7 +84,7 @@ export function EntryIndexView({
               <p className="text-muted-foreground">{t('entry.empty')}</p>
               <a
                 href={localizedPath('/catalogo')}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-brand-foreground transition hover:bg-brand-strong"
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-brand-foreground transition hover:brightness-110"
               >
                 {t('category.seeAll')}
               </a>

@@ -166,11 +166,11 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
             {/* Ficha técnica con peso y tamaño (solo si existen) */}
             {details.length > 0 && (
               <div className="mt-6">
-                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.specsTitle')}</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{t('product.specsTitle')}</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {details.map((d) => (
                     <div key={d.label} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
-                      <p className="font-mono text-[10px] uppercase text-slate-400">{d.label}</p>
+                      <p className="font-mono text-[10px] uppercase text-muted-foreground">{d.label}</p>
                       <p className="mt-1 text-sm font-medium">{d.value}</p>
                     </div>
                   ))}
@@ -181,11 +181,11 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
             {/* Especificaciones adicionales */}
             {Object.keys(product.specifications ?? {}).length > 0 && (
               <div className="mt-6">
-                <p className="text-xs font-medium uppercase tracking-widest text-slate-400">{t('product.specsExtra')}</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{t('product.specsExtra')}</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {Object.entries(product.specifications ?? {}).map(([key, value]) => (
                     <div key={key} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
-                      <p className="font-mono text-[10px] uppercase text-slate-400">{key}</p>
+                      <p className="font-mono text-[10px] uppercase text-muted-foreground">{key}</p>
                       <p className="mt-1 text-sm font-medium">{value}</p>
                     </div>
                   ))}
@@ -298,9 +298,9 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
                     Moneda REAL: € para afiliados (precio de AliExpress), $ locales. */}
                 <p className="text-3xl font-semibold">{moneyForProduct(displayPrice, isAffiliateProduct(product))}</p>
                 {/* Referencia en bolívares (tasa oficial USD→Bs). */}
-                <p className="mt-1 text-base text-slate-500">{formatBolivars(displayPrice, rate)} <span className="text-xs text-slate-400">· {t('cart.rate', { rate: formatRate(rate) })}</span></p>
+                <p className="mt-1 text-base text-muted-foreground">{formatBolivars(displayPrice, rate)} <span className="text-xs text-muted-foreground">· {t('cart.rate', { rate: formatRate(rate) })}</span></p>
                 {isWeight && (
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatWeight(grams)} · {moneyUsd(perGramPrice)}/g
                   </p>
                 )}

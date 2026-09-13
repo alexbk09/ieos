@@ -191,19 +191,26 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
           El modal de "vista rápida" se mantiene como acción secundaria en el
           botón "+" y en "Ver detalles", pero el enlace principal (imagen +
           título) navega a /productos/[slug] para que Google pueda indexar. */}
-      <a href={productUrl} aria-label={t('product.viewDetailsNamed', { name: product.name })} className="relative block w-full overflow-hidden bg-muted">
-        {image ? (
-          <Image src={image} alt={productImageAlt(product)} width={400} height={440} loading="lazy" className={`aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105${esProductoNoDisponible(product) ? ' opacity-60 grayscale' : ''}`} />
-        ) : (
-          <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">{t('product.noImage')}</div>
-        )}
+      <div className="relative block w-full overflow-hidden bg-muted">
+        <a href={productUrl} aria-label={t('product.viewDetailsNamed', { name: product.name })} className="block">
+          {image ? (
+            <Image src={image} alt={productImageAlt(product)} width={400} height={440} loading="lazy" className={`aspect-[1.1] w-full object-cover transition duration-500 group-hover:scale-105${esProductoNoDisponible(product) ? ' opacity-60 grayscale' : ''}`} />
+          ) : (
+            <div className="grid aspect-[1.1] w-full place-items-center bg-muted text-muted-foreground">{t('product.noImage')}</div>
+          )}
+        </a>
+        {/* Los badges van FUERA del enlace (aunque se pinten encima de la imagen):
+            su texto visible ("Disponible", "-15%") no puede contradecir el nombre
+            accesible del enlace — lo marca la auditoría label-content-name-mismatch. */}
         <span className={`absolute left-4 top-4 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${esProductoNoDisponible(product) ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : isLowStock(product) ? 'bg-amber-100 text-amber-700' : 'bg-card/90 text-foreground'}`}>{availabilityLabel(product, t)}</span>
+        {/* Badge de descuento: emerald-700 (no emerald-500/90) porque el texto
+            blanco de 10px necesita 4.5:1 y el tono claro solo daba ~2.4:1. */}
         {Number(product.bulk_discount_percent ?? 0) > 0 && (
-          <span className="absolute right-4 top-4 rounded-full bg-emerald-500/90 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+          <span className="absolute right-4 top-4 rounded-full bg-emerald-700 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
             -{product.bulk_discount_percent}% {t('product.wholesale')}
           </span>
         )}
-      </a>
+      </div>
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div>

@@ -141,7 +141,7 @@ export function LoginForm({ brand }: { brand: LoginBrand }) {
 
           <button
             disabled={isSubmitting}
-            className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? 'Procesando...' : register ? 'Crear cuenta' : 'Iniciar sesión'}
             {isSubmitting ? <LoaderCircle size={15} className="animate-spin" /> : <LockKeyhole size={15} />}

@@ -65,7 +65,7 @@ export function ComparisonTable({
               </th>
               {products.map((product) => (
                 <th key={product.slug} scope="col" className="px-4 py-3 text-left font-medium">
-                  <a href={linkForProduct(product)} className="transition hover:text-brand">
+                  <a href={linkForProduct(product)} className="transition hover:text-brand-strong">
                     {product.name}
                   </a>
                 </th>
