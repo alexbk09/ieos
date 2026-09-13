@@ -17,7 +17,9 @@ export const revalidate = 300
 export const viewport = ROOT_VIEWPORT
 
 export async function generateMetadata(): Promise<Metadata> {
-  return buildRootMetadata()
+  // Áreas privadas: no se traducen, así que la metadata raíz va en el idioma
+  // por defecto (explícito, sin depender del valor por defecto del helper).
+  return buildRootMetadata(DEFAULT_LOCALE)
 }
 
 export default function InternalLayout({ children }: { children: React.ReactNode }) {

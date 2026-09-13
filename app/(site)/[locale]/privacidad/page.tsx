@@ -7,7 +7,12 @@ import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
-import { LEGAL_DOCUMENTS, buildLegalDocLinks, renderLegalText } from '@/lib/legal-content'
+import {
+  buildLegalDocLinks,
+  getLegalDocument,
+  renderLegalText,
+  type LegalDocKey,
+} from '@/lib/legal-content'
 
 /**
  * Página legal pública: /privacidad (Política de Privacidad).
@@ -25,22 +30,24 @@ export function generateStaticParams() {
   return publishedLocales().map((locale) => ({ locale }))
 }
 
-/** Documento servido por esta ruta (fuente única). */
-const DOCUMENT = LEGAL_DOCUMENTS.privacy
+/** Clave del documento: los textos se resuelven por idioma con `getLegalDocument`. */
+const DOCUMENT_KEY: LegalDocKey = 'privacy'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
   const t = createTranslator(MESSAGES, locale)
   const { settings } = await getSiteSettings(locale)
   const name = settings.company_name || 'zonadehobbies'
+  // Documento LOCALIZADO: traducido si existe; si no, idioma raiz (fallback).
+  const document = getLegalDocument(DOCUMENT_KEY, locale)
   return buildPageMetadata({
-    title: `${t(DOCUMENT.titleKey)} | ${name}`,
-    description: renderLegalText(DOCUMENT.summary, { name }),
-    path: buildLocalizedPath(DOCUMENT.path, locale, { prefixDefaultLocale: false }),
+    title: `${t(document.titleKey)} | ${name}`,
+    description: renderLegalText(document.summary, { name }),
+    path: buildLocalizedPath(document.path, locale, { prefixDefaultLocale: false }),
     image: absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
     alternatesByLocale: Object.fromEntries(
-      publishedLocales().map((l) => [l, buildLocalizedPath(DOCUMENT.path, l, { prefixDefaultLocale: false })]),
+      publishedLocales().map((l) => [l, buildLocalizedPath(document.path, l, { prefixDefaultLocale: false })]),
     ),
   })
 }
@@ -53,11 +60,13 @@ export default async function PrivacidadPage({ params }: { params: Promise<{ loc
   const t = createTranslator(MESSAGES, locale)
   const { settings } = await getSiteSettings(locale)
 
+  const document = getLegalDocument(DOCUMENT_KEY, locale)
+
   return (
     <LegalPageView
-      document={DOCUMENT}
-      title={t(DOCUMENT.titleKey)}
-      otherDocs={buildLegalDocLinks(locale, t, DOCUMENT.key)}
+      document={document}
+      title={t(document.titleKey)}
+      otherDocs={buildLegalDocLinks(locale, t, document.key)}
       t={t}
       locale={locale}
       brandName={settings.company_name || 'zonadehobbies'}

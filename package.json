@@ -19,6 +19,10 @@
     "i18n:products:dry": "node scripts/backfill-product-i18n.mjs --dry-run",
     "i18n:settings": "node scripts/backfill-settings-i18n.mjs",
     "i18n:settings:dry": "node scripts/backfill-settings-i18n.mjs --dry-run",
+    "i18n:legal": "node scripts/backfill-legal-i18n.mjs",
+    "i18n:legal:dry": "node scripts/backfill-legal-i18n.mjs --dry-run",
+    "i18n:entries": "node scripts/backfill-entries-i18n.mjs",
+    "i18n:entries:dry": "node scripts/backfill-entries-i18n.mjs --dry-run",
     "brands:backfill": "node scripts/backfill-product-brands.mjs",
     "brands:backfill:dry": "node scripts/backfill-product-brands.mjs --dry-run",
     "brand:optimize": "node scripts/optimize-logos.mjs"

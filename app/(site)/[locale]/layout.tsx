@@ -28,7 +28,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   if (!publishedLocales().includes(locale)) return {}
-  return buildRootMetadata()
+  // Metadata raíz en el idioma activo (título/descripción traducidos).
+  return buildRootMetadata(locale)
 }
 
 export default async function SiteLayout({

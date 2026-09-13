@@ -7,6 +7,7 @@ import { absoluteUrl, absoluteAssetUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { normalizeHomepageConfig } from '@/lib/homepage-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
+import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
 
 /** ISR: la portada se sirve desde CDN y se revalida cada 5 min. */
 export const revalidate = 300
@@ -35,13 +36,13 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params
   const { settings } = await getSiteSettings(locale)
   const name = settings.company_name || 'zonadehobbies'
-  const tagline = settings.tagline || 'Ofertas verificadas para tus hobbies'
-  // Título "keyword-first" (SEO): la keyword principal manda el ranking y la
-  // marca cierra. Antes era "zonadehobbies — <tagline>" (sin keyword).
-  const title = `Ofertas de AliExpress para tus hobbies | ${name}`
-  const description =
-    settings.hero_texts?.description ??
-    `Descubre las mejores ofertas de AliExpress curadas por ${name}: precios verificados, reseñas reales y envío rastreable. Encuentra el equipo para tu hobby.`
+  const t = createTranslator(MESSAGES, locale)
+  // SEO de la portada DESDE EL DICCIONARIO del idioma (cero textos quemados):
+  // la keyword principal manda el ranking y la marca cierra. La descripción
+  // prefiere el texto editable del panel (`site_settings.hero_texts`), que ya
+  // llega traducido al idioma activo; si no existe, usa la del diccionario.
+  const title = t('seo.homeTitle', { name })
+  const description = settings.hero_texts?.description || t('seo.homeDescription', { name })
 
   return buildPageMetadata({
     title,
@@ -99,7 +100,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   }
 
   const name = settings.company_name || 'zonadehobbies'
-  const tagline = settings.tagline || 'Arquitectura de luz'
+  const tagline = settings.tagline || name
   const origin = absoluteUrl('/')
   const homepageConfig = normalizeHomepageConfig(settings.homepage_config ?? {})
 

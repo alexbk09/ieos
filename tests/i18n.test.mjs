@@ -321,8 +321,18 @@ test('PUBLISHED_LOCALES es subconjunto de SUPPORTED_LOCALES e incluye el default
 
 test('isPublishedLocale acepta variantes regionales y rechaza idiomas no publicados', () => {
   assert.equal(isPublishedLocale('es-ES'), true)
-  assert.equal(isPublishedLocale('fr'), false) // traducible pero aún no publicado
+  // Todos los idiomas SOPORTADOS están publicados hoy (los 6).
+  for (const locale of SUPPORTED_LOCALES) assert.equal(isPublishedLocale(locale), true)
+  assert.equal(isPublishedLocale('es-VE'), true)
+  // Un idioma fuera de SUPPORTED_LOCALES nunca se considera publicado.
+  assert.equal(isPublishedLocale('ja'), false)
   assert.equal(isPublishedLocale(''), false)
+})
+
+test('publishedLocales() devuelve los 6 idiomas soportados y siempre el default', () => {
+  const idiomas = publishedLocales()
+  assert.deepEqual(idiomas, [...SUPPORTED_LOCALES])
+  assert.ok(idiomas.includes(DEFAULT_LOCALE))
 })
 
 test('publishedLocales fuerza el idioma por defecto y descarta idiomas inválidos', () => {
@@ -660,6 +670,35 @@ test('mergeEntryTranslations ignora idiomas con datos vacíos (no borra lo exist
   assert.equal(mapas.titulo_i18n.en, 'Existing english title')
   assert.equal(mapas.slug_i18n.en, 'existing-english-title')
   assert.equal(mapas.cuerpo_html_i18n.en, '<p>Existing.</p>')
+})
+
+test('mergeEntryTranslations acepta CLAVES TRADUCIDAS por el modelo (bug de pt: resumo)', () => {
+  // Caso real: traduciendo al portugués el modelo devolvió `resumo` (clave
+  // traducida) y la fusión descartaba el valor → la entrada quedaba "pendiente".
+  const row = {
+    titulo: 'Auriculares con cancelacion de ruido',
+    slug: 'auriculares-cancelacion-ruido',
+    resumen: 'Resumen base.',
+    cuerpo_html: '<h2>Guia</h2><p>Base.</p>',
+    faq: [{ pregunta: '¿Que tal?', respuesta: 'Bien.' }],
+  }
+  const mapas = mergeEntryTranslations(row, {
+    pt: {
+      titulo: 'Fones com cancelamento de ruido',
+      resumo: 'Resumo em portugues.',
+      corpo_html: '<h2>Guia</h2><p>Base.</p>',
+      faq: [{ pergunta: '¿Que tal?', resposta: 'Bem.' }],
+    },
+  })
+
+  assert.equal(mapas.titulo_i18n.pt, 'Fones com cancelamento de ruido')
+  assert.equal(mapas.resumen_i18n.pt, 'Resumo em portugues.')
+  assert.equal(mapas.slug_i18n.pt, 'fones-com-cancelamento-de-ruido')
+  assert.equal(mapas.cuerpo_html_i18n.pt, '<h2>Guia</h2><p>Base.</p>')
+  assert.deepEqual(mapas.faq_i18n.pt, [{ pregunta: '¿Que tal?', respuesta: 'Bem.' }])
+  // Con las claves del idioma raíz también funciona (comportamiento normal).
+  const normal = mergeEntryTranslations(row, { de: { titulo: 'Titel', resumen: 'Zusammenfassung.' } })
+  assert.equal(normal.resumen_i18n.de, 'Zusammenfassung.')
 })
 
 test('buildEntryMessages pide las claves de idioma exactas y conserva la FAQ', () => {

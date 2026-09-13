@@ -7,7 +7,7 @@ import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
-import { LEGAL_DOCUMENTS, LEGAL_DOCUMENT_ORDER, renderLegalText } from '@/lib/legal-content'
+import { LEGAL_DOCUMENT_ORDER, getLegalDocuments, renderLegalText } from '@/lib/legal-content'
 
 /**
  * Hub legal público: /politicas (índice de los 3 documentos legales).
@@ -47,6 +47,9 @@ export default async function PoliticasPage({ params }: { params: Promise<{ loca
   const name = settings.company_name || 'zonadehobbies'
   const email = settings.email || ''
   const address = settings.address || ''
+  // Documentos LOCALIZADOS en el idioma activo (resumen traducido con fallback
+  // al idioma raíz): el índice legal nunca muestra un idioma mezclado.
+  const documents = getLegalDocuments(locale)
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -60,7 +63,7 @@ export default async function PoliticasPage({ params }: { params: Promise<{ loca
             para no romper enlaces profundos ya compartidos o indexados. */}
         <div className="mt-10 flex flex-col gap-4">
           {LEGAL_DOCUMENT_ORDER.map((key) => {
-            const doc = LEGAL_DOCUMENTS[key]
+            const doc = documents[key]
             return (
               <article
                 key={key}

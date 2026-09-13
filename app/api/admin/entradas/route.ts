@@ -7,12 +7,14 @@ import {
   deleteEntry,
   getEntryById,
   listEntries,
+  logEntryGeneration,
   updateEntry,
   updateEntryEstado,
   type EntryEstado,
   type EntryInput,
   type EntryRelationsInput,
 } from '@/services/entries'
+import { traducirEntrada } from '@/services/i18n-translate'
 
 /**
  * API del módulo "Guías y Comparativas" (entradas SEO).
@@ -174,8 +176,26 @@ export async function PATCH(request: Request) {
     if (estadoResult.error) {
       return NextResponse.json({ error: estadoResult.error.message }, { status: 400 })
     }
+
+    // Al PUBLICAR se traduce lo que falte: así el contenido nuevo queda en los
+    // 6 idiomas sin pasos manuales. Es BEST-EFFORT y no bloquea la publicación:
+    // si el motor de traducción falla, la entrada ya está publicada y el panel
+    // puede reintentar con la acción "Traducir" (la detección es la misma).
+    let traduccion: { traducidos: string[]; pendientes: number } | null = null
+    if (body.estado === 'publicado') {
+      const resultado = await traducirEntrada(id)
+      await logEntryGeneration({
+        entryId: id,
+        etapa: 'traduccion',
+        exito: resultado.success,
+        errores: resultado.success ? null : resultado.error,
+      })
+      if (resultado.success) traduccion = resultado.data
+      else console.error('[entradas] traducción al publicar:', resultado.error)
+    }
+
     const { entry } = await getEntryById(id)
-    return NextResponse.json({ entry })
+    return NextResponse.json({ entry, traduccion })
   }
 
   const result = await updateEntry(id, parseEntryPayload(body), parseRelations(body))

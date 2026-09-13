@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { getSiteSettings } from '@/services/site-settings'
 import { GOOGLE_SITE_VERIFICATION, OG_IMAGE_PATH } from '@/lib/constants'
 import { absoluteUrl } from '@/lib/seo-url'
+import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
+import { DEFAULT_LOCALE } from '@/lib/i18n-config'
 
 /**
  * Metadata y viewport RAÍZ compartidos por los root layouts.
@@ -13,16 +15,22 @@ import { absoluteUrl } from '@/lib/seo-url'
 /** Viewport/themeColor comunes a todo el proyecto. */
 export const ROOT_VIEWPORT: Viewport = { colorScheme: 'light dark', themeColor: '#020617' }
 
-/** Descripción de respaldo (cuando site_settings aún no tiene hero_texts). */
-const DEFAULT_DESCRIPTION =
-  'Curamos las mejores ofertas de AliExpress: precios verificados, reseñas reales y envío rastreable. Compra con confianza.'
-
-/** Metadata base del sitio (título de marca + verificación + iconos + OG). */
-export async function buildRootMetadata(): Promise<Metadata> {
-  const { settings } = await getSiteSettings()
+/**
+ * Metadata base del sitio (título de marca + verificación + iconos + OG).
+ * MULTILINGÜE: todo el texto sale del idioma pedido — las settings traducidas
+ * (`site_settings.i18n`) y, como respaldo, el diccionario de interfaz. Así el
+ * <title>/description heredados por las páginas que no definen los suyos nunca
+ * aparecen en español dentro de un idioma publicado.
+ * @param locale Idioma activo (por defecto, el del sitio).
+ */
+export async function buildRootMetadata(locale: string = DEFAULT_LOCALE): Promise<Metadata> {
+  const { settings } = await getSiteSettings(locale)
+  const t = createTranslator(MESSAGES, locale)
   const name = settings.company_name || 'zonadehobbies'
-  const tagline = settings.tagline || 'Ofertas verificadas para tus hobbies'
-  const description = settings.hero_texts?.description ?? DEFAULT_DESCRIPTION
+  // Eslogan editable desde el panel (llega traducido); si faltara, el nombre.
+  const tagline = settings.tagline || name
+  // Descripción: la del hero (editable) o la del diccionario del idioma.
+  const description = settings.hero_texts?.description || t('seo.homeDescription', { name })
   const title = `${name} — ${tagline}`
   const ogImage = absoluteUrl(OG_IMAGE_PATH)
 
