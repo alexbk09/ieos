@@ -9,6 +9,9 @@ import {
   DEFAULT_CATALOG_SORT,
   DEFAULT_LOCALE,
   FEATURED_PRODUCTS_LIMIT,
+  HOME_PRODUCTS_LIMIT,
+  HOME_PRODUCTS_MAX_POOL,
+  HOME_PRODUCTS_POOL_FACTOR,
   PUBLIC_DATA_REVALIDATE_SECONDS,
   RELATED_PRODUCTS_LIMIT,
   SOURCE_LOCALE,
@@ -421,6 +424,115 @@ export async function getFeaturedProducts(locale?: string) {
     .limit(FEATURED_PRODUCTS_LIMIT)
   if (error) return { products: null, error }
   return { products: (data ?? []).map((row) => localizarProducto(row, locale)), error: null }
+}
+
+/**
+ * Baraja una lista con el algoritmo Fisher-Yates.
+ * POR QUÉ no `sort(() => Math.random() - 0.5)`: ese atajo NO es uniforme (el
+ * comparador es incoherente y sesga el resultado). Fisher-Yates garantiza que
+ * cualquier producto tenga la misma probabilidad de caer en cualquier posición.
+ */
+function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items]
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = result[i]
+    result[i] = result[j]
+    result[j] = tmp
+  }
+  return result
+}
+
+/** Opciones de `getHomeProducts` (la aleatoriedad la decide quien llama). */
+export type HomeProductsOptions = {
+  /**
+   * TRUE = muestra ALEATORIA distinta en cada llamada (solo para respuestas sin
+   * caché, como /api/home-products). Debe quedar en FALSE en el render ISR.
+   */
+  randomize?: boolean
+  /** Nº de productos a devolver (por defecto `HOME_PRODUCTS_LIMIT`). */
+  limit?: number
+}
+
+/**
+ * Productos que alimentan la grilla del inicio.
+ * ------------------------------------------------------------------
+ * - `randomize: false` (render SSR + ISR de la portada): devuelve SIEMPRE la
+ *   misma selección determinista (destacados → curaduría manual → novedad).
+ *   Así el HTML sigue cacheado en CDN, indexable y sin saltos de layout.
+ * - `randomize: true` (API sin caché): devuelve una muestra ALEATORIA, de modo
+ *   que la lista cambie en cada visita o al pulsar "Ver otros productos".
+ *
+ * POR QUÉ una ventana de offset + barajado y no `ORDER BY random()`: PostgREST
+ * no expone orden aleatorio sin una función RPC; con este enfoque el coste es
+ * 1 COUNT + 1 SELECT acotado (nunca se traen miles de filas al servidor) y el
+ * resultado sí es aleatorio: se toma un tramo al azar del catálogo y se mezcla.
+ * Cliente público → válido tanto en SSR/ISR como en route handlers.
+ */
+export async function getHomeProducts(locale?: string, options: HomeProductsOptions = {}) {
+  const limit = Math.max(1, Math.floor(options.limit ?? HOME_PRODUCTS_LIMIT))
+  const supabase = createPublicClient()
+
+  // --- Semilla determinista (SSR/ISR): destacados primero, sin aleatoriedad ---
+  if (!options.randomize) {
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('is_available', true)
+      .order('featured', { ascending: false })
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) return { products: null, error }
+    return { products: (data ?? []).map((row) => localizarProducto(row, locale)), error: null }
+  }
+
+  // --- Muestra aleatoria (API sin caché) ---
+  const { count, error: countError } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_available', true)
+  if (countError) return { products: null, error: countError }
+
+  const total = count ?? 0
+  if (total === 0) return { products: [] as Product[], error: null }
+
+  // Tamaño del pool a barajar: nunca menos que el límite visible ni más que el
+  // catálogo real (si hay pocos productos, se barajan todos).
+  const poolSize = Math.min(Math.max(limit, limit * HOME_PRODUCTS_POOL_FACTOR), HOME_PRODUCTS_MAX_POOL, total)
+  // Offset aleatorio dentro del rango válido para no salirse de la última página.
+  const offset = Math.floor(Math.random() * (total - poolSize + 1))
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_available', true)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + poolSize - 1)
+  if (error) return { products: null, error }
+
+  let rows = data ?? []
+  // Ventana incompleta (offset cerca del final): se completa con el inicio del
+  // catálogo para no devolver una grilla a medias. Los duplicados se descartan.
+  if (rows.length < limit) {
+    const { data: headRows } = await supabase
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('is_available', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .range(0, limit - rows.length - 1)
+    rows = [...rows, ...(headRows ?? [])]
+  }
+
+  const unique = new Map<string, any>()
+  for (const row of rows) unique.set(row.id, row)
+
+  const products = shuffleArray([...unique.values()])
+    .slice(0, limit)
+    .map((row) => localizarProducto(row, locale))
+  return { products, error: null }
 }
 
 /** Obtiene los IDs de productos que pertenecen a las categorías dadas. */

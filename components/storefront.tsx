@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { SEARCH_LOG_SOURCES } from '@/lib/constants'
+import { toast } from 'sonner'
+import { HOME_PRODUCTS_LIMIT, SEARCH_LOG_SOURCES } from '@/lib/constants'
 import { trackSearchLog } from '@/lib/analytics-client'
-import { ArrowUpRight, BadgeCheck, Briefcase, Camera, CheckCircle2, LoaderCircle, Mail, Search, Send } from 'lucide-react'
+import { ArrowUpRight, BadgeCheck, Briefcase, Camera, CheckCircle2, LoaderCircle, Mail, Search, Send, Shuffle } from 'lucide-react'
 
 
 import { CaptchaWidget } from '@/components/ui/captcha-widget'
+import { ProductGridSkeleton } from '@/components/ui/skeleton'
 import { ProductCard, type CardProduct } from '@/components/product-card'
 import { ProductDetailModal } from '@/components/product-detail-modal'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
@@ -17,6 +19,7 @@ import { AffiliateRedirectModal } from '@/components/affiliate-redirect-modal'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
+import { useHomeRandomProducts } from '@/hooks/use-home-random-products'
 import { useLocalizedPath } from '@/hooks/use-localized-path'
 import { useTranslations } from '@/hooks/use-translations'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig } from '@/lib/homepage-config'
@@ -91,7 +94,18 @@ const categoryFor = (p: Product) => p.categories?.[0]?.name ?? 'General'
 export function Storefront({ initialProducts, settings, categories: initialCategories }: { initialProducts?: Product[]; settings?: Partial<StorefrontSettings>; categories?: { id: string; name: string; slug: string; description?: string | null }[] }) {
 
   // Catálogo real (sin datos de ejemplo). Si viene vacío se muestra estado vacío.
-  const products = initialProducts ?? []
+  // Semilla SSR/ISR: se pinta al instante (LCP/SEO) y sirve de respaldo si el
+  // API de rotación falla; el HTML de la home nunca queda vacío.
+  const seedProducts = useMemo(() => initialProducts ?? [], [initialProducts])
+  // Rotación aleatoria: al entrar (y al pulsar "Ver otros productos") se pide una
+  // muestra nueva a la API, que baraja en el servidor. El nº de items es el mismo
+  // que la semilla para que la grilla no salte de tamaño (cero CLS).
+  const { products: rotatedProducts, loading: rotatingProducts, error: rotationError, refresh: rotateProducts } = useHomeRandomProducts()
+  // La muestra aleatoria manda en cuanto llega; hasta entonces se ve la semilla.
+  const products: Product[] = rotatedProducts.length > 0 ? rotatedProducts : seedProducts
+  // TRUE solo al REBARAJAR con la lista ya en pantalla (micro-interacción sutil);
+  // en la primera carga no se atenúa para no parecer "deshabilitado".
+  const rotatingVisibleList = rotatingProducts && rotatedProducts.length > 0
   // Categorías del filtro local: las REALES del catálogo (nada quemado).
   const categories = useMemo(() => ['Todos', ...(initialCategories ?? []).map((c) => c.name)], [initialCategories])
   const exchangeRate = useExchangeRate()
@@ -162,6 +176,12 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
     }, 500)
     return () => clearTimeout(t)
   }, [query, filtered.length])
+
+  // Aviso visible si la rotación aleatoria falla: la semilla sigue en pantalla,
+  // pero el usuario debe saber que la lista no se pudo renovar.
+  useEffect(() => {
+    if (rotationError) toast.error(t('home.productsError'))
+  }, [rotationError, t])
 
   function handleCaptchaChange(verified: boolean, answer: string) {
     setCaptchaVerified(verified)
@@ -250,14 +270,30 @@ export function Storefront({ initialProducts, settings, categories: initialCateg
         <div className="flex flex-col justify-between gap-5 border-b border-border pb-7 md:flex-row md:items-end">
           <div><p className="font-mono text-xs uppercase tracking-[.25em] text-brand-strong">Catálogo {brand.name}</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.05em]">Explora y compara productos</h2></div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Rotación manual: vuelve a pedir una muestra aleatoria al API. */}
+            <button
+              type="button"
+              onClick={() => void rotateProducts()}
+              disabled={rotatingProducts}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand-strong disabled:pointer-events-none disabled:opacity-60"
+            >
+              {rotatingProducts ? <LoaderCircle size={16} className="animate-spin" /> : <Shuffle size={16} />}
+              {t('home.shuffleProducts')}
+            </button>
             <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"><Search size={16} className="text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto" aria-label={t('catalog.searchLabel')} className="w-44 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
             {/* aria-label: sin él el select no tenía nombre accesible (auditoría select-name). */}
             <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('catalog.allCategories')} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm outline-none">{categories.map((c) => <option key={c}>{c}</option>)}</select>
           </div>
         </div>
-        {filtered.length > 0 ? (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {products.length === 0 && rotatingProducts ? (
+          /* Sin semilla (catálogo recién publicado o API lenta): skeletons con la
+             misma rejilla real, para no mostrar un vacío que no es cierto. */
+          <div className="mt-8">
+            <ProductGridSkeleton count={HOME_PRODUCTS_LIMIT} columns="sm:grid-cols-2 lg:grid-cols-3" />
+          </div>
+        ) : filtered.length > 0 ? (
+          <div className={`mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${rotatingVisibleList ? 'pointer-events-none opacity-60' : ''}`}>
             {filtered.map((product) => (
               <ProductCard key={product.id} product={product as CardProduct} rate={exchangeRate} onAdd={add} onViewDetails={setSelected} />
             ))}

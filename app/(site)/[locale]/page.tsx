@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Storefront, type StorefrontSettings } from '@/components/storefront'
-import { getFeaturedProducts, getCategoryNav } from '@/services/catalog'
+import { getHomeProducts, getCategoryNav } from '@/services/catalog'
 import { getSiteSettings } from '@/services/site-settings'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteUrl, absoluteAssetUrl } from '@/lib/seo-url'
@@ -57,13 +57,20 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 /**
  * Página de inicio con ISR. La tasa del dólar se obtiene en cliente (useExchangeRate) sin bloquear el render.
+ * La grilla de productos llega con la semilla determinista del servidor y el
+ * cliente la rota aleatoriamente en cada visita (ver useHomeRandomProducts).
  * Inyecta JSON-LD (Organization, WebSite+SearchAction, ItemList y FAQPage si el admin configuró FAQs)
  * para que Google entienda la estructura de la tienda de afiliados.
  */
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   const [{ products }, { settings }, { items: activeCategories }] = await Promise.all([
-    getFeaturedProducts(locale),
+    // Semilla DETERMINISTA de la grilla del inicio (destacados → curaduría →
+    // novedad): mantiene la home cacheada en CDN (ISR) y sin saltos de layout.
+    // El cliente la sustituye después por una muestra aleatoria nueva en cada
+    // visita vía /api/home-products (el HTML de este render sigue siendo la
+    // versión indexable y la que ve el usuario sin JavaScript).
+    getHomeProducts(locale),
     getSiteSettings(locale),
     // Solo categorías CON productos: evita que el cliente caiga en páginas vacías.
     // Se pasa el idioma para servir el nombre del nicho traducido (con fallback).
@@ -118,7 +125,8 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       }
     : null
 
-  // ItemList JSON-LD: lista los productos destacados (mejora el rich snippet).
+  // ItemList JSON-LD: lista la selección del inicio (mejora el rich snippet).
+  // Coincide con el HTML servido por SSR/ISR (la rotación aleatoria es cliente).
   const itemListJsonLd = normalized.length > 0
     ? {
         '@context': 'https://schema.org',

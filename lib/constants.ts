@@ -128,6 +128,29 @@ export type CatalogQuickFilterKey = (typeof CATALOG_QUICK_FILTERS)[number]['key'
 /** Límite de productos destacados que se muestran en la portada. */
 export const FEATURED_PRODUCTS_LIMIT = 6
 
+// ---------- Portada: grilla de productos con rotación aleatoria ----------
+
+/**
+ * Nº de productos que muestra la grilla del inicio.
+ * 12 = 4 filas completas de 3 en desktop y 6 filas de 2 en tablet: más variedad
+ * visible que los 6 "destacados" originales sin penalizar el render (las
+ * imágenes bajo el pliegue se cargan en diferido).
+ */
+export const HOME_PRODUCTS_LIMIT = 12
+
+/**
+ * Tope de productos que se piden a la BD para poder BARAJAR con variedad.
+ * Cuanto mayor es el pool, menos repeticiones entre visitas; el tope evita que
+ * la consulta crezca sin control si un día el catálogo es enorme.
+ */
+export const HOME_PRODUCTS_MAX_POOL = 60
+
+/** Factor del pool aleatorio respecto al límite visible (variedad por visita). */
+export const HOME_PRODUCTS_POOL_FACTOR = 4
+
+/** Ruta de la API pública que sirve la muestra aleatoria del inicio. */
+export const HOME_PRODUCTS_API_PATH = '/api/home-products'
+
 /** Tasa de IVA aplicada al precio de venta (16%). */
 export const IVA_RATE = 0.16
 
