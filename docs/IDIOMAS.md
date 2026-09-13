@@ -100,3 +100,10 @@ Opciones útiles de los scripts de contenido: `--dry-run`, `--force`, `--limit <
 - **Textos base editados:** si cambias el texto español ya traducido, los idiomas no se
   actualizan solos (la detección busca *faltantes*, no *desactualizados*). Re-ejecuta el
   backfill con `--force` en el alcance que corresponda.
+- **El menú es ESTRUCTURA, no texto suelto:** `nav_links` es la única clave que NO se
+  reemplaza por la traducción, se **fusiona por `href`** (`mergeNavLinks` en
+  `lib/site-settings-i18n.mjs`). Así, añadir un enlace al menú base lo hace aparecer en
+  TODOS los idiomas al instante (con la etiqueta base hasta que se re-traduzca) y una
+  traducción vieja no puede reintroducir anclas muertas ni "esconder" enlaces.
+  Corolario: para cambiar la estructura del menú se edita la BASE (`nav_links`), no los
+  overrides por idioma.

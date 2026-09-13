@@ -24,7 +24,9 @@ const {
 const { resolveLocalizedValue, resolveLocalizedList, resolveProductTranslations, buildLocalizedSlug } = await import(
   '../lib/i18n-content.mjs'
 )
-const { resolveSiteSettings, TRANSLATABLE_SETTINGS_KEYS } = await import('../lib/site-settings-i18n.mjs')
+const { resolveSiteSettings, TRANSLATABLE_SETTINGS_KEYS, normalizeNavLinks, mergeNavLinks } = await import(
+  '../lib/site-settings-i18n.mjs'
+)
 const { slugify } = await import('../lib/slug.mjs')
 const {
   missingEntryLocales,
@@ -295,6 +297,61 @@ test('resolveSiteSettings aplica el override del idioma (deep merge + arrays)', 
 test('resolveSiteSettings acepta variantes regionales (fr-CA → fr)', () => {
   const settings = { tagline: 'Base', i18n: { fr: { tagline: 'Base FR' } } }
   assert.equal(resolveSiteSettings(settings, 'fr-CA').tagline, 'Base FR')
+})
+
+test('resolveSiteSettings NO pierde enlaces del menú añadidos después de traducir', () => {
+  // Regresión real: "Guías" se añadió a la base DESPUÉS de la traducción, así que
+  // el array traducido (viejo) no lo traía y el botón desaparecía en EN/FR/DE...
+  const settings = {
+    nav_links: [
+      { href: '/', label: 'Inicio' },
+      { href: '/guias', label: 'Guías' },
+      { href: '/catalogo', label: 'Catálogo', highlight: true },
+    ],
+    i18n: {
+      en: {
+        nav_links: [
+          { href: '/', label: 'Home' },
+          // Ancla VIEJA que ya no existe en la base: debe ignorarse.
+          { href: '/#studio', label: 'Our space' },
+          { href: '/catalogo', label: 'Full catalog', highlight: true },
+        ],
+      },
+    },
+  }
+  assert.deepEqual(resolveSiteSettings(settings, 'en').nav_links, [
+    { href: '/', label: 'Home' },
+    // Sin traducción todavía: conserva la etiqueta base (nunca desaparece).
+    { href: '/guias', label: 'Guías' },
+    { href: '/catalogo', label: 'Full catalog', highlight: true },
+  ])
+})
+
+test('normalizeNavLinks sanea el menú guardado como OBJETO (bug del editor)', () => {
+  // Forma corrupta que dejó el panel: índices numéricos + clave anidada.
+  const corrupto = {
+    0: { href: '/', label: 'Inicio' },
+    1: { href: '/catalogo', label: 'Catálogo', highlight: true },
+    nav_links: [{ href: '/guias', label: 'Guías' }],
+  }
+  assert.deepEqual(normalizeNavLinks(corrupto), [
+    { href: '/', label: 'Inicio' },
+    { href: '/catalogo', label: 'Catálogo', highlight: true },
+    { href: '/guias', label: 'Guías' },
+  ])
+  // Entradas inservibles (sin href/label) y valores no-array no rompen el menú.
+  assert.deepEqual(normalizeNavLinks([{ href: '', label: 'x' }, { href: '/ok', label: '' }]), [])
+  assert.deepEqual(normalizeNavLinks(null), [])
+  assert.deepEqual(normalizeNavLinks({}), [])
+})
+
+test('mergeNavLinks: la base manda en estructura y el idioma en la etiqueta', () => {
+  const base = [{ href: '/', label: 'Inicio' }, { href: '/guias', label: 'Guías' }]
+  assert.deepEqual(mergeNavLinks(base, undefined), base)
+  // Sin base utilizable, el override es la única fuente (no deja el menú vacío).
+  assert.deepEqual(mergeNavLinks(null, base), base)
+  // Base vacía y override con enlaces → se usa el override.
+  assert.deepEqual(mergeNavLinks([], base), base)
 })
 
 test('TRANSLATABLE_SETTINGS_KEYS excluye campos técnicos (theme, urls, mapas)', () => {

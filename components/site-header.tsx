@@ -74,8 +74,10 @@ export function SiteHeader({ cartCount, onOpenCart, navLinks, brand }: {
 
   // Combina la marca actual con los valores por defecto.
   const currentBrand: HeaderBrand = { ...DEFAULT_BRAND, ...(brand ?? {}) }
-  // Usa la navegación configurada o los enlaces por defecto.
-  const links = (navLinks && navLinks.length > 0 ? navLinks : DEFAULT_NAV_LINKS).filter((l) => l.label && l.href)
+  // Usa la navegación configurada o los enlaces por defecto. El `Array.isArray`
+  // es defensivo: si algún origen devolviera un objeto (dato corrupto antiguo) el
+  // menú caería al fallback en lugar de quedarse vacío.
+  const links = (Array.isArray(navLinks) && navLinks.length > 0 ? navLinks : DEFAULT_NAV_LINKS).filter((l) => l.label && l.href)
 
   // Verifica la sesión al montar para mostrar el botón correcto (iniciar sesión, mis solicitudes o panel admin).
   useEffect(() => {

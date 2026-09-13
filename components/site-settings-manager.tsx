@@ -112,7 +112,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     })
   }
 
-  /** Agrega un ítem a un arreglo JSONB (studio.items, hero_texts.stats, nav_links). */
+  /** Agrega un ítem a un arreglo JSONB anidado (studio.items, hero_texts.stats). */
   function addJsonArrayItem<K extends keyof SiteSettingsPayload>(key: K, arraySubKey: string, item: Record<string, unknown>) {
     setForm((f) => {
       const section = (f[key] ?? {}) as Record<string, unknown>
@@ -183,7 +183,13 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
     toast.success('Configuración guardada', { description: 'Los cambios ya están publicados en la tienda.' })
   }
 
-  /** Agrega un enlace de navegación al menú. */
+  /**
+   * Agrega un enlace de navegación al menú.
+   * ⚠️ `nav_links` es un ARRAY en la raíz del formulario (no una sección con
+   * arreglo anidado). Usar el helper genérico addJsonArrayItem lo convertía en
+   * OBJETO ({ "0":…, "1":…, "nav_links":[…] }) y dejaba la tienda sin menú
+   * válido: por eso se muta el array directamente.
+   */
   function addNavLink() {
     const label = navLinkInput.label.trim()
     const href = navLinkInput.href.trim()
@@ -191,8 +197,26 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
       toast.error('Completa etiqueta y URL del enlace')
       return
     }
-    addJsonArrayItem('nav_links', 'nav_links', { label, href })
+    setForm((f) => ({
+      ...f,
+      nav_links: [...(Array.isArray(f.nav_links) ? f.nav_links : []), { label, href }],
+    }))
     setNavLinkInput({ href: '', label: '' })
+  }
+
+  /** Elimina un enlace del menú por índice (con confirmación). */
+  async function removeNavLink(index: number) {
+    const links = Array.isArray(form.nav_links) ? form.nav_links : []
+    const ok = await confirmDelete({
+      title: '¿Eliminar este enlace?',
+      description: `"${links[index]?.label || 'este enlace'}" se quitará del menú de la tienda.`,
+      confirmText: 'Sí, eliminar',
+    })
+    if (!ok) return
+    setForm((f) => ({
+      ...f,
+      nav_links: (Array.isArray(f.nav_links) ? f.nav_links : []).filter((_, i) => i !== index),
+    }))
   }
 
   // ---------- Render de secciones ----------
@@ -283,7 +307,7 @@ export function SiteSettingsManager({ initialSettings }: { initialSettings: Site
                       <input type="checkbox" checked={Boolean(link.highlight)} onChange={(e) => { const next = [...links]; next[i] = { ...next[i], highlight: e.target.checked }; setForm((f) => ({ ...f, nav_links: next })) }} className="accent-cyan-500" />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => removeJsonArrayItem('nav_links', 'nav_links', i)} aria-label={`Eliminar ${link.label}`} className="grid size-8 place-items-center rounded-lg text-destructive transition-colors hover:bg-destructive/10">
+                      <button onClick={() => removeNavLink(i)} aria-label={`Eliminar ${link.label}`} className="grid size-8 place-items-center rounded-lg text-destructive transition-colors hover:bg-destructive/10">
                         <Trash2 size={14} />
                       </button>
                     </td>

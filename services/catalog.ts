@@ -1,11 +1,15 @@
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import {
   CATALOG_PAGE_SIZE,
+  CATEGORY_NAV_CACHE_TAG,
   CATEGORY_NAV_LIMIT,
   DEFAULT_CATALOG_SORT,
   DEFAULT_LOCALE,
   FEATURED_PRODUCTS_LIMIT,
+  PUBLIC_DATA_REVALIDATE_SECONDS,
   RELATED_PRODUCTS_LIMIT,
   SOURCE_LOCALE,
   type CatalogSortValue,
@@ -17,6 +21,8 @@ import type { SeoFaqItem } from '@/lib/seo-types'
 // Estado de disponibilidad del marketplace de afiliado (lógica pura compartida).
 import type { AliEstadoDisponibilidad } from '@/lib/ali-availability'
 import { revalidarSitemap } from '@/lib/sitemap-revalidate'
+// Invalidación on-demand de la caché de datos públicos (navegación de categorías).
+import { revalidarCacheDeDatos } from '@/lib/cache-revalidate'
 // Fuente única de slugs (lógica pura .mjs reutilizable por scripts y tests).
 import { slugify } from '@/lib/slug'
 
@@ -492,8 +498,12 @@ export async function getCatalogPage(filters: CatalogFilters = {}, from = 0, loc
  * Cliente público → SSG+ISR. Reutiliza PRODUCT_SELECT + mapProduct del módulo.
  * Solo devuelve productos visibles para mantener coherencia con el catálogo.
  * `locale` resuelve el nombre/título SEO traducidos (migración 0050).
+ *
+ * ⚡ `cache()` de React: `generateMetadata` y la página piden el MISMO producto
+ * dentro del mismo render, así que se consulta una sola vez (ahorra un
+ * round-trip de ~250 ms en cada una de las ~2.000 páginas del build).
  */
-export async function getPublicProductBySlug(slug: string, locale?: string) {
+export const getPublicProductBySlug = cache(async (slug: string, locale?: string) => {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('products')
@@ -503,7 +513,7 @@ export async function getPublicProductBySlug(slug: string, locale?: string) {
     .maybeSingle()
   if (error) return { product: null, error }
   return { product: data ? localizarProducto(data, locale) : null, error: null }
-}
+})
 
 /**
  * Obtiene todos los slugs visibles para generateStaticParams del pSEO.
@@ -1035,8 +1045,11 @@ export async function getCategoriesActivas(locale?: string) {
 /**
  * Obtiene una categoría activa por su slug exacto (página /categoria/[slug]).
  * Cliente público → SSG+ISR. Devuelve null si no existe o está inactiva.
+ *
+ * ⚡ `cache()` de React: metadata y página piden la MISMA categoría en el mismo
+ * render → una sola consulta por render (y uno de los pasos hace 2 consultas).
  */
-export async function getCategoryBySlug(slug: string, locale?: string) {
+export const getCategoryBySlug = cache(async (slug: string, locale?: string) => {
   const supabase = createPublicClient()
   const BASE = 'id,name,slug,description,activa,seo_title,seo_intro,seo_faq,autor'
 
@@ -1064,7 +1077,7 @@ export async function getCategoryBySlug(slug: string, locale?: string) {
   }
 
   return { category: null, error: null }
-}
+})
 
 /**
  * Lee el contenido SEO de un hub de categoría (seo_title/seo_intro/seo_faq).
@@ -1144,34 +1157,63 @@ async function contarProductosPorCategoria() {
  * relevancia (más productos primero). Alimenta el módulo "Explora otras
  * categorías" de la ficha y del hub, evitando enlaces a páginas vacías.
  * Cliente público → SSG+ISR.
+ *
+ * ⚡ Memoizada ENTRE peticiones (unstable_cache): es idéntica en TODAS las
+ * páginas del sitio y antes se pedía una vez por render (2 consultas cada vez).
+ * Se invalida con revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG) al editar
+ * categorías, así los cambios no esperan al ciclo de revalidación.
+ */
+const readCategoryNav = unstable_cache(
+  async (limit: number, locale: string) => {
+    const supabase = createPublicClient()
+    const [{ data: cats, error }, counts] = await Promise.all([
+      selectCategoriesConFallback<any>(
+        (columns) => supabase.from('categories').select(columns).eq('activa', true),
+        'id,name,slug,description',
+      ),
+      contarProductosPorCategoria(),
+    ])
+    // El throw evita cachear un fallo transitorio (unstable_cache no cachea rechazos).
+    if (error) throw new Error(error.message)
+
+    return ((cats ?? []) as any[])
+      .map((c) => {
+        const localized = localizarCategoria(c, locale)
+        return {
+          id: String(c.id),
+          name: String(localized.name ?? c.name),
+          // Slug BASE: identidad de ruta estable e indexada.
+          slug: String(c.slug),
+          // Slug traducido disponible para enlaces localizados (Fase 3).
+          slug_localizado: String(localized.slug_localizado ?? c.slug),
+          description: (localized.description ?? null) as string | null,
+          count: counts.get(c.id) ?? 0,
+        }
+      })
+      .filter((c) => c.count > 0)
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .slice(0, limit)
+  },
+  ['category-nav'],
+  { revalidate: PUBLIC_DATA_REVALIDATE_SECONDS, tags: [CATEGORY_NAV_CACHE_TAG] },
+)
+
+/** Tipo de los ítems de navegación (derivado de la lectura cacheada). */
+type CategoryNavItems = Awaited<ReturnType<typeof readCategoryNav>>
+
+/**
+ * Devuelve la navegación de categorías del idioma pedido.
+ * Manejo defensivo: si la lectura falla, el sitio sigue renderizando sin el
+ * módulo de navegación (nunca rompe la página ni se cachea el fallo).
  */
 export async function getCategoryNav(limit: number = CATEGORY_NAV_LIMIT, locale?: string) {
-  const supabase = createPublicClient()
-  const [{ data: cats }, counts] = await Promise.all([
-    selectCategoriesConFallback<any>(
-      (columns) => supabase.from('categories').select(columns).eq('activa', true),
-      'id,name,slug,description',
-    ),
-    contarProductosPorCategoria(),
-  ])
-  const items = ((cats ?? []) as any[])
-    .map((c) => {
-      const localized = localizarCategoria(c, locale)
-      return {
-        id: String(c.id),
-        name: String(localized.name ?? c.name),
-        // Slug BASE: identidad de ruta estable e indexada.
-        slug: String(c.slug),
-        // Slug traducido disponible para enlaces localizados (Fase 3).
-        slug_localizado: String(localized.slug_localizado ?? c.slug),
-        description: (localized.description ?? null) as string | null,
-        count: counts.get(c.id) ?? 0,
-      }
-    })
-    .filter((c) => c.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .slice(0, Math.max(Number(limit) || CATEGORY_NAV_LIMIT, 1))
-  return { items, error: null }
+  const safeLimit = Math.max(Number(limit) || CATEGORY_NAV_LIMIT, 1)
+  try {
+    return { items: await readCategoryNav(safeLimit, locale ?? DEFAULT_LOCALE), error: null }
+  } catch (err: unknown) {
+    console.error('Error leyendo la navegación de categorías:', err instanceof Error ? err.message : err)
+    return { items: [] as CategoryNavItems, error: null }
+  }
 }
 
 /**
@@ -1305,7 +1347,11 @@ export async function createCategory(payload: CategoryInput) {
   }
   const result = await supabase.from('categories').insert(row).select('*').single()
   // La nueva landing de categoría debe entrar al sitemap al instante.
-  if (!result.error) revalidarSitemap({ categoriaSlug: payload.slug })
+  if (!result.error) {
+    revalidarSitemap({ categoriaSlug: payload.slug })
+    // La navegación cross-categoría tiene que incluirla ya (no esperar 5 min).
+    revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
+  }
   return result
 }
 
@@ -1340,7 +1386,11 @@ export async function updateCategory(id: string, payload: CategoryInput) {
 
   const result = await supabase.from('categories').update(update).eq('id', id).select('*').single()
   // La URL/meta de la categoría cambió: sitemap y landing al instante.
-  if (!result.error) revalidarSitemap({ categoriaSlug: payload.slug })
+  if (!result.error) {
+    revalidarSitemap({ categoriaSlug: payload.slug })
+    // El nombre/slug traducido también alimenta la navegación cross-categoría.
+    revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
+  }
   return result
 }
 
@@ -1349,7 +1399,11 @@ export async function deleteCategory(id: string) {
   const supabase = await createServerClient()
   const result = await supabase.from('categories').delete().eq('id', id)
   // Al borrar, la URL deja de existir: se retira del sitemap al instante.
-  if (!result.error) revalidarSitemap()
+  if (!result.error) {
+    revalidarSitemap()
+    // La categoría borrada debe desaparecer de la navegación cross-categoría.
+    revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
+  }
   return result
 }
 

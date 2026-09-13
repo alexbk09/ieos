@@ -1,9 +1,14 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
+import { unstable_cache } from 'next/cache'
 import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme'
 import { DEFAULT_HOMEPAGE_CONFIG, normalizeHomepageConfig, type HomepageConfig } from '@/lib/homepage-config'
-// Resolución de los textos configurables multilenguaje (site_settings.i18n).
-import { resolveSiteSettings } from '@/lib/site-settings-i18n'
+import { PUBLIC_DATA_REVALIDATE_SECONDS, SITE_SETTINGS_CACHE_TAG, DEFAULT_LOCALE } from '@/lib/constants'
+// Invalidación on-demand de la caché de datos públicos (patrón defensivo).
+import { revalidarCacheDeDatos } from '@/lib/cache-revalidate'
+// Resolución de los textos configurables multilenguaje (site_settings.i18n) y
+// saneo del menú (array válido incluso con datos corruptos del editor).
+import { normalizeNavLinks, resolveSiteSettings } from '@/lib/site-settings-i18n'
 
 /**
  * Servicio de configuración del sitio.
@@ -117,7 +122,7 @@ function mapSettings(row: any, fallback: Partial<SiteSettings> = {}): SiteSettin
     map_zoom: Number(row?.map_zoom ?? fallback.map_zoom ?? 13),
     // Tema visual: merge de la BD con los valores por defecto (nunca faltan campos).
     theme: { ...DEFAULT_THEME, ...(row?.theme ?? fallback.theme ?? {}) },
-    nav_links: row?.nav_links ?? fallback.nav_links ?? [],
+    nav_links: normalizeNavLinks(row?.nav_links ?? fallback.nav_links ?? []),
     hero_texts: row?.hero_texts ?? fallback.hero_texts ?? {},
     hero_images: row?.hero_images ?? fallback.hero_images ?? {},
     studio_texts: row?.studio_texts ?? fallback.studio_texts ?? {},
@@ -212,19 +217,46 @@ const DEFAULT_SETTINGS: SiteSettings = {
 
 
 /**
+ * Lectura pública de site_settings MEMOIZADA ENTRE PETICIONES (unstable_cache).
+ * ------------------------------------------------------------------
+ * POR QUÉ: es el dato más leído de la tienda. El render de CUALQUIER página la
+ * pedía 4 veces (RootShell + metadata raíz + metadata de página + la página), y
+ * en un build de ~2.000 páginas eran ~8.000 round-trips a Supabase de ~250 ms.
+ * Cacheada por idioma, se consulta UNA vez por idioma y el resto son aciertos.
+ *
+ * - `locale` forma parte de la clave (unstable_cache añade los argumentos).
+ * - Un error de Supabase se LANZA (no se cachea) para que el siguiente intento
+ *   vuelva a consultar y no quede servido un fallback durante 5 minutos.
+ * - Se invalida al guardar desde el panel (updateSiteSettings → revalidateTag).
+ */
+const readSiteSettings = unstable_cache(
+  async (locale: string): Promise<SiteSettings> => {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle()
+    // El throw evita cachear un fallo transitorio (unstable_cache no cachea rechazos).
+    if (error) throw new Error(error.message)
+    return resolveSiteSettings(mapSettings(data, DEFAULT_SETTINGS), locale)
+  },
+  ['site-settings'],
+  { revalidate: PUBLIC_DATA_REVALIDATE_SECONDS, tags: [SITE_SETTINGS_CACHE_TAG] },
+)
+
+/**
  * Obtiene la configuración del sitio para el render público.
- * Cliente público → SSG+ISR. Si la fila no existe devuelve la configuración por defecto.
+ * Cliente público → SSG+ISR y memoizada entre peticiones (ver readSiteSettings).
  * `locale` aplica los overrides de texto del idioma (migración 0053); sin locale,
- * devuelve la base (idioma raíz).
+ * devuelve la base (idioma raíz). Si la fila no existe devuelve la por defecto.
  */
 export async function getSiteSettings(locale?: string): Promise<{ settings: SiteSettings; error: null | { message: string } }> {
-  const supabase = createPublicClient()
-  const { data, error } = await supabase.from('site_settings').select('*').eq('id', 1).maybeSingle()
-  if (error) {
-    console.error('Error leyendo site_settings:', error.message)
-    return { settings: resolveSiteSettings(DEFAULT_SETTINGS, locale), error: { message: error.message } }
+  const requestedLocale = locale ?? DEFAULT_LOCALE
+  try {
+    return { settings: await readSiteSettings(requestedLocale), error: null }
+  } catch (error) {
+    // Manejo defensivo: la tienda sigue viva con la configuración por defecto.
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('Error leyendo site_settings:', message)
+    return { settings: resolveSiteSettings(DEFAULT_SETTINGS, requestedLocale), error: { message } }
   }
-  return { settings: resolveSiteSettings(mapSettings(data, DEFAULT_SETTINGS), locale), error: null }
 }
 
 /** Obtiene la configuración del sitio para el admin (cliente servidor). */
@@ -298,5 +330,10 @@ export async function updateSiteSettings(payload: Partial<SiteSettings>) {
     .single()
 
   if (error) return { data: null, error, settings: null }
+
+  // Invalida la caché pública de configuración para que la tienda muestre los
+  // cambios al instante (sin esto esperaría hasta PUBLIC_DATA_REVALIDATE_SECONDS).
+  revalidarCacheDeDatos(SITE_SETTINGS_CACHE_TAG)
+
   return { data, error: null, settings: mapSettings(data, DEFAULT_SETTINGS) }
 }

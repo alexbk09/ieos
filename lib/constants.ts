@@ -825,6 +825,27 @@ export const HOMEPAGE_CATEGORY_GRID_LIMIT = 12
  */
 export const SITEMAP_REVALIDATE_SECONDS = 3600
 
+// ---------- Caché de datos públicos (lecturas repetidas) ----------
+
+/**
+ * Revalidación (segundos) de los datos públicos que se leen MUCHAS veces:
+ * configuración del sitio (site_settings) y navegación de categorías.
+ * ------------------------------------------------------------------
+ * POR QUÉ existe: son datos idénticos para todas las páginas y se consultaban
+ * una y otra vez (site_settings se leía 4 veces por render: root shell, metadata
+ * raíz, metadata de página y la propia página). Con ~2.000 páginas estáticas eso
+ * eran miles de round-trips a Supabase (≈250 ms cada uno): la causa real de que
+ * el build tardara minutos. Memoizados por idioma, el build hace 6 consultas.
+ * 5 min: el mismo ciclo que el ISR de la tienda (no añade retardo nuevo).
+ */
+export const PUBLIC_DATA_REVALIDATE_SECONDS = 300
+
+/** Etiqueta de caché de site_settings (se invalida al guardar en el panel). */
+export const SITE_SETTINGS_CACHE_TAG = 'site-settings'
+
+/** Etiqueta de caché de la navegación de categorías (se invalida al editar categorías). */
+export const CATEGORY_NAV_CACHE_TAG = 'category-nav'
+
 /** Máximo de URLs por archivo de sitemap (límite duro de Google: 50,000). */
 export const SITEMAP_MAX_URLS = 50_000
 

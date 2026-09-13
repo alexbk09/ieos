@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import {
@@ -304,8 +305,11 @@ export async function listPublishedEntries(
  * Obtiene una entrada publicada por slug (página /guias/[slug]).
  * Igual que las categorías: primero el slug BASE (URL histórica ya indexada) y
  * luego el slug LOCALIZADO del idioma activo.
+ *
+ * ⚡ `cache()` de React: metadata y página piden la MISMA entrada en el mismo
+ * render → una sola consulta (y el fallback por slug localizado no se repite).
  */
-export async function getPublishedEntryBySlug(slug: string, locale?: string) {
+export const getPublishedEntryBySlug = cache(async (slug: string, locale?: string) => {
   const supabase = createPublicClient()
 
   const { data, error } = await supabase
@@ -329,7 +333,7 @@ export async function getPublishedEntryBySlug(slug: string, locale?: string) {
   }
 
   return { entry: null, error: null }
-}
+})
 
 /** Slugs base + traducciones de las entradas publicadas (generateStaticParams). */
 export async function getEntrySlugs() {
