@@ -270,6 +270,50 @@ todo sale del entorno. Checklist para una instalación nueva:
 | `NEXT_PUBLIC_INDEXING_DAILY_LIMIT` | Opcional (`100`) | Tope diario de envíos. |
 | `NEXT_PUBLIC_INDEXING_BATCH_SIZE` | Opcional (`25`) | URLs por tanda. |
 
+---
+
+## 9. Solución de problemas
+
+**"Últimos movimientos" muestra 403 en filas de `inspeccion`.**
+No es un fallo del envío: son las **auditorías** de Google. El detalle dice la causa
+habitual: *"Google Search Console API has not been used in project … before or it is
+disabled"*. Solución: habilita la **Google Search Console API** en ese proyecto de
+Google Cloud y confirma que la cuenta de servicio figura como **Propietario** de la
+propiedad ([enlace directo del error](https://console.developers.google.com/apis/api/searchconsole.googleapis.com/overview)).
+El módulo **corta el lote** en la primera respuesta 401/403 para no gastar cuota ni
+repetir el error 25 veces, y el panel muestra el motivo en el propio aviso.
+
+**"Enviar tanda" deja filas en error con HTTP 403 desde `indexnow`.**
+El archivo de verificación no existe (o no contiene la clave) en el dominio público.
+Ejecuta `npm run indexnow:key`, despliega y pulsa **Diagnóstico** para confirmarlo.
+Un **202** de IndexNow es correcto (aceptado con verificación de clave pendiente).
+
+**La cola se queda en 1000 URLs y el sitemap tiene más.**
+La sincronización importa hasta 1000 URLs por corrida (`SEO_INDEXING_SYNC_LIMIT`).
+Vuelve a pulsar **Sincronizar sitemap** hasta que el aviso "Quedan URLs por importar"
+desaparezca (el panel solo agrega lo que falta, nunca duplica).
+
+**Cambié el dominio del sitio (o tenía `www` mal) y la cola quedó desfasada.**
+Síntoma: "Auditar en Google" devuelve 403 *"You do not own this site, or the inspected
+URL is not part of this property"*, porque las URLs guardadas pertenecen a otro host que
+la propiedad verificada. Receta:
+
+1. Alinea el dominio: `NEXT_PUBLIC_SITE_URL` debe ser **exactamente** el host que sirve
+   el contenido (si `dominio.com` redirige 308 a `www.dominio.com`, usa
+   `https://www.dominio.com`).
+2. `GOOGLE_SEARCH_CONSOLE_SITE_URL` debe ser la propiedad tal como está verificada en
+   Search Console (`https://www.dominio.com/` o `sc-domain:dominio.com`). El panel y la
+   acción **Diagnóstico** muestran cuál responde 200.
+3. Redespliega y pulsa **Vaciar cola** → **Sincronizar sitemap** (las veces necesarias)
+   → **Enviar tanda**. El registro de auditoría se conserva para tener histórico.
+
+**Todo lo enviado sigue "Sin indexar".**
+Es normal al principio: IndexNow/Bing recrawlean rápido, pero Google decide cuándo. El
+empuje correcto para Google es el sitemap (con `lastmod` real) más las buenas señales
+internas. Usa **Auditar en Google** periódicamente para ver la evolución (`coverageState`)
+y prioriza las que sigan sin indexar.
+
+
 
 
 

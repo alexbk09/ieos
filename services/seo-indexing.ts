@@ -354,6 +354,8 @@ export async function obtenerUrlsIndexables(): Promise<{
 export async function sincronizarColaConSitemap(): Promise<{
   insertadas: number
   totalSitemap: number
+  /** true si el sitemap cabía entero en esta corrida (no quedan URLs por importar). */
+  completo: boolean
   fuente: 'sitemap_publicado' | 'origen_interno'
   error: string | null
 }> {
@@ -373,20 +375,25 @@ export async function sincronizarColaConSitemap(): Promise<{
       origen: 'sitemap',
       estado: 'pendiente',
     }))
-    if (filas.length === 0) return { insertadas: 0, totalSitemap: 0, fuente, error: null }
+    // El sitemap puede tener más URLs que el tope por corrida: el panel avisa
+    // para que el operador repita la sincronización (lotes de 1000).
+    const completo = unicas.size <= SEO_INDEXING_SYNC_LIMIT
+
+    if (filas.length === 0) return { insertadas: 0, totalSitemap: 0, completo, fuente, error: null }
 
     const supabase = await createServerClient()
     const { data, error } = await supabase
       .from('seo_indexing_urls')
       .upsert(filas, { onConflict: 'url', ignoreDuplicates: true })
       .select('url')
-    if (error) return { insertadas: 0, totalSitemap: filas.length, fuente, error: error.message }
+    if (error) return { insertadas: 0, totalSitemap: filas.length, completo, fuente, error: error.message }
 
-    return { insertadas: (data ?? []).length, totalSitemap: filas.length, fuente, error: null }
+    return { insertadas: (data ?? []).length, totalSitemap: filas.length, completo, fuente, error: null }
   } catch (err: any) {
     return {
       insertadas: 0,
       totalSitemap: 0,
+      completo: false,
       fuente: 'origen_interno',
       error: err?.message ?? 'No se pudo sincronizar la cola con el sitemap.',
     }
@@ -907,12 +914,24 @@ export async function enviarLotePendiente(
   }
 }
 
+/** Código HTTP 401: credenciales inválidas o revocadas. */
+const HTTP_NO_AUTORIZADO = 401
+
+/** Código HTTP 403: la API está deshabilitada o la propiedad no está verificada. */
+const HTTP_PROHIBIDO = 403
+
 /**
  * Audita en Google una tanda de URLs ya enviadas (URL Inspection API).
  * ------------------------------------------------------------------
  * POR QUÉ existe: es la única forma oficial de saber, desde el servidor, si
  * una URL está realmente en el índice. El panel la usa para marcar las que
  * siguen SIN indexar y priorizar ahí los esfuerzos.
+ *
+ * Si Google responde 401/403 el problema es de CONFIGURACIÓN (API deshabilitada
+ * o cuenta de servicio sin propiedad en Search Console), así que el lote se
+ * CORTA en la primera respuesta: no tiene sentido gastar 24 llamadas ni llenar
+ * el registro con el mismo error repetido.
+ *
  * @param opciones Tamaño de tanda y correo del operador.
  * @returns Cuántas se inspeccionaron y el nuevo estado de cada una.
  */
@@ -974,25 +993,49 @@ export async function inspeccionarLoteEnGoogle(
 
       if (!inspeccion.ok || inspeccion.estado === 'desconocido') {
         resultado.conError += 1
-      } else {
-        resultado.inspeccionadas += 1
-        finales.push({ estado: inspeccion.estado })
-        await supabase
-          .from('seo_indexing_urls')
-          .update({
-            estado: inspeccion.estado,
-            cobertura: inspeccion.cobertura,
-            inspeccionado_en: new Date().toISOString(),
-            ultimo_error: null,
-          })
-          .eq('id', fila.id)
+        movimientos.push({
+          url: fila.url,
+          canal: 'inspeccion',
+          accion: 'inspeccionar',
+          resultado: 'error',
+          httpStatus: inspeccion.httpStatus,
+          detalle: inspeccion.detalle,
+          usuarioEmail: opciones.usuarioEmail ?? null,
+        })
+
+        // Error de CONFIGURACIÓN: se corta el lote con un mensaje accionable.
+        if (
+          inspeccion.httpStatus === HTTP_NO_AUTORIZADO ||
+          inspeccion.httpStatus === HTTP_PROHIBIDO
+        ) {
+          resultado.mensajes.push(
+            `Google rechazó la auditoría (HTTP ${inspeccion.httpStatus}): ${inspeccion.detalle}`,
+          )
+          resultado.mensajes.push(
+            'Habilita la Google Search Console API en tu proyecto de Google Cloud y confirma que la cuenta de servicio figura como Propietario de la propiedad. No se gastó cuota en el resto del lote.',
+          )
+          break
+        }
+        continue
       }
+
+      resultado.inspeccionadas += 1
+      finales.push({ estado: inspeccion.estado })
+      await supabase
+        .from('seo_indexing_urls')
+        .update({
+          estado: inspeccion.estado,
+          cobertura: inspeccion.cobertura,
+          inspeccionado_en: new Date().toISOString(),
+          ultimo_error: null,
+        })
+        .eq('id', fila.id)
 
       movimientos.push({
         url: fila.url,
         canal: 'inspeccion',
         accion: 'inspeccionar',
-        resultado: inspeccion.ok && inspeccion.estado !== 'desconocido' ? 'ok' : 'error',
+        resultado: 'ok',
         httpStatus: inspeccion.httpStatus,
         detalle: inspeccion.detalle,
         usuarioEmail: opciones.usuarioEmail ?? null,
@@ -1001,7 +1044,9 @@ export async function inspeccionarLoteEnGoogle(
 
     await registrarMovimientos(movimientos)
     resultado.resumen = resumirEstados(finales)
-    resultado.mensajes.push(`Auditadas ${resultado.inspeccionadas} URL(s) en Google Search Console.`)
+    if (resultado.inspeccionadas > 0) {
+      resultado.mensajes.push(`Auditadas ${resultado.inspeccionadas} URL(s) en Google Search Console.`)
+    }
     return resultado
   } catch (err: any) {
     resultado.mensajes.push(err?.message ?? 'Error auditando las URLs en Google.')
@@ -1048,6 +1093,26 @@ export async function quitarUrlsDeLaCola(
   const { error } = await supabase.from('seo_indexing_urls').delete().in('id', limpios)
   if (error) return { eliminadas: 0, error: error.message }
   return { eliminadas: limpios.length, error: null }
+}
+
+/**
+ * Vacía por completo la COLA de indexación (no toca el registro de auditoría).
+ * ------------------------------------------------------------------
+ * POR QUÉ existe: al cambiar el dominio del sitio (por ejemplo pasar de
+ * `dominio.com` a `www.dominio.com`) las URLs ya guardadas dejan de coincidir
+ * con las del sitemap. Vaciar y volver a sincronizar deja la cola coherente
+ * con el host nuevo en 3 pasos, en vez de borrar fila por fila.
+ * @returns Número de filas eliminadas o el error.
+ */
+export async function vaciarColaDeIndexacion(): Promise<{ eliminadas: number; error: string | null }> {
+  const supabase = await createServerClient()
+  const { data, error } = await supabase
+    .from('seo_indexing_urls')
+    .delete()
+    .not('id', 'is', null)
+    .select('id')
+  if (error) return { eliminadas: 0, error: error.message }
+  return { eliminadas: (data ?? []).length, error: null }
 }
 
 /**

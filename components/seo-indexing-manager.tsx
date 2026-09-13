@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Eraser,
   ExternalLink,
   Loader2,
   Radar,
@@ -167,6 +168,16 @@ function fechaCorta(iso: string | null): string {
   }
 }
 
+/**
+ * Resume los mensajes del servidor para mostrarlos en un toast.
+ * Cuando hay incidencias manda el detalle accionable (p. ej. el 403 de Google
+ * explicando que la API está deshabilitada) en lugar de un texto genérico.
+ */
+function descripcionDeResultado(resultado: ResultadoLote, resumenOk: string): string {
+  if (resultado.mensajes.length === 0) return resumenOk
+  return resultado.mensajes.slice(0, 2).join(' ')
+}
+
 export function SeoIndexingManager({
   panorama: panoramaInicial,
   colaInicial,
@@ -241,13 +252,28 @@ export function SeoIndexingManager({
     try {
       const { resultado } = await ejecutarAccion('sincronizar')
       toast.success('Cola sincronizada', {
-        description: `${resultado.insertadas} URL(s) nuevas de ${resultado.totalSitemap} en el sitemap (fuente: ${resultado.fuente === 'sitemap_publicado' ? 'sitemap' : 'datos internos'}).`,
+        description: `${resultado.insertadas} URL(s) nuevas de ${resultado.totalSitemap} leídas del sitemap (fuente: ${resultado.fuente === 'sitemap_publicado' ? 'sitemap' : 'datos internos'}).`,
       })
+      // El sitemap puede tener más URLs que el tope por corrida: se avisa para
+      // que el operador repita la sincronización hasta que no queden.
+      if (resultado.completo === false) {
+        toast.info('Quedan URLs por importar', {
+          description: 'El sitemap tiene más URLs que el tope por corrida: vuelve a pulsar «Sincronizar sitemap».',
+        })
+      }
       await refrescar()
     } catch (err: any) {
       toast.error('No se pudo sincronizar', { description: err?.message })
     }
   }, [ejecutarAccion, refrescar])
+
+  /** Resume los mensajes del servidor para mostrarlos en el toast. */
+  const descripcionDeResultado = (resultado: ResultadoLote, resumenOk: string): string => {
+    if (resultado.mensajes.length === 0) return resumenOk
+    // Con incidencias, el detalle accionable del servidor manda (p. ej. el 403
+    // de Google explicando que la API está deshabilitada).
+    return resultado.mensajes.slice(0, 2).join(' ')
+  }
 
   /** Envía UNA tanda (25 URLs) por los canales permitidos. */
   const enviarTanda = useCallback(async () => {
@@ -255,14 +281,13 @@ export function SeoIndexingManager({
       const { resultado } = (await ejecutarAccion('enviar', SEO_INDEXING_BATCH_SIZE)) as {
         resultado: ResultadoLote
       }
+      const resumen = `${resultado.enviadas} aceptada(s) · ${resultado.conError} con error · quedan ${resultado.cuota.restantes} envíos hoy.`
       if (resultado.conError > 0) {
         toast.warning('Tanda enviada con incidencias', {
-          description: `${resultado.enviadas} aceptada(s) · ${resultado.conError} con error · quedan ${resultado.cuota.restantes} envíos hoy.`,
+          description: descripcionDeResultado(resultado, resumen),
         })
       } else {
-        toast.success('Tanda enviada', {
-          description: `${resultado.enviadas} URL(s) aceptadas · quedan ${resultado.cuota.restantes} envíos hoy.`,
-        })
+        toast.success('Tanda enviada', { description: resumen })
       }
       await refrescar()
     } catch (err: any) {
@@ -270,16 +295,20 @@ export function SeoIndexingManager({
     }
   }, [ejecutarAccion, refrescar])
 
-  /** Envía tandas seguidas hasta agotar la cuota diaria (límite 100/día). */
+  /** Envía tandas seguidas hasta agotar la cuota diaria (límite indicado en constants). */
   const enviarTodo = useCallback(async () => {
     setProgreso({ enviadas: 0, restantes: panorama.cuota.restantes })
     let enviadas = 0
+    let conError = 0
+    let ultimoResultado: ResultadoLote | null = null
     try {
       for (let vuelta = 0; vuelta < Math.ceil(INDEXING_DAILY_LIMIT / SEO_INDEXING_BATCH_SIZE); vuelta += 1) {
         const { resultado } = (await ejecutarAccion('enviar', SEO_INDEXING_BATCH_SIZE)) as {
           resultado: ResultadoLote
         }
+        ultimoResultado = resultado
         enviadas += resultado.enviadas
+        conError += resultado.conError
         setProgreso({ enviadas, restantes: resultado.cuota.restantes })
 
         // Fin: cuota agotada, nada pendiente o tanda sin avance (evita bucles).
@@ -287,9 +316,16 @@ export function SeoIndexingManager({
         if (resultado.procesadas === 0) break
         if (resultado.enviadas === 0 && resultado.conError === 0) break
       }
-      toast.success('Envío por lotes terminado', {
-        description: `${enviadas} URL(s) aceptadas. La cuota se renueva a las 00:00 UTC.`,
-      })
+
+      const resumen = `${enviadas} URL(s) aceptadas. La cuota se renueva a las 00:00 UTC.`
+      if (conError > 0 && ultimoResultado) {
+        toast.warning('Envío por lotes con incidencias', {
+          description: descripcionDeResultado(ultimoResultado, resumen),
+          duration: 12000,
+        })
+      } else {
+        toast.success('Envío por lotes terminado', { description: resumen })
+      }
     } catch (err: any) {
       toast.error('Se detuvo el envío por lotes', { description: err?.message })
     } finally {
@@ -304,9 +340,17 @@ export function SeoIndexingManager({
       const { resultado } = (await ejecutarAccion('inspeccionar', SEO_INDEXING_BATCH_SIZE)) as {
         resultado: ResultadoLote
       }
-      toast.success('Auditoría completada', {
-        description: `${resultado.inspeccionadas} URL(s) consultadas en Search Console · ${resultado.conError} sin respuesta.`,
-      })
+      const resumen = `${resultado.inspeccionadas} URL(s) consultadas en Search Console · ${resultado.conError} sin respuesta.`
+      if (resultado.conError > 0) {
+        // Se muestra el motivo REAL (p. ej. API deshabilitada, 403) para que no
+        // haya que abrir el registro de movimientos.
+        toast.warning('Auditoría con incidencias', {
+          description: descripcionDeResultado(resultado, resumen),
+          duration: 12000,
+        })
+      } else {
+        toast.success('Auditoría completada', { description: resumen })
+      }
       await refrescar()
     } catch (err: any) {
       toast.error('No se pudo auditar', { description: err?.message })
@@ -363,6 +407,30 @@ export function SeoIndexingManager({
       await refrescar()
     } catch (err: any) {
       toast.error('No se pudo limpiar el registro', { description: err?.message })
+    }
+  }, [refrescar])
+
+  /**
+   * Vacía la COLA completa para re-sincronizarla con el dominio actual.
+   * Se usa, por ejemplo, tras corregir el dominio (www vs sin www): las URLs
+   * guardadas ya no coinciden con el sitemap y conviene reimportarlas limpias.
+   */
+  const vaciarCola = useCallback(async () => {
+    if (
+      !window.confirm(
+        '¿Vaciar TODA la cola de indexación? Después pulsa «Sincronizar sitemap» para reimportarla con el dominio actual. El registro de auditoría NO se borra.',
+      )
+    ) {
+      return
+    }
+    try {
+      const { eliminadas } = await peticionApi('DELETE', { body: { accion: 'vaciar-cola' } })
+      toast.success('Cola vaciada', {
+        description: `${eliminadas} URL(s) eliminadas. Pulsa «Sincronizar sitemap» para reimportarlas con el dominio actual.`,
+      })
+      await refrescar()
+    } catch (err: any) {
+      toast.error('No se pudo vaciar la cola', { description: err?.message })
     }
   }, [refrescar])
 
@@ -586,6 +654,17 @@ export function SeoIndexingManager({
               <Send size={15} />
               Enviar todo (hasta {INDEXING_DAILY_LIMIT}/día)
             </button>
+            {canDelete ? (
+              <button
+                type="button"
+                onClick={vaciarCola}
+                disabled={!puede}
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-amber-500/30 px-4 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-500/10 disabled:opacity-50"
+                title="Borra la cola para reimportarla con el dominio actual"
+              >
+                <Eraser size={15} /> Vaciar cola
+              </button>
+            ) : null}
             {canDelete ? (
               <button
                 type="button"

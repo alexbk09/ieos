@@ -12,6 +12,7 @@ import {
   quitarUrlsDeLaCola,
   reenviarSitemapAGoogleConsole,
   sincronizarColaConSitemap,
+  vaciarColaDeIndexacion,
 } from '@/services/seo-indexing'
 
 /**
@@ -113,6 +114,12 @@ export async function DELETE(request: Request) {
     const resultado = await limpiarRegistroDeIndexacion()
     if (resultado.error) return NextResponse.json({ error: resultado.error }, { status: 400 })
     return NextResponse.json({ ok: true })
+  }
+
+  if (accion === 'vaciar-cola') {
+    const resultado = await vaciarColaDeIndexacion()
+    if (resultado.error) return NextResponse.json({ error: resultado.error }, { status: 400 })
+    return NextResponse.json({ eliminadas: resultado.eliminadas })
   }
 
   const ids = Array.isArray(body?.ids) ? body.ids.map((id: unknown) => String(id)) : []
