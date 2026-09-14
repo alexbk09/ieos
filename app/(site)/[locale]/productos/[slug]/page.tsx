@@ -6,6 +6,7 @@ import { getEntriesForProduct } from '@/services/entries'
 import { ProductDetailPageView, type DetailProduct } from '@/components/product-detail-page'
 import type { CardProduct } from '@/components/product-card'
 import { buildProductSchema, buildBreadcrumbSchema, buildFaqSchema, htmlToPlainText, clampText, toAbsoluteUrl } from '@/lib/schema/product-schema'
+import { storedPriceToUsd } from '@/lib/display-price'
 import { absoluteUrl } from '@/lib/seo-url'
 import { buildLanguageAlternates } from '@/lib/seo'
 import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n-config'
@@ -240,14 +241,26 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   ])
   const related = (relatedResult.products ?? []).map(toCardProduct)
 
+  // Producto de afiliado: su precio se guarda en EUR y la vitrina lo publica en
+  // dólares (una sola regla de conversión para todo el sitio).
+  const esAfiliadoSchema = Boolean(
+    product.url_afiliado_ali || product.url_afiliado_amazon || product.url_afiliado_store,
+  )
+
   const jsonLd = buildProductSchema({
     product: {
       id: product.id,
       name: product.name,
       slug: product.slug,
       description: product.description,
-      price_usd: Number(product.price_usd),
-      precio_original: product.precio_original ?? null,
+      // El schema debe declarar EXACTAMENTE el precio que ve el usuario y en su
+      // moneda: los productos de afiliado se guardan en EUR (precio real de
+      // AliExpress) y la vitrina los publica en dólares, así que se aplica la
+      // misma conversión central. Sin esto Google detectaría un "price mismatch".
+      price_usd: storedPriceToUsd(Number(product.price_usd), esAfiliadoSchema),
+      precio_original: product.precio_original != null
+        ? storedPriceToUsd(Number(product.precio_original), esAfiliadoSchema)
+        : null,
       stock: Number(product.stock) || 0,
       low_stock_threshold: Number(product.low_stock_threshold ?? 10),
       pricing_type: product.pricing_type === 'weight' ? 'weight' : 'unit',

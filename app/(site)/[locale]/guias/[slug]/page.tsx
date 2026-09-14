@@ -15,6 +15,7 @@ import { MESSAGES, createTranslator } from '@/lib/i18n-messages'
 import { buildPageMetadata } from '@/lib/seo'
 import { absoluteAssetUrl, absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
+import { storedPriceToUsd } from '@/lib/display-price'
 import { OG_IMAGE_PATH, ENTRY_REQUIRED_SECTIONS } from '@/lib/constants'
 import { buildEntryJsonLd, tieneSeccionEnCuerpo } from '@/lib/entry-rules'
 import { clampText, htmlToPlainText } from '@/lib/schema/product-schema'
@@ -182,7 +183,13 @@ export default async function EntryPage({
     slug: producto.slug,
     nombre: producto.name,
     imagenUrl: producto.image_url,
-    precioUsd: producto.price_usd,
+    // Precio de vitrina en dólares: los productos de afiliado se guardan en EUR
+    // (AliExpress) y se convierten con la MISMA regla que el catálogo, para que
+    // la guía y la ficha del producto nunca muestren cifras distintas.
+    precioUsd: storedPriceToUsd(
+      Number(producto.price_usd),
+      Boolean(producto.url_afiliado_ali || producto.url_afiliado_amazon || producto.url_afiliado_store),
+    ),
     nota: producto.nota,
   }))
 

@@ -34,6 +34,19 @@
   --navy: #020617;
   --navy-foreground: #f8fafc;
   --navy-muted: #cbd5e1;
+  /* ===== Color del MARKETPLACE de afiliado (AliExpress) =====
+     POR QUÉ: el CTA que sale hacia el marketplace se pinta con el color de la
+     marca de destino. Es una AFORDANCIA de marca: el visitante reconoce al
+     instante "este botón me lleva a AliExpress", lo que sube el clic sin usar
+     lenguaje de presión. Los CTA llevan texto blanco en semibold, así que el
+     tono base está elegido para cumplir WCAG AA con blanco (5.1:1); el rojo
+     público de AliExpress (#e62e04) da 4.41:1 y por eso se reserva al hover. */
+  --ali: #d32a03;
+  --ali-hover: #e62e04;
+  /* Variante de TEXTO (etiquetas/eyebrows) sobre fondos claros y sobre el
+     tinte --ali/5: más oscura que --ali para dar AA holgado. */
+  --ali-strong: #b21f00;
+  --ali-foreground: #ffffff;
   /* ===== Superficies del sitio (ritmo visual de las bandas del inicio) =====
      POR QUÉ: alternar blanco puro con negro genera un salto brusco y agresivo.
      Estas 4 capas permiten un degradado tonal continuo (base → tinte suave →
@@ -47,9 +60,9 @@
   --surface-deep-muted: #94a3b8;
 }
 
-.dark { --background: oklch(0.14 0.04 255); --foreground: oklch(0.97 0.01 240); --card: oklch(0.19 0.045 255); --card-foreground: oklch(0.97 0.01 240); --popover: oklch(0.19 0.045 255); --popover-foreground: oklch(0.97 0.01 240); --primary: oklch(0.84 0.14 195); --primary-foreground: oklch(0.14 0.04 255); --secondary: oklch(0.24 0.05 255); --secondary-foreground: oklch(0.97 0.01 240); --muted: oklch(0.24 0.05 255); --muted-foreground: oklch(0.72 0.03 245); --accent: oklch(0.84 0.14 195); --accent-foreground: oklch(0.14 0.04 255); --border: oklch(1 0 0 / 12%); --input: oklch(1 0 0 / 15%); --ring: oklch(0.75 0.1 195); --navy: #020617; --navy-foreground: #f8fafc; --navy-muted: #cbd5e1; --brand: #06b6d4; /* En modo oscuro el acento de TEXTO se invierte a la variante clara para cumplir AA. */ --brand-strong: #67e8f9; --brand-light: #67e8f9; --brand-foreground: #020617; --surface-1: #0b1524; --surface-2: #101c2e; --surface-3: #0d2833; --surface-deep: #020617; --surface-deep-foreground: #f8fafc; --surface-deep-muted: #94a3b8; }
+.dark { --background: oklch(0.14 0.04 255); --foreground: oklch(0.97 0.01 240); --card: oklch(0.19 0.045 255); --card-foreground: oklch(0.97 0.01 240); --popover: oklch(0.19 0.045 255); --popover-foreground: oklch(0.97 0.01 240); --primary: oklch(0.84 0.14 195); --primary-foreground: oklch(0.14 0.04 255); --secondary: oklch(0.24 0.05 255); --secondary-foreground: oklch(0.97 0.01 240); --muted: oklch(0.24 0.05 255); --muted-foreground: oklch(0.72 0.03 245); --accent: oklch(0.84 0.14 195); --accent-foreground: oklch(0.14 0.04 255); --border: oklch(1 0 0 / 12%); --input: oklch(1 0 0 / 15%); --ring: oklch(0.75 0.1 195); --navy: #020617; --navy-foreground: #f8fafc; --navy-muted: #cbd5e1; --brand: #06b6d4; /* En modo oscuro el acento de TEXTO se invierte a la variante clara para cumplir AA. */ --brand-strong: #67e8f9; --brand-light: #67e8f9; --brand-foreground: #020617; --surface-1: #0b1524; --surface-2: #101c2e; --surface-3: #0d2833; --surface-deep: #020617; --surface-deep-foreground: #f8fafc; --surface-deep-muted: #94a3b8; /* Marketplace AliExpress: el fondo del CTA se mantiene (blanco encima da 5.1:1) y solo se aclara la variante de TEXTO para que siga dando AA sobre el fondo oscuro. */ --ali: #d32a03; --ali-hover: #e62e04; --ali-strong: #ff8a3d; --ali-foreground: #ffffff; }
 
-@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-brand: var(--brand); --color-brand-strong: var(--brand-strong); --color-brand-light: var(--brand-light); --color-brand-foreground: var(--brand-foreground); --color-navy: var(--navy); --color-navy-foreground: var(--navy-foreground); --color-navy-muted: var(--navy-muted); --radius-sm: calc(var(--radius) * .6); --radius-md: calc(var(--radius) * .8); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) * 1.4); }
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-brand: var(--brand); --color-brand-strong: var(--brand-strong); --color-brand-light: var(--brand-light); --color-brand-foreground: var(--brand-foreground); --color-navy: var(--navy); --color-navy-foreground: var(--navy-foreground); --color-navy-muted: var(--navy-muted); --color-ali: var(--ali); --color-ali-hover: var(--ali-hover); --color-ali-strong: var(--ali-strong); --color-ali-foreground: var(--ali-foreground); --radius-sm: calc(var(--radius) * .6); --radius-md: calc(var(--radius) * .8); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) * 1.4); }
 
 @layer base {
   * { @apply border-border outline-ring/50; }

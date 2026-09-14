@@ -6,7 +6,7 @@ import { ProductCarousel } from '@/components/product-carousel'
 import { RichDescription } from '@/components/rich-description'
 import { categoryFor, colorImagesFor, isAffiliateProduct, type CardProduct } from '@/components/product-card'
 import { trackProductView } from '@/lib/analytics-client'
-import { formatBolivars, moneyUsd, moneyForProduct, formatRate } from '@/lib/currency'
+import { bolivarsForProduct, moneyForProduct, moneyUsd, formatRate } from '@/lib/currency'
 import { toGrams, formatWeight } from '@/lib/price-calculator'
 import { useTranslations } from '@/hooks/use-translations'
 
@@ -14,7 +14,10 @@ import { useTranslations } from '@/hooks/use-translations'
  * Modal de detalle de producto.
  * Visual ampliado: galería de imágenes, colores clicables (cada color
  * puede tener su propia imagen), peso, tamaño, especificaciones, stock
- * y precio en USD + Bs (con la tasa oficial del día).
+ * y precio en DÓLARES (los productos de AliExpress se guardan en EUR y se
+ * convierten con la configuración central de lib/display-price; los propios ya
+ * vienen en USD). La referencia en bolívares solo aparece si la vitrina la
+ * publica (SHOW_BOLIVAR_PRICES).
  *
  * Para productos por PESO (pricing_type = 'weight'):
  *  - Selector moderno de unidad: gramos (g) o kilos (kg).
@@ -79,6 +82,9 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
   // Total de la línea (peso) o precio unitario × cantidad (unidad)
   const displayPrice = isWeight ? weightLineTotal : product.price_usd * unitQty
   const displayPricePerLine = isWeight ? perGramPrice * grams : product.price_usd
+
+  // Referencia en Bs del importe mostrado (null si la vitrina no publica Bs).
+  const bsReference = bolivarsForProduct(displayPrice, isAffiliateProduct(product), rate)
 
   /** Incrementa/decrementa el peso en pasos de 100g (o el mínimo). */
   function stepWeight(delta: number) {
@@ -294,11 +300,14 @@ export function ProductDetailModal({ product, rate, onClose, onAdd }: {
 
             <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
               <div>
-                {/* Precio por línea (peso calculado o cantidad × unitario).
-                    Moneda REAL: € para afiliados (precio de AliExpress), $ locales. */}
+                {/* Precio por línea (peso calculado o cantidad × unitario),
+                    SIEMPRE en $. Los afiliados se convierten desde EUR. */}
                 <p className="text-3xl font-semibold">{moneyForProduct(displayPrice, isAffiliateProduct(product))}</p>
-                {/* Referencia en bolívares (tasa oficial USD→Bs). */}
-                <p className="mt-1 text-base text-muted-foreground">{formatBolivars(displayPrice, rate)} <span className="text-xs text-muted-foreground">· {t('cart.rate', { rate: formatRate(rate) })}</span></p>
+                {/* Referencia en bolívares: oculta mientras la vitrina solo
+                    publique dólares (sin tasa ni párrafo vacío). */}
+                {bsReference && (
+                  <p className="mt-1 text-base text-muted-foreground">{bsReference} <span className="text-xs text-muted-foreground">· {t('cart.rate', { rate: formatRate(rate) })}</span></p>
+                )}
                 {isWeight && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatWeight(grams)} · {moneyUsd(perGramPrice)}/g

@@ -7,7 +7,7 @@ import { LOW_STOCK_ALERT, PRODUCT_EVENT_TYPES } from '@/lib/constants'
 // Estados de disponibilidad del marketplace (lógica pura compartida, sin strings quemados).
 import { ALI_ESTADO } from '@/lib/ali-availability'
 import { trackProductEvent } from '@/lib/analytics-client'
-import { formatBolivars, moneyEur, moneyUsd } from '@/lib/currency'
+import { bolivarsForProduct, moneyForProduct } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import { useLocalizedPath } from '@/hooks/use-localized-path'
 import { useTranslations } from '@/hooks/use-translations'
@@ -108,22 +108,24 @@ export function productImageAlt(product: CardProduct): string {
 
 
 /**
- * Formatea el precio de un producto por peso: "$X.XX /g · $Y /kg".
+ * Formatea el precio de la card: "$X,XX" o "$X,XX /g".
  *
- * ⚠️ MONEDA: los productos de AFILIADO guardan el precio REAL de AliExpress en
- * EUR (la API se consulta con `target_currency: 'EUR'`), por lo que se muestra
- * con `moneyEur` (€). Los productos LOCALES sí usan USD. Mostrar el valor EUR
- * como "$" era el motivo de que no coincidiera con el precio de AliExpress.
+ * ⚠️ MONEDA: los productos de AFILIADO se guardan en `price_usd` con el valor
+ * REAL de AliExpress en EUR (la API se consulta con `target_currency: 'EUR'`),
+ * así que `moneyForProduct` lo convierte a DÓLARES (tipo de referencia + colchón
+ * central) y lo rotula con $. Los productos LOCALES ya vienen en USD y salen tal
+ * cual. Toda la vitrina queda así en una sola moneda comparable.
  */
 function priceLabel(product: CardProduct) {
+  const esAfiliado = isAffiliateProduct(product)
   const isWeight = product.pricing_type === 'weight'
   if (isWeight) {
     const perGram = Number(product.price_per_gram_usd ?? 0)
     const perKilo = Number(product.price_per_kilo_usd ?? 0)
-    if (perGram > 0) return `${moneyUsd(perGram)} /g`
-    if (perKilo > 0) return `${moneyUsd(perKilo)} /kg`
+    if (perGram > 0) return `${moneyForProduct(perGram, esAfiliado)} /g`
+    if (perKilo > 0) return `${moneyForProduct(perKilo, esAfiliado)} /kg`
   }
-  return isAffiliateProduct(product) ? moneyEur(product.price_usd) : moneyUsd(product.price_usd)
+  return moneyForProduct(product.price_usd, esAfiliado)
 }
 
 /**
@@ -184,6 +186,10 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
 
   // URL canónica de la página de producto (crawlable por Google), en su idioma.
   const productUrl = localizedPath(`/productos/${product.slug}`)
+
+  // Referencia en bolívares: `null` mientras la vitrina solo publique dólares
+  // (interruptor central en lib/display-price), así no queda un párrafo vacío.
+  const bsReference = bolivarsForProduct(product.price_usd, isAffiliateProduct(product), rate)
 
   return (
     <article className="group overflow-hidden rounded-3xl border border-border bg-card">
@@ -299,13 +305,11 @@ export function ProductCard({ product, rate, onAdd, onViewDetails }: {
 
         <div className="mt-5 flex items-end justify-between">
           <div>
-            {/* Precio según tipo (por unidad o por gramo/kilo) */}
+            {/* Precio según tipo (por unidad o por gramo/kilo), SIEMPRE en $. */}
             <p className="font-semibold">{priceLabel(product)}</p>
-            {/* Referencia en bolívares (tasa oficial USD→Bs). El precio base ya
-                se rotula en su moneda real arriba (€ para afiliados, $ locales). */}
-            <p className="text-xs text-muted-foreground">
-              {formatBolivars(product.price_usd, rate)}
-            </p>
+            {/* Referencia en bolívares: se omite por completo mientras la vitrina
+                trabaje en dólares (SHOW_BOLIVAR_PRICES = false). */}
+            {bsReference && <p className="text-xs text-muted-foreground">{bsReference}</p>}
           </div>
           {/* "Ver detalles" navega a la página real (crawlable) en lugar de
               abrir solo el modal, reforzando el enlazado interno hacia el

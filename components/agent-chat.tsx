@@ -18,7 +18,7 @@ type UIMessageLike = {
 }
 import { Bot, ExternalLink, Layers, LoaderCircle, Send, ShoppingBag, Sparkles, X } from 'lucide-react'
 import { emitAddToCart } from '@/lib/cart-bridge'
-import { moneyEur, moneyUsd } from '@/lib/currency'
+import { moneyForProduct } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
 import { trackAffiliateClick } from '@/lib/analytics-client'
 import { AGENT_BRAND_NAME, AGENT_CATEGORY_PATH_PREFIX, AGENT_MAX_STEPS } from '@/lib/constants'
@@ -95,9 +95,11 @@ function AgentProductCard({ prod, onBuy }: { prod: AgentProduct; onBuy: (product
             )}
           </div>
           <p className="text-xs text-muted-foreground">
+            {/* Precio en DÓLARES: los afiliados se guardan en EUR (AliExpress) y
+                se convierten con la configuración central, igual que el catálogo. */}
             {isWeight
-              ? `${moneyUsd(Number(prod.price_per_kilo_usd ?? 0))}/kg · mín ${Number(prod.min_order_grams ?? 0)} g`
-              : `${moneyUsd(Number(prod.price_usd))} · ${moneyEur(Number(prod.price_usd))}`}
+              ? `${moneyForProduct(Number(prod.price_per_kilo_usd ?? 0), Boolean(affiliateUrl))}/kg · mín ${Number(prod.min_order_grams ?? 0)} g`
+              : moneyForProduct(Number(prod.price_usd), Boolean(affiliateUrl))}
           </p>
           <p className="text-[10px] text-muted-foreground">{t('agent.stock')}: {prod.stock}</p>
         </div>

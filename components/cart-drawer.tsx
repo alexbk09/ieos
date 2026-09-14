@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUpRight, Minus, Plus, ShieldCheck, X } from 'lucide-react'
-import { formatBolivars, formatRate, moneyForProduct } from '@/lib/currency'
+import { bolivarsForProduct, formatRate, moneyForProduct } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
 import { useTranslations } from '@/hooks/use-translations'
@@ -35,15 +35,22 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
   if (!open) return null
 
   /**
-   * TRUE si el ítem es de afiliado → su precio está en EUR (AliExpress).
-   * Se usa para rotular el precio con la moneda correcta (€ en vez de $).
+   * TRUE si el ítem es de afiliado → su precio se guarda en EUR (AliExpress).
+   * Se usa para convertir ese valor a dólares al mostrarlo, de modo que todo el
+   * resumen quede en una sola moneda ($).
    */
   function esItemAfiliado(item: CartItem): boolean {
     return Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store)
   }
 
-  /** El total solo se rotula en EUR si TODOS los ítems son de afiliado. */
+  /** El total solo se convierte desde EUR si TODOS los ítems son de afiliado. */
   const totalEsAfiliado = cart.length > 0 && cart.every(esItemAfiliado)
+
+  /**
+   * Referencia en bolívares del total: `null` mientras la vitrina solo publique
+   * dólares (interruptor central), evitando mostrar una tasa sin uso.
+   */
+  const bsTotal = bolivarsForProduct(total, totalEsAfiliado, exchangeRate)
 
   /** Precio por línea según el tipo (peso o unidad). */
   function lineAmount(item: CartItem): number {
@@ -147,7 +154,8 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
             </div>
             <div className="text-right">
               <p className="font-semibold">{moneyForProduct(total, totalEsAfiliado)}</p>
-              <p className="text-xs text-muted-foreground">{formatBolivars(total, exchangeRate)} · {t('cart.rate', { rate: formatRate(exchangeRate) })}</p>
+              {/* Equivalencia en Bs: solo visible si la vitrina la publica. */}
+              {bsTotal && <p className="text-xs text-muted-foreground">{bsTotal} · {t('cart.rate', { rate: formatRate(exchangeRate) })}</p>}
             </div>
           </div>
 
@@ -158,12 +166,16 @@ export function CartDrawer({ open, onClose, cart, onChange, total, onFinishCheck
           )}
 
           {/* Botón principal: NO es un pago local, es salida segura al marketplace.
-              El rojo es #d32a03 y no el #e62e04 anterior: con blanco daba 4.41:1
-              (por debajo de 4.5:1) y el CTA principal no puede ser ilegible. */}
+              COLOR: token --ali (rojo-naranja AliExpress). Antes estaba quemado
+              como bg-[#d32a03]; ahora vive en el sistema de diseño, así el CTA
+              del carrito y los del detalle son EXACTAMENTE el mismo color y
+              cualquier ajuste se hace en un solo lugar (app/globals.css). Ese
+              tono y no el rojo público #e62e04 porque con blanco da 5.1:1 (AA);
+              #e62e04 da 4.41:1 y se reserva al hover. */}
           <button
             disabled={!cart.length}
             onClick={onFinishCheckout}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#d32a03] px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-ali px-5 py-3.5 text-sm font-semibold text-ali-foreground shadow-lg shadow-orange-900/20 transition hover:bg-ali-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShieldCheck size={17} />
             {t('cart.checkout')}

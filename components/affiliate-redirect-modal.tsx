@@ -3,7 +3,7 @@
 import { ArrowUpRight, ExternalLink, ShieldCheck, ShoppingBag } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { toast } from 'sonner'
-import { moneyForProduct, formatBolivars } from '@/lib/currency'
+import { bolivarsForProduct, moneyForProduct } from '@/lib/currency'
 import { formatWeight } from '@/lib/price-calculator'
 import type { CartItem } from '@/hooks/use-cart'
 import { marketplaceForUrl } from '@/lib/affiliate'
@@ -121,6 +121,10 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
           items.map((item) => {
             const url = bestUrl(item)
             const market = marketplaceForUrl(url)
+            // Producto de afiliado: su precio se guarda en EUR y se convierte a $.
+            const esAfiliado = Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store)
+            // Equivalencia en Bs del ítem: `null` si la vitrina no publica Bs.
+            const bsItem = bolivarsForProduct(lineAmount(item), esAfiliado, rate)
             return (
               <div key={item.cartItemId} className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3">
                 {(() => {
@@ -143,7 +147,9 @@ export function AffiliateRedirectModal({ open, items, rate, onClose, onClearChec
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {qtyLabel(item)} · {moneyForProduct(lineAmount(item), Boolean(item.url_afiliado_ali || item.url_afiliado_amazon || item.url_afiliado_store))} · {formatBolivars(lineAmount(item), rate)} <span className="opacity-60">{t('cart.ref')}</span>
+                    {qtyLabel(item)} · {moneyForProduct(lineAmount(item), esAfiliado)}
+                    {/* Equivalencia en Bs: se omite si la vitrina no publica Bs. */}
+                    {bsItem && <> · {bsItem}</>} <span className="opacity-60">{t('cart.ref')}</span>
                   </p>
                 </div>
                 <button

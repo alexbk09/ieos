@@ -14,7 +14,7 @@ import { useCart, type CartProduct } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
-import { moneyUsd, moneyEur, formatBolivars, formatRate } from '@/lib/currency'
+import { bolivarsForProduct, formatRate, moneyForProduct } from '@/lib/currency'
 import { marketplaceForUrl } from '@/lib/affiliate'
 // Estados de disponibilidad del marketplace (lógica pura compartida).
 import { ALI_ESTADO } from '@/lib/ali-availability'
@@ -147,9 +147,17 @@ function StarRating({ value, size = 14, label }: { value: number; size?: number;
  *    asociada (product_images.color_name), la imagen principal muta
  *    con useState SIN recargar la página.
  *  - CTA transparente "Ver Oferta en AliExpress": abre el enlace de
- *    afiliado real en pestaña nueva con rel noopener.
+ *    afiliado real en pestaña nueva con rel noopener. Se repite DOS veces a
+ *    propósito (junto al precio y al final de la ficha): muchos visitantes no
+ *    llegan al CTA inferior, y el segundo acceso se redacta en tono
+ *    informativo ("verifica el precio de hoy"), nunca de presión de venta.
  *  - Botón secundario que reusa el carrito híbrido existente para
  *    productos sin afiliado o compras por solicitud/WhatsApp.
+ *
+ * MONEDA: todo el detalle se lee en DÓLARES. Los productos de afiliado se
+ * guardan en EUR (precio real de AliExpress) y se convierten con la
+ * configuración central de lib/display-price; la referencia en Bs solo se pinta
+ * si la vitrina la publica (SHOW_BOLIVAR_PRICES).
  *
  * NO contiene llamadas a Supabase: todo llega serializado desde el
  * Server Component (regla /services de la arquitectura).
@@ -195,8 +203,21 @@ export function ProductDetailPageView({ product, related, guides, categories, na
   const market = marketplaceForUrl(affiliateUrl)
   // Reseñas reales del producto (migración 0052); [] si aún no hay opiniones.
   const reviews = product.reviews ?? []
-  // Producto de afiliado: su precio está en EUR (AliExpress), no en USD.
+  // Producto de afiliado: su precio se guarda en EUR (precio real de AliExpress)
+  // y se convierte a $ al mostrarlo, igual que en el catálogo.
   const esAfiliado = Boolean(affiliateUrl)
+
+  // Referencia en Bs del precio mostrado: `null` mientras la vitrina trabaje
+  // solo en dólares (interruptor central en lib/display-price).
+  const bsReference = bolivarsForProduct(product.price_usd, esAfiliado, exchangeRate)
+
+  /**
+   * Analítica del CTA de oferta: registra la salida real al marketplace.
+   * Se comparte con el CTA temprano para que AMBAS apariciones midan lo mismo.
+   */
+  const handleOfferClick = () => {
+    if (affiliateUrl) trackAffiliateClick(product.id, affiliateUrl)
+  }
 
   // Ficha técnica (peso/tamaño/peso unitario). Si NO hay ningún dato, la
   // sección se OCULTA por completo para no dejar un bloque vacío en la ficha.
@@ -364,26 +385,63 @@ export function ProductDetailPageView({ product, related, guides, categories, na
             )}
 
             <div className="mt-5 flex items-center gap-3">
-              {/* Moneda REAL: los afiliados guardan el precio de AliExpress en EUR
-                  (target_currency=EUR); los locales, en USD. */}
-              <p className="text-3xl font-semibold">{esAfiliado ? moneyEur(product.price_usd) : moneyUsd(product.price_usd)}</p>
+              {/* Precio en DÓLARES. Los afiliados se guardan en EUR (target_currency
+                  de AliExpress) y se convierten con la configuración central. */}
+              <p className="text-3xl font-semibold">{moneyForProduct(product.price_usd, esAfiliado)}</p>
               {product.precio_original && product.precio_original > product.price_usd && (
                 <p className="text-lg text-muted-foreground line-through">
-                  {esAfiliado ? moneyEur(product.precio_original) : moneyUsd(product.precio_original)}
+                  {moneyForProduct(product.precio_original, esAfiliado)}
                 </p>
               )}
               <span className={`ml-auto rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ${noDisponible ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400' : lowStock ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
                 {stockBadge}
               </span>
             </div>
-            {/* Referencia en bolívares (tasa oficial USD→Bs) + aviso de variación. */}
-            <p className="mt-1 text-sm text-muted-foreground">
-              {formatBolivars(product.price_usd, exchangeRate)} <span className="text-xs opacity-70">· {t('cart.rate', { rate: formatRate(exchangeRate) })}</span>
-            </p>
+            {/* Referencia en bolívares: se omite por completo mientras la vitrina
+                solo publique dólares (sin párrafo vacío ni tasa sin uso). */}
+            {bsReference && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {bsReference} <span className="text-xs opacity-70">· {t('cart.rate', { rate: formatRate(exchangeRate) })}</span>
+              </p>
+            )}
             {esAfiliado && (
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 {t('product.priceReferenceNote')}
               </p>
+            )}
+
+            {/* ── CTA TEMPRANO (segunda aparición del botón de oferta) ─────────
+                POR QUÉ: el CTA principal vive al final de la ficha y buena parte
+                del tráfico (sobre todo en móvil) no baja hasta ahí. Repetir el
+                acceso justo después de leer el precio —momento de máxima
+                intención— recupera a ese visitante SIN presionarlo: el texto
+                invita a VERIFICAR/COMPARAR y aclara que aquí no se cobra nada.
+                Solo se muestra en productos de afiliado y comprables.
+                COLOR: se usa el token --ali (rojo-naranja AliExpress) en los DOS
+                accesos al marketplace. Mismo destino → mismo color: el visitante
+                reconoce la salida a AliExpress al instante. La jerarquía se marca
+                con tamaño y contenedor, no cambiando el tono. */}
+            {affiliateUrl && !noDisponible && (
+              <div className="mt-5 rounded-3xl border border-ali/30 bg-ali/5 p-4">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-ali-strong">
+                  {t('product.quickCtaEyebrow')}
+                </p>
+                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                  {t('product.quickCtaBody', { market: market.label })}
+                </p>
+                <a
+                  href={affiliateUrl}
+                  target="_blank"
+                  rel={AFFILIATE_LINK_REL}
+                  onClick={handleOfferClick}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-ali px-5 py-3 text-sm font-semibold text-ali-foreground shadow-lg shadow-orange-900/20 transition hover:bg-ali-hover active:scale-[0.99]"
+                >
+                  <ExternalLink size={15} /> {t('product.quickCtaButton', { market: market.shortLabel })}
+                </a>
+                <p className="mt-2 text-center text-[11px] leading-5 text-muted-foreground">
+                  {t('product.quickCtaNote')}
+                </p>
+              </div>
             )}
 
             {/* La descripción y la ficha técnica se agrupan más abajo en PESTAÑAS
@@ -526,6 +584,10 @@ export function ProductDetailPageView({ product, related, guides, categories, na
             ) : (
               <>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  {/* CTA PRINCIPAL. Con enlace de afiliado se pinta con el color
+                      del marketplace (--ali: rojo-naranja AliExpress, AA 5.1:1
+                      con texto blanco); sin enlace es una acción de la tienda
+                      (agregar a la selección) y conserva el color de marca. */}
                   <a
                     href={affiliateUrl ?? '#'}
                     target={affiliateUrl ? '_blank' : undefined}
@@ -536,19 +598,19 @@ export function ProductDetailPageView({ product, related, guides, categories, na
                         add(cartProduct, 'u', 1, selectedColor ?? undefined)
                         return
                       }
-                      // Analítica: registro de salida real al marketplace de afiliado.
-                      trackAffiliateClick(product.id, affiliateUrl)
+                      // Analítica: mismo evento que el CTA temprano (una sola fuente).
+                      handleOfferClick()
                     }}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-semibold text-brand-foreground transition hover:brightness-110 active:scale-[0.99]"
+                    className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition active:scale-[0.99] ${affiliateUrl ? 'bg-ali text-ali-foreground shadow-lg shadow-orange-900/20 hover:bg-ali-hover' : 'bg-brand text-brand-foreground hover:brightness-110'}`}
                   >
                     {affiliateUrl ? <><ExternalLink size={16} /> {ctaLabel}</> : <>{t('product.addToSelection')} <Plus size={16} /></>}
                   </a>
-                  <button
+       {/*            <button
                     onClick={() => add(cartProduct, 'u', 1, selectedColor ?? undefined)}
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground transition hover:bg-muted"
                   >
                     <Plus size={15} /> {t('product.addRequest')}
-                  </button>
+                  </button> */}
                 </div>
 
                 {affiliateUrl && (

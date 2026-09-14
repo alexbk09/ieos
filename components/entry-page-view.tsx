@@ -8,7 +8,7 @@ import { CartDrawer } from '@/components/cart-drawer'
 import { RichDescription } from '@/components/rich-description'
 import { ComparisonTable, type ComparisonTableData } from '@/components/comparison-table'
 import { EntryCard, type EntryCardData } from '@/components/entry-card'
-import { moneyUsd } from '@/lib/currency'
+import { moneyUsdSymbol } from '@/lib/currency'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useLocalizedPath } from '@/hooks/use-localized-path'
@@ -233,8 +233,10 @@ export function EntryPageView({
                         >
                           {product.nombre}
                         </a>
+                        {/* Precio de vitrina en dólares ($), ya convertido desde EUR
+                            para los productos de afiliado en la página server. */}
                         {product.precioUsd > 0 && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">{moneyUsd(product.precioUsd)}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{moneyUsdSymbol(product.precioUsd)}</p>
                         )}
                         {product.nota && (
                           <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">

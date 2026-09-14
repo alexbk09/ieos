@@ -19,6 +19,16 @@ export {
 /** Tasa de cambio fija USD → Bs. para mostrar precios en bolívares. */
 export const EXCHANGE_RATE = 36.5
 
+// Presentación de precios de la VITRINA (conversión EUR→USD, colchón de
+// conversión e interruptor de la referencia en bolívares). La lógica pura vive
+// en lib/display-price.mjs para poder probarse con `node --test`; aquí se
+// re-expone para que el resto de la app tenga un único punto de configuración.
+export {
+  EUR_USD_REFERENCE_RATE,
+  PRICE_DISPLAY_MARKUP_PERCENT,
+  SHOW_BOLIVAR_PRICES,
+} from '@/lib/display-price'
+
 /** Umbral mínimo de stock para considerar un producto como "stock bajo". */
 export const LOW_STOCK_ALERT = 20
 
