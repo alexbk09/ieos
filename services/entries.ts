@@ -84,6 +84,12 @@ export type EntryProduct = {
   url_afiliado_ali: string | null
   url_afiliado_amazon: string | null
   url_afiliado_store: string | null
+  /**
+   * Disponibilidad verificada en el marketplace (migración 0058): permite NO
+   * ofrecer la salida de compra cuando la ficha está degradada (OutOfStock),
+   * igual que hace la ficha del producto.
+   */
+  ali_status: string | null
   /** Orden dentro de la comparativa/top. */
   posicion: number
   /** Veredicto corto del producto dentro de esta entrada. */
@@ -139,7 +145,7 @@ const I18N_RESOLVE_OPTIONS = { sourceLocale: SOURCE_LOCALE, defaultLocale: DEFAU
  * comparativa y el CTA de afiliado) + sus nichos.
  */
 export const ENTRY_SELECT =
-  '*, seo_entry_products(posicion,nota,products(id,name,slug,image_url,price_usd,stock,specifications,url_afiliado_ali,url_afiliado_amazon,url_afiliado_store,product_images(url,sort_order))), seo_entry_categories(categories(id,name,slug,slug_i18n))'
+  '*, seo_entry_products(posicion,nota,products(id,name,slug,image_url,price_usd,stock,specifications,url_afiliado_ali,url_afiliado_amazon,url_afiliado_store,ali_status,product_images(url,sort_order))), seo_entry_categories(categories(id,name,slug,slug_i18n))'
 
 // ---------- Normalización ----------
 
@@ -193,6 +199,7 @@ export function mapEntry(row: any): Entry {
       url_afiliado_ali: link.products.url_afiliado_ali ?? null,
       url_afiliado_amazon: link.products.url_afiliado_amazon ?? null,
       url_afiliado_store: link.products.url_afiliado_store ?? null,
+      ali_status: link.products.ali_status ?? null,
       posicion: Number(link.posicion ?? 0),
       nota: link.nota ?? null,
     }))

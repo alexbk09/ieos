@@ -1,5 +1,6 @@
 'use client'
 
+import { MarketplaceOfferButton } from '@/components/marketplace-offer-button'
 import { useTranslations } from '@/hooks/use-translations'
 
 /**
@@ -19,17 +20,31 @@ export type ComparisonTableData = {
 }
 
 /** Cabecera de producto de la tabla. */
-export type ComparisonProductHeader = { slug: string; name: string }
+export type ComparisonProductHeader = {
+  slug: string
+  name: string
+  /** Id real del producto: solo para atribuir el clic de afiliado en analítica. */
+  id?: string
+}
 
 export function ComparisonTable({
   comparison,
   products,
   linkForProduct,
+  offerUrlForProduct,
 }: {
   comparison: ComparisonTableData | null
   products: ComparisonProductHeader[]
   /** Construye el enlace interno al producto (idioma activo incluido). */
   linkForProduct: (product: ComparisonProductHeader) => string
+  /**
+   * Devuelve la URL de afiliado del producto comparado (o `null` si no tiene
+   * enlace, si está degradado en el marketplace o si la tabla va en modo
+   * previsualización). Cuando existe, cada columna muestra el MISMO CTA
+   * "Ver Oferta en …" que la ficha del producto: quien ya decidió comparar no
+   * tiene que navegar a otra página para comprar.
+   */
+  offerUrlForProduct?: (product: ComparisonProductHeader) => string | null
 }) {
   const t = useTranslations()
 
@@ -51,9 +66,11 @@ export function ComparisonTable({
       <h2 id="entry-comparison-heading" className="text-2xl font-semibold tracking-[-.04em] sm:text-3xl">
         {t('entry.comparison')}
       </h2>
-      {/* overflow-x-auto: en móvil la tabla se desplaza en lugar de romper el layout. */}
+      {/* overflow-x-auto: en móvil la tabla se desplaza en lugar de romper el layout.
+          600px de ancho mínimo: ahora cada columna lleva nombre + CTA de oferta, y
+          menos ancho dejaba el botón partido en tres líneas. */}
       <div className="mt-5 overflow-x-auto rounded-3xl border border-border bg-card">
-        <table className="w-full min-w-[520px] border-collapse text-sm">
+        <table className="w-full min-w-[600px] border-collapse text-sm">
           <caption className="sr-only">{t('entry.comparison')}</caption>
           <thead>
             <tr className="border-b border-border bg-muted/40">
@@ -63,13 +80,21 @@ export function ComparisonTable({
               >
                 {t('entry.criteria')}
               </th>
-              {products.map((product) => (
-                <th key={product.slug} scope="col" className="px-4 py-3 text-left font-medium">
-                  <a href={linkForProduct(product)} className="transition hover:text-brand-strong">
-                    {product.name}
-                  </a>
-                </th>
-              ))}
+              {products.map((product) => {
+                const offerUrl = offerUrlForProduct?.(product) ?? null
+                return (
+                  <th key={product.slug} scope="col" className="px-4 py-3 text-left align-top font-medium">
+                    <a href={linkForProduct(product)} className="transition hover:text-brand-strong">
+                      {product.name}
+                    </a>
+                    {/* Salida directa al marketplace con el precio real: mismo CTA
+                        "Ver Oferta" de la ficha (átomo compartido). */}
+                    {offerUrl && (
+                      <MarketplaceOfferButton url={offerUrl} productId={product.id ?? product.slug} />
+                    )}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>

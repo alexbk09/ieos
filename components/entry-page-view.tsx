@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Image from 'next/image'
 import { CalendarClock, Clock, Tag } from 'lucide-react'
 import { SiteHeader, type HeaderNavLink } from '@/components/site-header'
@@ -8,7 +9,10 @@ import { CartDrawer } from '@/components/cart-drawer'
 import { RichDescription } from '@/components/rich-description'
 import { ComparisonTable, type ComparisonTableData } from '@/components/comparison-table'
 import { EntryCard, type EntryCardData } from '@/components/entry-card'
+import { MarketplaceOfferButton } from '@/components/marketplace-offer-button'
 import { moneyUsdSymbol } from '@/lib/currency'
+// Estados de disponibilidad del marketplace (lógica pura compartida).
+import { ALI_ESTADO } from '@/lib/ali-availability'
 import { useCart } from '@/hooks/use-cart'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useLocalizedPath } from '@/hooks/use-localized-path'
@@ -45,11 +49,17 @@ export type EntryViewData = {
 
 /** Producto comparado (datos mínimos para el rail de productos). */
 export type EntryViewProduct = {
+  /** Id real del producto: atribuye los clics de afiliado en analítica. */
+  id: string
   slug: string
   nombre: string
   imagenUrl: string | null
   precioUsd: number
   nota: string | null
+  /** URL de afiliado resuelta (AliExpress → Amazon → tienda) o null. */
+  urlAfiliado: string | null
+  /** Disponibilidad en el marketplace: 'unavailable' = ficha degradada. */
+  aliStatus: string | null
 }
 
 /** Nicho enlazado (enlazado interno hacia el hub). */
@@ -101,7 +111,24 @@ export function EntryPageView({
 
   /** Enlace interno a la ficha de un producto (con el idioma activo). */
   const productLink = (product: { slug: string }) => localizedPath('/productos/' + product.slug)
-  const comparisonProducts = products.map((product) => ({ slug: product.slug, name: product.nombre }))
+  // Cabeceras de la tabla comparativa: slug + nombre + id (analítica de clics).
+  const comparisonProducts = products.map((product) => ({ slug: product.slug, name: product.nombre, id: product.id }))
+
+  /**
+   * Oferta de marketplace por slug, para el CTA "Ver Oferta" de la comparativa.
+   * Se resuelve una vez por render (mapa O(1)) y se omite en productos sin
+   * enlace o degradados en el marketplace: nunca se ofrece una compra rota.
+   */
+  const offerBySlug = useMemo(
+    () =>
+      new Map(
+        products
+          .filter((product) => product.urlAfiliado && product.aliStatus !== ALI_ESTADO.UNAVAILABLE)
+          .map((product) => [product.slug, product.urlAfiliado as string]),
+      ),
+    [products],
+  )
+  const offerUrlForProduct = (product: { slug: string }) => offerBySlug.get(product.slug) ?? null
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -194,11 +221,14 @@ export function EntryPageView({
               </section>
             )}
 
-            {/* Comparativa con datos REALES del catálogo (nunca inventados por la IA). */}
+            {/* Comparativa con datos REALES del catálogo (nunca inventados por la IA).
+                Cada columna lleva el CTA "Ver Oferta en …" del marketplace: quien
+                ya decidió comparando puede comprar sin salir de la guía. */}
             <ComparisonTable
               comparison={entry.comparativa}
               products={comparisonProducts}
               linkForProduct={productLink}
+              offerUrlForProduct={offerUrlForProduct}
             />
           </article>
 
@@ -242,6 +272,13 @@ export function EntryPageView({
                           <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
                             {product.nota}
                           </p>
+                        )}
+                        {/* Salida directa al marketplace: mismo CTA que la ficha y
+                            que la comparativa (átomo compartido). Se omite si el
+                            producto no tiene enlace o está degradado (OutOfStock),
+                            para no ofrecer una compra rota. */}
+                        {product.urlAfiliado && product.aliStatus !== ALI_ESTADO.UNAVAILABLE && (
+                          <MarketplaceOfferButton url={product.urlAfiliado} productId={product.id} />
                         )}
                       </div>
                     </li>

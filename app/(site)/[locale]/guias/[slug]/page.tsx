@@ -16,6 +16,8 @@ import { buildPageMetadata } from '@/lib/seo'
 import { absoluteAssetUrl, absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { storedPriceToUsd } from '@/lib/display-price'
+// Resolución del enlace de salida (AliExpress → Amazon → tienda): una sola fuente.
+import { preferAffiliateUrl } from '@/lib/affiliate'
 import { OG_IMAGE_PATH, ENTRY_REQUIRED_SECTIONS } from '@/lib/constants'
 import { buildEntryJsonLd, tieneSeccionEnCuerpo } from '@/lib/entry-rules'
 import { clampText, htmlToPlainText } from '@/lib/schema/product-schema'
@@ -180,6 +182,7 @@ export default async function EntryPage({
   })
 
   const products: EntryViewProduct[] = entry.products.map((producto) => ({
+    id: producto.id,
     slug: producto.slug,
     nombre: producto.name,
     imagenUrl: producto.image_url,
@@ -191,6 +194,10 @@ export default async function EntryPage({
       Boolean(producto.url_afiliado_ali || producto.url_afiliado_amazon || producto.url_afiliado_store),
     ),
     nota: producto.nota,
+    // CTA "Ver Oferta en …": la URL real de salida y el estado verificado del
+    // marketplace viajan ya resueltos (la vista es presentacional).
+    urlAfiliado: preferAffiliateUrl(producto),
+    aliStatus: producto.ali_status ?? null,
   }))
 
   const categories = entry.categories.map((categoria) => ({

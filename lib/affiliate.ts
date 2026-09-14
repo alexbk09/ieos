@@ -63,3 +63,20 @@ export function preferAffiliateUrl(payload: {
 }): string | null {
   return payload.url_afiliado_ali ?? payload.url_afiliado_amazon ?? payload.url_afiliado_store ?? null
 }
+
+/**
+ * Clave i18n del CTA de oferta según el marketplace destino.
+ *
+ * POR QUÉ: la vitrina muestra el mismo botón "Ver Oferta en …" en la ficha del
+ * producto, en la tabla comparativa de una guía y en el rail de productos de la
+ * guía. Con esta única fuente, el texto y el idioma del botón no se
+ * desincronizan entre superficies.
+ *
+ * @param market Marketplace detectado por `marketplaceForUrl`.
+ * @returns Clave del diccionario de mensajes (lib/i18n/messages/*).
+ */
+export function affiliateCtaKey(market: AffiliateMarket): string {
+  if (market === 'ali') return 'product.ctaAli'
+  if (market === 'amazon') return 'product.ctaAmazon'
+  return 'product.ctaStore'
+}

@@ -15,7 +15,7 @@ import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useAgentAddToCart } from '@/hooks/use-agent-add-to-cart'
 import { trackProductView, trackAffiliateClick } from '@/lib/analytics-client'
 import { bolivarsForProduct, formatRate, moneyForProduct } from '@/lib/currency'
-import { marketplaceForUrl } from '@/lib/affiliate'
+import { affiliateCtaKey, marketplaceForUrl } from '@/lib/affiliate'
 // Estados de disponibilidad del marketplace (lógica pura compartida).
 import { ALI_ESTADO } from '@/lib/ali-availability'
 import { AFFILIATE_LINK_REL, SEO_OPTIONAL_SPECS_SECTION } from '@/lib/constants'
@@ -269,7 +269,9 @@ export function ProductDetailPageView({ product, related, guides, categories, na
   )
   // La pestaña de ficha técnica solo existe si hay algo que mostrar en ella.
   const tieneFichaTecnica = Boolean(fichaTecnicaHtml) || fichaTecnica.length > 0 || especificaciones.length > 0
-  const ctaLabel = product.url_afiliado_ali ? t('product.ctaAli') : market.shortLabel === 'Amazon' ? t('product.ctaAmazon') : market.shortLabel === 'Tienda' ? t('product.ctaStore') : t('product.ctaAli')
+  // Etiqueta del CTA según el marketplace REAL del enlace (AliExpress/Amazon/tienda):
+  // clave i18n compartida con la tabla comparativa y el rail de las guías.
+  const ctaLabel = t(affiliateCtaKey(market.id))
 
   // Producto listo para el carrito híbrido (image_url siempre string en runtime).
   const cartProduct: CartProduct = { ...product, image_url: product.image_url ?? '' }
