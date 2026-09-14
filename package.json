@@ -12,6 +12,7 @@
     "prebuild": "node scripts/generate-indexnow-key.mjs",
     "indexnow:key": "node scripts/generate-indexnow-key.mjs",
     "indexnow:key:dry": "node scripts/generate-indexnow-key.mjs --dry-run",
+    "vercel:env": "node scripts/print-vercel-env.mjs",
     "supabase:setup": "node supabase/run.mjs",
     "supabase:seed": "node supabase/run.mjs --only-seed",
     "supabase:verify": "node supabase/run.mjs --verify",
