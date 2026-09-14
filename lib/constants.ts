@@ -688,6 +688,25 @@ export const ENTRY_TYPES = [
 ] as const
 
 /**
+ * Prefijo i18n de la etiqueta visible de cada tipo de entrada.
+ * La clave se DERIVA del tipo (`entry.type.comparativa`, …) para no mantener un
+ * segundo mapa a mano: si mañana se añade un tipo, basta con traducir su clave.
+ */
+export const ENTRY_TYPE_LABEL_PREFIX = 'entry.type.'
+
+/**
+ * Devuelve la clave i18n de la etiqueta de un tipo de entrada.
+ * POR QUÉ existe: el filtro por tipo del hub /guias se pinta con el idioma
+ * activo; así el componente no quema textos en español ni conoce los tipos.
+ * @param tipo Tipo de entrada (ver ENTRY_TYPES).
+ * @returns Clave i18n o null cuando el tipo no está soportado.
+ */
+export function entryTypeLabelKey(tipo: string | null | undefined): string | null {
+  const valor = String(tipo ?? '')
+  return (ENTRY_TYPES as readonly string[]).includes(valor) ? ENTRY_TYPE_LABEL_PREFIX + valor : null
+}
+
+/**
  * Estados del ciclo editorial. Reflejan el CHECK de la migración 0056.
  * Solo 'publicado' es visible en público y entra al sitemap.
  */
@@ -760,11 +779,54 @@ export const ENTRY_MAX_PAIRS = 6
 export const ENTRY_RELATED_LIMIT = 3
 
 /**
- * Entradas que muestra el índice /guias por página. Se mantiene moderado para
- * que el hub cargue rápido y para que el usuario explore en profundidad (mejor
- * UX y mejor distribución de autoridad interna que volcar todo).
+ * Entradas que muestra el índice /guias por CADA página del paginador.
+ * El hub descarga una sola vez las guías publicadas (lote acotado por
+ * ENTRY_INDEX_MAX_ITEMS) y pagina en el CLIENTE: cambiar de página o filtrar es
+ * instantáneo, sin peticiones nuevas y sin perder el HTML estático que lee
+ * Google. Se mantiene moderado para no saturar la primera pantalla.
  */
 export const ENTRY_INDEX_PAGE_SIZE = 12
+
+/**
+ * Botones/huecos máximos que pinta el paginador del hub (incluye las elipsis).
+ * Acotarlo evita una fila interminable de números cuando hay muchas guías.
+ */
+export const ENTRY_INDEX_PAGE_LINKS = 7
+
+/**
+ * Tope de guías que descarga el hub en una sola consulta.
+ * POR QUÉ existe: el índice busca, filtra y pagina en el cliente, así que
+ * necesita el lote completo; el tope mantiene la respuesta (y el HTML) acotada
+ * aunque el contenido crezca. Va muy por encima del catálogo realista
+ * (ENTRY_MAX_PER_CATEGORY × nichos) y por debajo del corte de PostgREST.
+ */
+export const ENTRY_INDEX_MAX_ITEMS = 240
+
+/**
+ * Opciones de orden del índice /guias. `value` es el orden que entiende
+ * lib/entry-index.mjs (lógica pura) y `labelKey` la clave i18n de su etiqueta.
+ */
+export const ENTRY_INDEX_SORT_OPTIONS = [
+  { value: 'recent', labelKey: 'entry.sortRecent' },
+  { value: 'reading', labelKey: 'entry.sortFastRead' },
+  { value: 'az', labelKey: 'entry.sortAz' },
+] as const
+
+/** Orden válido del índice (derivado de las opciones: sin strings sueltos). */
+export type EntryIndexSortValue = (typeof ENTRY_INDEX_SORT_OPTIONS)[number]['value']
+
+/** Valores de orden válidos, para validar entradas externas. */
+export const ENTRY_INDEX_SORT_VALUES: readonly EntryIndexSortValue[] = ENTRY_INDEX_SORT_OPTIONS.map(
+  (option) => option.value,
+)
+
+/** Orden por defecto: lo recién publicado primero (señal de frescura pSEO). */
+export const DEFAULT_ENTRY_INDEX_SORT: EntryIndexSortValue = 'recent'
+
+/** Comprueba si un valor arbitrario es un orden de índice válido. */
+export function isEntryIndexSortValue(value: string): value is EntryIndexSortValue {
+  return (ENTRY_INDEX_SORT_VALUES as readonly string[]).includes(value)
+}
 
 /**
  * Tope de entradas que descarga de una vez el panel admin de "Guías y

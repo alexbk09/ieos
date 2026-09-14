@@ -1,0 +1,10 @@
+(internal)
+(site)
+api
+apple-icon.png
+auth
+globals.css
+icon.png
+llms.txt
+robots.ts
+sitemap.ts

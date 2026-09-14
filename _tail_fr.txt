@@ -1,0 +1,12 @@
+﻿  'entry.verdict': 'Verdict',
+  'entry.products': 'Produits de ce guide',
+  'entry.seeProduct': 'Voir le produit',
+  'entry.faq': 'Questions frÃ©quentes',
+  'entry.related': 'Ã€ lire ensuite',
+  'entry.allGuides': 'Tous les guides',
+  'entry.indexTitle': 'Guides et comparatifs',
+  'entry.indexSubtitle': 'Comparatifs, guides d\'achat et conseils pour mieux choisir.',
+  'entry.empty': 'Aucun guide publiÃ© pour le moment.',
+  'entry.backToIndex': 'Retour aux guides',
+  'entry.guideLink': 'Lire le guide',
+}

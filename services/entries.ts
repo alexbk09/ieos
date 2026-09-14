@@ -5,6 +5,7 @@ import {
   DEFAULT_AUTHOR,
   DEFAULT_LOCALE,
   ENTRY_ADMIN_LIST_LIMIT,
+  ENTRY_INDEX_MAX_ITEMS,
   ENTRY_INDEX_PAGE_SIZE,
   ENTRY_MAX_CRITERIA,
   ENTRY_MAX_PER_CATEGORY,
@@ -258,14 +259,42 @@ export function mapEntry(row: any): Entry {
  *
  * @returns URL de la imagen o null si no hay ninguna disponible.
  */
-export function entryHeroImage(entry: Pick<Entry, 'hero_image_url' | 'products'>): string | null {
-  if (entry?.hero_image_url) return entry.hero_image_url
-  for (const producto of entry?.products ?? []) {
+/**
+ * Resuelve la IMAGEN DE CABECERA a partir de la URL editorial y los productos.
+ * ------------------------------------------------------------------
+ * Cadena de prioridad (para que la tarjeta NUNCA quede gris):
+ *   1. `hero_image_url`: elección editorial del administrador (manda siempre).
+ *   2. Foto principal del primer producto comparado, en su orden editorial.
+ *   3. Primera imagen de la galería de ese producto.
+ *
+ * POR QUÉ se extrae como función propia: la usan TANTO la entrada completa
+ * (`entryHeroImage`) COMO el índice ligero del hub (`mapEntryIndexItem`), y la
+ * regla de negocio debe existir una sola vez.
+ *
+ * @param heroImageUrl Imagen elegida a mano en el panel.
+ * @param productos Productos comparados, ya ordenados por posición editorial.
+ * @returns URL de la imagen o null si no hay ninguna disponible.
+ */
+export function resolveHeroImage(
+  heroImageUrl: string | null | undefined,
+  productos: { image_url?: string | null; images?: { url: string }[] | null }[] = [],
+): string | null {
+  if (heroImageUrl) return heroImageUrl
+  for (const producto of productos ?? []) {
     if (producto?.image_url) return producto.image_url
     const primeraDeGaleria = (producto?.images ?? [])[0]
     if (primeraDeGaleria?.url) return primeraDeGaleria.url
   }
   return null
+}
+
+/**
+ * Imagen de cabecera de una entrada completa (delegando en la regla única).
+ * @param entry Entrada con su imagen editorial y sus productos.
+ * @returns URL de la imagen o null si no hay ninguna disponible.
+ */
+export function entryHeroImage(entry: Pick<Entry, 'hero_image_url' | 'products'>): string | null {
+  return resolveHeroImage(entry?.hero_image_url, entry?.products ?? [])
 }
 
 /**
@@ -312,24 +341,110 @@ export type EntryListFilters = {
 }
 
 /**
- * Lista las entradas PUBLICADAS (hub /guias).
- * Cliente público → cacheable y sin exponer borradores.
+ * Columnas LIGERAS del índice del hub /guias.
+ * ------------------------------------------------------------------
+ * POR QUÉ no se reutiliza ENTRY_SELECT: el hub lista TODAS las entradas
+ * publicadas y `cuerpo_html` pesa 10-20 KB por guía (además de la tabla
+ * comparativa y la FAQ, que el índice no pinta). Con esta selección la página
+ * viaja igual de rápido con 12 guías que con 200.
  */
-export async function listPublishedEntries(
-  input: { locale?: string; limit?: number; offset?: number } = {},
-) {
+export const ENTRY_INDEX_SELECT =
+  'id,tipo,titulo,slug,slug_i18n,resumen,angulo,keywords,lectura_minutos,hero_image_url,publicado_en,seo_entry_products(posicion,products(image_url,product_images(url,sort_order))),seo_entry_categories(categories(id,name,slug,slug_i18n))'
+
+/** Entrada del índice ligero: lo que pinta la tarjeta + lo que usan los filtros. */
+export type EntryIndexItem = {
+  /** Slug base (identificador estable de la entrada). */
+  slug: string
+  /** Slug del idioma activo (fallback = slug base). */
+  slugLocalizado: string
+  titulo: string
+  resumen: string | null
+  heroImageUrl: string | null
+  /** Gancho editorial ("para pisos pequeños", "regalo original"). */
+  angulo: string | null
+  lecturaMinutos: number | null
+  /** Tipo de entrada: alimenta el filtro "tipo de contenido". */
+  tipo: EntryTipo
+  /** Palabras clave long-tail: amplían el alcance del buscador. */
+  keywords: string[]
+  /** Fecha de publicación ISO: alimenta el orden por novedad. */
+  publicadoEn: string | null
+  /** Nichos de la entrada: alimentan el filtro por nicho. */
+  categorias: { id: string; name: string; slug: string; slugLocalizado: string }[]
+}
+
+/**
+ * Convierte una fila ligera de Supabase en `EntryIndexItem`.
+ * Aplica la MISMA cadena de fallback i18n que el resto del servicio, así el
+ * índice muestra el idioma pedido sin que el componente conozca los JSONB.
+ */
+function mapEntryIndexItem(row: any, locale?: string): EntryIndexItem {
+  // Productos solo para la imagen de cabecera: en su orden editorial.
+  const productos = ((row?.seo_entry_products ?? []) as any[])
+    .filter((link) => link?.products)
+    .sort((a, b) => Number(a?.posicion ?? 0) - Number(b?.posicion ?? 0))
+    .map((link) => ({
+      image_url: link.products.image_url ?? null,
+      images: ((link.products.product_images ?? []) as any[])
+        .filter((imagen) => imagen?.url)
+        .sort((a, b) => Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0))
+        .map((imagen) => ({ url: String(imagen.url) })),
+    }))
+
+  const titulo = resolveLocalizedValue(row?.titulo_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const resumen = resolveLocalizedValue(row?.resumen_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const slugLocalizado = resolveLocalizedValue(row?.slug_i18n, locale, I18N_RESOLVE_OPTIONS)
+
+  return {
+    slug: String(row?.slug ?? ''),
+    slugLocalizado: slugLocalizado || String(row?.slug ?? ''),
+    titulo: titulo || String(row?.titulo ?? ''),
+    resumen: resumen || row?.resumen || null,
+    heroImageUrl: resolveHeroImage(row?.hero_image_url, productos),
+    angulo: row?.angulo ?? null,
+    lecturaMinutos: row?.lectura_minutos ?? null,
+    tipo: row?.tipo as EntryTipo,
+    keywords: Array.isArray(row?.keywords) ? row.keywords.map((clave: any) => String(clave)) : [],
+    publicadoEn: row?.publicado_en ?? null,
+    categorias: ((row?.seo_entry_categories ?? []) as any[])
+      .filter((link) => link?.categories)
+      .map((link) => ({
+        id: link.categories.id,
+        name: link.categories.name,
+        slug: link.categories.slug,
+        slugLocalizado:
+          resolveLocalizedValue(link.categories.slug_i18n, locale, I18N_RESOLVE_OPTIONS) ||
+          link.categories.slug,
+      })),
+  }
+}
+
+/**
+ * Lista TODAS las guías PUBLICADAS para el índice del hub /guias.
+ * ------------------------------------------------------------------
+ * POR QUÉ devuelve todo el lote: el hub busca, filtra y pagina en el CLIENTE
+ * (instantáneo y sin perder el HTML estático que rastrea Google). El tope
+ * ENTRY_INDEX_MAX_ITEMS mantiene la consulta y la respuesta acotadas.
+ * Usa el cliente público → cacheable y sin exponer borradores.
+ * @param input.locale Idioma activo (resuelve título, resumen y slug).
+ * @param input.limit Tope de entradas a traer (nunca por encima del tope global).
+ * @returns Entradas del índice ordenadas por publicación descendente.
+ */
+export async function listEntryIndexItems(input: { locale?: string; limit?: number } = {}) {
   const supabase = createPublicClient()
-  const limit = Math.max(Number(input.limit) || ENTRY_INDEX_PAGE_SIZE, 1)
-  const offset = Math.max(Number(input.offset) || 0, 0)
+  const limit = Math.min(
+    Math.max(Number(input.limit) || ENTRY_INDEX_MAX_ITEMS, 1),
+    ENTRY_INDEX_MAX_ITEMS,
+  )
 
   const { data, error } = await supabase
     .from('seo_entries')
-    .select(ENTRY_SELECT)
+    .select(ENTRY_INDEX_SELECT)
     .eq('estado', 'publicado')
     .order('publicado_en', { ascending: false })
-    .range(offset, offset + limit - 1)
-  if (error) return { entries: [] as Entry[], error }
-  return { entries: (data ?? []).map((row) => localizarEntrada(row, input.locale)), error: null }
+    .limit(limit)
+  if (error) return { items: [] as EntryIndexItem[], error }
+  return { items: (data ?? []).map((row) => mapEntryIndexItem(row, input.locale)), error: null }
 }
 
 /**

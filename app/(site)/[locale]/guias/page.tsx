@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { EntryIndexView } from '@/components/entry-index-view'
-import type { EntryCardData } from '@/components/entry-card'
 import { getCategoryNav } from '@/services/catalog'
-import { listPublishedEntries, entryHeroImage, type Entry } from '@/services/entries'
+import { listEntryIndexItems } from '@/services/entries'
 import { getSiteSettings } from '@/services/site-settings'
 import { MESSAGES, createTranslator } from '@/lib/i18n-messages'
 import { buildPageMetadata } from '@/lib/seo'
@@ -16,8 +15,11 @@ import { buildBreadcrumbSchema, buildItemListSchema } from '@/lib/entry-rules'
  * Hub de contenido: /guias (guías, comparativas y consejos de compra).
  * ------------------------------------------------------------------
  * Estrategia pSEO:
- *  - SSG + ISR (300s): el HTML con el H1, la introducción y TODAS las tarjetas
- *    se sirve estático desde CDN, así que Google lo rastrea sin ejecutar JS.
+ *  - SSG + ISR (300s): el HTML con el H1, la introducción y las tarjetas de la
+ *    PRIMERA página se sirve estático desde CDN (Google lo rastrea sin ejecutar
+ *    JS); el JSON-LD ItemList declara TODAS las guías publicadas.
+ *  - Buscador, filtros (tipo/nicho) y paginador se resuelven en el CLIENTE sobre
+ *    el lote completo: navegar es instantáneo y no fragmenta la caché.
  *  - Es el nodo que enlaza los clusters: hub → entradas → productos y nichos.
  *  - Solo muestra entradas PUBLICADAS (la RLS pública no expone borradores).
  *  - No fabrica contenido: título y descripción salen del diccionario i18n.
@@ -30,20 +32,11 @@ export function generateStaticParams() {
   return publishedLocales().map((locale) => ({ locale }))
 }
 
-/** Serializa una entrada a la forma mínima de la tarjeta. */
-function toCard(entry: Entry): EntryCardData {
-  return {
-    slug: entry.slug,
-    slugLocalizado: entry.slug_localizado ?? entry.slug,
-    titulo: entry.titulo,
-    resumen: entry.resumen,
-    // Imagen de cabecera: manual si existe, si no la del primer producto
-    // comparado (así la tarjeta nunca queda en gris).
-    heroImageUrl: entryHeroImage(entry),
-    angulo: entry.angulo,
-    lecturaMinutos: entry.lectura_minutos,
-  }
-}
+/**
+ * El hub NO recorta la lista: descarga el índice LIGERO completo (título,
+ * resumen, imagen, tipo, palabras clave y nichos) para que el buscador, los
+ * filtros y el paginador trabajen en el cliente sin nuevas peticiones.
+ */
 
 /** Metadata del hub: canonical + hreflang en todos los idiomas publicados. */
 export async function generateMetadata({
@@ -80,8 +73,8 @@ export default async function GuiasPage({ params }: { params: Promise<{ locale: 
   // Blindaje: solo idiomas PUBLICADOS (evita exponer versiones a medias).
   if (!publishedLocales().includes(locale)) notFound()
 
-  const [{ entries }, { items: navCategories }, { settings }] = await Promise.all([
-    listPublishedEntries({ locale }),
+  const [{ items: entries }, { items: navCategories }, { settings }] = await Promise.all([
+    listEntryIndexItems({ locale }),
     getCategoryNav(undefined, locale),
     getSiteSettings(locale),
   ])
@@ -102,11 +95,9 @@ export default async function GuiasPage({ params }: { params: Promise<{ locale: 
         entries.map((entry) => ({
           name: entry.titulo,
           url: absoluteUrl(
-            buildLocalizedPath(
-              '/guias/' + (entry.slug_localizado ?? entry.slug),
-              locale,
-              { prefixDefaultLocale: false },
-            ),
+            buildLocalizedPath('/guias/' + entry.slugLocalizado, locale, {
+              prefixDefaultLocale: false,
+            }),
           ),
         })),
         t('entry.indexTitle'),
@@ -120,7 +111,7 @@ export default async function GuiasPage({ params }: { params: Promise<{ locale: 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <EntryIndexView
-        entries={entries.map(toCard)}
+        entries={entries}
         categories={navCategories}
         navLinks={settings.nav_links}
         brand={{
