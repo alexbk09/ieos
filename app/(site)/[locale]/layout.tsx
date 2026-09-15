@@ -16,7 +16,7 @@ import { publishedLocales } from '@/lib/i18n-config'
  *
  * SSG + ISR: el contenido se sirve estático desde CDN y se revalida cada 5 min.
  */
-export const revalidate = 300
+export const revalidate = 86400
 
 export const viewport = ROOT_VIEWPORT
 

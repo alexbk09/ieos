@@ -9,7 +9,7 @@ import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 
 /** ISR: el catálogo se sirve desde CDN y se revalida cada 5 min. */
-export const revalidate = 300
+export const revalidate = 86400
 
 /** Genera el HTML estático del catálogo por cada idioma publicado. */
 export function generateStaticParams() {

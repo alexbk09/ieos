@@ -25,7 +25,7 @@ import { buildBreadcrumbSchema, buildItemListSchema } from '@/lib/entry-rules'
  *  - No fabrica contenido: título y descripción salen del diccionario i18n.
  */
 
-export const revalidate = 300
+export const revalidate = 86400
 
 /** El hub existe en CADA idioma publicado (aunque aún no tenga entradas). */
 export function generateStaticParams() {

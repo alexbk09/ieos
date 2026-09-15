@@ -20,7 +20,7 @@ import { LEGAL_DOCUMENT_ORDER, getLegalDocuments, renderLegalText } from '@/lib/
  */
 
 /** Revalidación: el layout del sitio ya fija 300s (el mínimo prevalece). */
-export const revalidate = 3600
+export const revalidate = 86400
 
 export function generateStaticParams() {
   return publishedLocales().map((locale) => ({ locale }))
