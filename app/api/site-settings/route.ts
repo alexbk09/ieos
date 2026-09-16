@@ -11,10 +11,16 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
   return NextResponse.json({ settings }, {
-    headers: {
+/*     headers: {
       'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
       'CDN-Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
       'Vercel-CDN-Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    }, */
+    headers: {
+      // Sube el tiempo fresco a 1 día (86400s) y el margen de espera a 1 día
+      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=86400',
+      'CDN-Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=86400',
+      'Vercel-CDN-Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=86400',
     },
   })
 }

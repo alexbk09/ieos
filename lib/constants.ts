@@ -918,7 +918,7 @@ export const HOMEPAGE_CATEGORY_GRID_LIMIT = 12
  * (no resuelve identificadores importados). Por eso app/sitemap.ts duplica
  * este valor como literal: si cambias aquí, actualiza también ese archivo.
  */
-export const SITEMAP_REVALIDATE_SECONDS = 3600
+export const SITEMAP_REVALIDATE_SECONDS = 86400
 
 // ---------- Caché de datos públicos (lecturas repetidas) ----------
 
