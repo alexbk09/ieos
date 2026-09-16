@@ -34,7 +34,7 @@ import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
  */
 
 /** ISR: se revalida cada 5 min como el resto de la tienda. */
-export const revalidate = 86400
+export const revalidate = false
 
 /**
  * Genera el HTML estático de cada categoría activa por cada idioma PUBLICADO,

@@ -33,7 +33,7 @@ import { LEGAL_DOCUMENT_ORDER, legalDocumentPath } from '@/lib/legal-content'
 // estático (extract-const-value) NO resuelve identificadores importados y
 // aborta el build con "Invalid segment configuration export detected".
 // Este valor DEBE coincidir con SITEMAP_REVALIDATE_SECONDS (lib/constants.ts).
-export const revalidate = 86400
+export const revalidate = false
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const generatedAt = new Date()
