@@ -12,7 +12,7 @@ import { DEFAULT_LOCALE } from '@/lib/constants'
  * que mantienen sus URLs originales (los route groups no afectan a la URL) y
  * declaran el idioma del sitio por defecto en <html lang>.
  */
-export const revalidate = 86400
+export const revalidate = false
 
 export const viewport = ROOT_VIEWPORT
 

@@ -18,7 +18,7 @@ import { SITEMAP_REVALIDATE_SECONDS } from '@/lib/constants'
 
 // Next exige que el segment config `revalidate` sea un literal estático.
 // El valor debe coincidir con SITEMAP_REVALIDATE_SECONDS (1 hora).
-export const revalidate = 3600
+export const revalidate = false
 
 export async function GET() {
   const [{ settings }, { items: categories }, products, { items: entries }] = await Promise.all([

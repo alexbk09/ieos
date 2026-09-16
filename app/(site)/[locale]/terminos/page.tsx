@@ -23,7 +23,7 @@ import {
  */
 
 /** Revalidación: el layout del sitio ya fija 300s (el mínimo prevalece). */
-export const revalidate = 3600
+export const revalidate = false
 
 /** El documento existe en CADA idioma publicado (hreflang completo). */
 export function generateStaticParams() {

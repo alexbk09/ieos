@@ -29,7 +29,7 @@ import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n
  */
 
 /** ISR: la página se revalida cada 5 minutos como el resto de la tienda. */
-export const revalidate = 86400
+export const revalidate = false
 
 /**
  * Genera el HTML estático de cada producto visible por cada idioma PUBLICADO.
