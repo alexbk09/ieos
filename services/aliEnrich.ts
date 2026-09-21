@@ -12,6 +12,7 @@ import {
   ALI_API_MIN_INTERVAL_MS,
   AFFILIATE_DEFAULT_STOCK,
 } from '@/lib/constants'
+import { detectAliApiRateLimit, getAliRateLimitDelayMs } from '@/lib/ali-rate-limit.mjs'
 // Estado de disponibilidad del marketplace (lógica pura compartida, sin strings quemados).
 import { ALI_ESTADO } from '@/lib/ali-availability'
 
@@ -302,6 +303,15 @@ export async function ejecutarEnriquecimientoLote(
       if (detalle.success && detalle.data) {
         for (const d of detalle.data) mapaDetalle.set(d.ali_product_id, d)
       } else if (!detalle.success) {
+        const rateLimit = detectAliApiRateLimit({ error: detalle.error })
+        if (rateLimit.isRateLimit) {
+          const delayMs = getAliRateLimitDelayMs({ error: detalle.error })
+          notificar({
+            etapa: 'error',
+            mensaje: `AliExpress respondió con rate limit. Pausando ${delayMs} ms antes de continuar...`,
+          })
+          await esperar(delayMs)
+        }
         notificar({ etapa: 'error', mensaje: `Lote ${numLote} falló: ${detalle.error}` })
       }
       if (i + ALI_DETAIL_BATCH_SIZE < ids.length) await esperar(ALI_API_MIN_INTERVAL_MS)

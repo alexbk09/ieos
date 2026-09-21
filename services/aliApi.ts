@@ -28,6 +28,7 @@ import {
   ALI_TARGET_CURRENCY,
   ALI_SHIP_TO_COUNTRY,
 } from '@/lib/constants'
+import { detectAliApiRateLimit, getAliRateLimitDelayMs } from '@/lib/ali-rate-limit.mjs'
 
 // ---------- Tipos ----------
 
@@ -177,6 +178,11 @@ async function llamarApiAliExpress(
     })
 
     if (!respuesta.ok) {
+      const payload = { status: respuesta.status, statusText: respuesta.statusText }
+      const rateLimit = detectAliApiRateLimit(payload)
+      if (rateLimit.isRateLimit) {
+        await new Promise((resolve) => setTimeout(resolve, getAliRateLimitDelayMs(payload)))
+      }
       return { success: false as const, error: `AliExpress API HTTP ${respuesta.status}.` }
     }
 
@@ -184,6 +190,11 @@ async function llamarApiAliExpress(
     // Formato de error ANTIGUO: la API envuelve el fallo en error_response.
     if (datos?.error_response) {
       const msg = datos.error_response.msg || datos.error_response.sub_msg || 'Error desconocido de AliExpress.'
+      const rateLimit = detectAliApiRateLimit(datos.error_response)
+      if (rateLimit.isRateLimit) {
+        console.warn('[aliApi] rate limit detectado, aplicando backoff:', rateLimit.retryDelayMs)
+        await new Promise((resolve) => setTimeout(resolve, rateLimit.retryDelayMs))
+      }
       console.error('[aliApi] error_response:', JSON.stringify(datos.error_response))
       return { success: false as const, error: `AliExpress API: ${msg}` }
     }
@@ -192,6 +203,11 @@ async function llamarApiAliExpress(
     // Si no hay "code" de éxito (200) y viene "message", es un error real.
     if (datos && typeof datos === 'object' && datos.code !== undefined && datos.code !== 200 && datos.code !== '200') {
       const msg = datos.message || datos.msg || `Código de error ${datos.code}.`
+      const rateLimit = detectAliApiRateLimit(datos)
+      if (rateLimit.isRateLimit) {
+        console.warn('[aliApi] rate limit detectado, aplicando backoff:', rateLimit.retryDelayMs)
+        await new Promise((resolve) => setTimeout(resolve, rateLimit.retryDelayMs))
+      }
       console.error('[aliApi] error nuevo formato:', JSON.stringify(datos))
       return { success: false as const, error: `AliExpress API: ${msg}` }
     }

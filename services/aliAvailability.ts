@@ -24,6 +24,7 @@ import {
   ALI_UNAVAILABLE_MISSES_THRESHOLD,
   AFFILIATE_DEFAULT_STOCK,
 } from '@/lib/constants'
+import { detectAliApiRateLimit, getAliRateLimitDelayMs } from '@/lib/ali-rate-limit.mjs'
 
 /**
  * Servicio de VERIFICACIÓN DE DISPONIBILIDAD de afiliados AliExpress (Fase 2.8).
@@ -277,6 +278,15 @@ export async function ejecutarVerificacionDisponibilidad(
         lotesOk += 1
         for (const d of detalle.data) mapaDetalle.set(d.ali_product_id, d)
       } else {
+        const rateLimit = detectAliApiRateLimit({ error: detalle.error })
+        if (rateLimit.isRateLimit) {
+          const delayMs = getAliRateLimitDelayMs({ error: detalle.error })
+          notificar({
+            etapa: 'error',
+            mensaje: `AliExpress respondió con rate limit. Pausando ${delayMs} ms antes de reintentar...`,
+          })
+          await esperar(delayMs)
+        }
         for (const id of loteIds) idsLoteFallido.add(id)
         notificar({
           etapa: 'error',

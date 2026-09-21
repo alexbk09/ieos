@@ -28,8 +28,9 @@ import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n
  *    leen de los metadatos REALES del producto.
  */
 
-/** ISR: la página se revalida cada 5 minutos como el resto de la tienda. */
-export const revalidate = false
+/** ISR moderado: la página se revalida cada 24h para mantener SEO y evitar
+ * demasiadas regeneraciones automáticas en Vercel. */
+export const revalidate = 86400
 
 /**
  * Genera el HTML estático de cada producto visible por cada idioma PUBLICADO.

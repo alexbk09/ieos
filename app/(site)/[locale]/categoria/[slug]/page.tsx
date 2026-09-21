@@ -33,8 +33,9 @@ import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
  *    los datos reales de la tabla `categories` y `products`.
  */
 
-/** ISR: se revalida cada 5 min como el resto de la tienda. */
-export const revalidate = false
+/** ISR moderado: se revalida cada 24h para mantener la página estática sin
+ * disparar regeneraciones masivas en background en Vercel. */
+export const revalidate = 86400
 
 /**
  * Genera el HTML estático de cada categoría activa por cada idioma PUBLICADO,

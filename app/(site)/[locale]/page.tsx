@@ -9,8 +9,9 @@ import { normalizeHomepageConfig } from '@/lib/homepage-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
 
-/** ISR: la portada se sirve desde CDN y se revalida cada 5 min. */
-export const revalidate = false
+/** ISR moderado: la portada se sirve desde CDN y se revalida cada 24h para
+ * evitar calentamientos masivos de páginas en Vercel. */
+export const revalidate = 86400
 
 /**
  * Rutas de la portada para cada idioma PUBLICADO.
