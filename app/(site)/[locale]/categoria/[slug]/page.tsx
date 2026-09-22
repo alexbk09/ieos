@@ -33,9 +33,9 @@ import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
  *    los datos reales de la tabla `categories` y `products`.
  */
 
-/** ISR moderado: se revalida cada 24h para mantener la página estática sin
- * disparar regeneraciones masivas en background en Vercel. */
-export const revalidate = 86400
+/** Se fuerza la renderización dinámica para evitar la generación masiva de
+ * páginas de categorías en Vercel por crawlers o peticiones repetidas. */
+export const dynamic = 'force-dynamic'
 
 /**
  * Genera el HTML estático de cada categoría activa por cada idioma PUBLICADO,

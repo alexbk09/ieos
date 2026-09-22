@@ -28,9 +28,9 @@ import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n
  *    leen de los metadatos REALES del producto.
  */
 
-/** ISR moderado: la página se revalida cada 24h para mantener SEO y evitar
- * demasiadas regeneraciones automáticas en Vercel. */
-export const revalidate = 86400
+/** Se fuerza la renderización dinámica para evitar la generación masiva de
+ * rutas de producto en Vercel sin visitas reales. */
+export const dynamic = 'force-dynamic'
 
 /**
  * Genera el HTML estático de cada producto visible por cada idioma PUBLICADO.

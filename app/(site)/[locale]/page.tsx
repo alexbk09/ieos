@@ -9,9 +9,10 @@ import { normalizeHomepageConfig } from '@/lib/homepage-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
 
-/** ISR moderado: la portada se sirve desde CDN y se revalida cada 24h para
- * evitar calentamientos masivos de páginas en Vercel. */
-export const revalidate = 86400
+/** Se fuerza la renderización dinámica para evitar generar y revalidar la home
+ * en segundo plano con cada crawl/bot. La SEO sigue siendo server-rendered; lo
+ * que se deja de hacer es la prerenderización masiva en Vercel. */
+export const dynamic = 'force-dynamic'
 
 /**
  * Rutas de la portada para cada idioma PUBLICADO.

@@ -96,13 +96,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       else unsubscribeRef.current = unsub
     })
 
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') refreshFromApi()
-    }, 30000)
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        void refreshFromApi()
+      }
+    }
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+    }
 
     return () => {
       active = false
-      clearInterval(interval)
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+      }
       unsubscribeRef.current?.()
       unsubscribeRef.current = null
     }
