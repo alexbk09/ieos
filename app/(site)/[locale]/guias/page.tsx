@@ -59,6 +59,7 @@ export async function generateMetadata({
     path: buildLocalizedPath('/guias', locale, { prefixDefaultLocale: false }),
     image: absoluteUrl(OG_IMAGE_PATH),
     siteName: settings.company_name || undefined,
+    robots: 'index, follow',
     alternatesByLocale: Object.fromEntries(
       publishedLocales().map((l) => [
         l,

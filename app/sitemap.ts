@@ -32,8 +32,9 @@ import { LEGAL_DOCUMENT_ORDER, legalDocumentPath } from '@/lib/legal-content'
 // ⚠️ Next.js exige un LITERAL estático en los segment configs: su análisis
 // estático (extract-const-value) NO resuelve identificadores importados y
 // aborta el build con "Invalid segment configuration export detected".
-// Este valor DEBE coincidir con SITEMAP_REVALIDATE_SECONDS (lib/constants.ts).
-export const revalidate = false
+// Mantener un revalidate corto evita que el sitemap quede sin regeneración y a
+// la vez reduce el coste de render por crawlers repetidos.
+export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const generatedAt = new Date()

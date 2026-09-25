@@ -52,6 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     // Imagen social (og:image/twitter:image): sin ella, compartir la home muestra un hueco.
     image: absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
+    robots: 'index, follow',
     alternatesByLocale: portadaPathsByLocale(),
   })
 }

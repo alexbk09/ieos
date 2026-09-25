@@ -40,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     // Imagen social por defecto (el catálogo hereda la OG de marca).
     image: absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
+    robots: 'index, follow',
     alternatesByLocale,
   })
 }
