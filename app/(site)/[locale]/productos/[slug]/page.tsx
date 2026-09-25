@@ -28,9 +28,9 @@ import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n
  *    leen de los metadatos REALES del producto.
  */
 
-/** Se fuerza la renderización dinámica para evitar la generación masiva de
- * rutas de producto en Vercel sin visitas reales. */
-export const dynamic = 'force-dynamic'
+/** Cache pública limitada para que las fichas se sirvan desde CDN sin forzar
+ * regeneración costosa por cada crawler o petición repetida. */
+export const revalidate = 300
 
 /**
  * Genera el HTML estático de cada producto visible por cada idioma PUBLICADO.

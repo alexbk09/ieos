@@ -379,6 +379,8 @@ export type EntryIndexItem = {
  * índice muestra el idioma pedido sin que el componente conozca los JSONB.
  */
 function mapEntryIndexItem(row: any, locale?: string): EntryIndexItem {
+  const activeLocale = locale ?? DEFAULT_LOCALE
+
   // Productos solo para la imagen de cabecera: en su orden editorial.
   const productos = ((row?.seo_entry_products ?? []) as any[])
     .filter((link) => link?.products)
@@ -391,9 +393,9 @@ function mapEntryIndexItem(row: any, locale?: string): EntryIndexItem {
         .map((imagen) => ({ url: String(imagen.url) })),
     }))
 
-  const titulo = resolveLocalizedValue(row?.titulo_i18n, locale, I18N_RESOLVE_OPTIONS)
-  const resumen = resolveLocalizedValue(row?.resumen_i18n, locale, I18N_RESOLVE_OPTIONS)
-  const slugLocalizado = resolveLocalizedValue(row?.slug_i18n, locale, I18N_RESOLVE_OPTIONS)
+  const titulo = resolveLocalizedValue(row?.titulo_i18n, activeLocale, I18N_RESOLVE_OPTIONS)
+  const resumen = resolveLocalizedValue(row?.resumen_i18n, activeLocale, I18N_RESOLVE_OPTIONS)
+  const slugLocalizado = resolveLocalizedValue(row?.slug_i18n, activeLocale, I18N_RESOLVE_OPTIONS)
 
   return {
     slug: String(row?.slug ?? ''),
@@ -413,7 +415,7 @@ function mapEntryIndexItem(row: any, locale?: string): EntryIndexItem {
         name: link.categories.name,
         slug: link.categories.slug,
         slugLocalizado:
-          resolveLocalizedValue(link.categories.slug_i18n, locale, I18N_RESOLVE_OPTIONS) ||
+          resolveLocalizedValue(link.categories.slug_i18n, activeLocale, I18N_RESOLVE_OPTIONS) ||
           link.categories.slug,
       })),
   }

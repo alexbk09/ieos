@@ -19,8 +19,9 @@ import { LEGAL_DOCUMENT_ORDER, getLegalDocuments, renderLegalText } from '@/lib/
  * ya indexada.
  */
 
-/** Revalidación: el layout del sitio ya fija 300s (el mínimo prevalece). */
-export const revalidate = false
+/** Revalidación diaria para mantener el hub legal estable sin gastar render
+ * innecesario en cada request o crawl. */
+export const revalidate = 86400
 
 export function generateStaticParams() {
   return publishedLocales().map((locale) => ({ locale }))

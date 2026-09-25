@@ -8,8 +8,9 @@ import { absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 
-/** ISR: el catálogo se sirve desde CDN y se revalida cada 5 min. */
-export const revalidate = false
+/** Cache pública limitada: evitamos el coste de render sin caché y mantenemos
+ * las páginas del catálogo servidas desde CDN con revalidación controlada. */
+export const revalidate = 300
 
 /** Genera el HTML estático del catálogo por cada idioma publicado. */
 export function generateStaticParams() {

@@ -33,9 +33,9 @@ import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
  *    los datos reales de la tabla `categories` y `products`.
  */
 
-/** Se fuerza la renderización dinámica para evitar la generación masiva de
- * páginas de categorías en Vercel por crawlers o peticiones repetidas. */
-export const dynamic = 'force-dynamic'
+/** Cache pública limitada para que cada hub de categoría se sirva desde CDN y
+ * no genere un coste excesivo por cada crawl/bot o petición repetida. */
+export const revalidate = 300
 
 /**
  * Genera el HTML estático de cada categoría activa por cada idioma PUBLICADO,

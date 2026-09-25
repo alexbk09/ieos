@@ -9,10 +9,9 @@ import { normalizeHomepageConfig } from '@/lib/homepage-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
 
-/** Se fuerza la renderización dinámica para evitar generar y revalidar la home
- * en segundo plano con cada crawl/bot. La SEO sigue siendo server-rendered; lo
- * que se deja de hacer es la prerenderización masiva en Vercel. */
-export const dynamic = 'force-dynamic'
+/** Cache pública limitada para evitar regeneración costosa por cada crawl/bot
+ * mientras mantenemos la home servida desde CDN con HTML renderizado en servidor. */
+export const revalidate = 300
 
 /**
  * Rutas de la portada para cada idioma PUBLICADO.
