@@ -22,8 +22,9 @@ import {
  * compone la metadata SEO y se delega el render a `LegalPageView`.
  */
 
-/** Revalidación: el layout del sitio ya fija 300s (el mínimo prevalece). */
-export const revalidate = false
+/** Revalidación corta para mantener el aviso legal estable y evitar render de
+ * cada request o crawl sin necesidad. */
+export const revalidate = 86400
 
 /** El documento existe en CADA idioma publicado (hreflang completo). */
 export function generateStaticParams() {

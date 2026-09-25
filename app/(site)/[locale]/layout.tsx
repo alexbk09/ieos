@@ -14,9 +14,10 @@ import { publishedLocales } from '@/lib/i18n-config'
  * Solo puede declararse el <html> desde un ROOT layout, por eso el sitio público
  * vive en su propio route group (sin app/layout.tsx global).
  *
- * SSG + ISR: el contenido se sirve estático desde CDN y se revalida cada 5 min.
+ * Cache pública limitada para que las páginas del sitio no regeneren por cada
+ * crawler o petición y se siga sirviendo desde CDN con revalidación controlada.
  */
-export const revalidate = false
+export const revalidate = 300
 
 export const viewport = ROOT_VIEWPORT
 
