@@ -669,16 +669,16 @@ export async function notificarPublicacionIndexable(
 
     // 2) Envío inmediato (opcional: las cargas masivas lo apagan para no
     //    disparar una petición por producto).
-    if (!leerBanderaEntorno('INDEXING_AUTO_DISPATCH_ENABLED', true)) {
+    if (!leerBanderaEntorno('INDEXING_AUTO_DISPATCH_ENABLED', false)) {
       await registrarMovimiento({
         url,
         canal: 'indexnow',
         accion: 'publicar',
         resultado: 'omitido',
-        detalle: 'Envío automático desactivado: la URL queda en cola para el panel.',
+        detalle: 'Envío automático desactivado por defecto: la URL queda en cola para el panel.',
         usuarioEmail,
       })
-      return { ok: true, url, canales: [], detalle: 'Encolada (envío automático desactivado).' }
+      return { ok: true, url, canales: [], detalle: 'Encolada (envío automático desactivado por defecto).' }
     }
 
     const cuota = calcularCuotaDiaria((await contarEnviosDeHoy()).indexnow, INDEXING_DAILY_LIMIT)

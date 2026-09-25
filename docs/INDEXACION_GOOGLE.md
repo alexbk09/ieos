@@ -105,7 +105,7 @@ GOOGLE_INDEXING_CLIENT_EMAIL="hobbie-apis@hobbies-indexing-api.iam.gserviceaccou
 GOOGLE_INDEXING_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----\n"
 GOOGLE_SEARCH_CONSOLE_SITE_URL="https://zonadehobbies.online/"
 GOOGLE_INDEXING_STRICT="true"
-INDEXING_AUTO_DISPATCH_ENABLED="1"
+INDEXING_AUTO_DISPATCH_ENABLED="0"
 INDEXNOW_ENABLED="1"
 INDEXNOW_KEY="9f3a1c7e5b2d86401fa6c93e7d5b18a4"
 INDEXNOW_ENDPOINT="https://api.indexnow.org/indexnow"
@@ -116,8 +116,10 @@ INDEXNOW_ENDPOINT="https://api.indexnow.org/indexnow"
 - `GOOGLE_INDEXING_STRICT=true` (por defecto) = nunca se envían a la Indexing API
   tipos que Google no admite. Ponerlo en `false` es una decisión consciente y el
   panel la marca en rojo como riesgo de política.
-- `INDEXING_AUTO_DISPATCH_ENABLED=0` deja las URLs en cola sin enviar (útil en
-  importaciones masivas; luego se envían en lotes desde el panel).
+- `INDEXING_AUTO_DISPATCH_ENABLED=0` es la configuración segura por defecto: deja
+  las URLs en cola sin enviar y evita ráfagas masivas de render/indexación en
+  importaciones o cambios bulk. Solo se activa `1` si se quiere forzar envío
+  inmediato para publicaciones puntuales.
 - Los topes (**100/día**, lotes de **25**) viven en `lib/constants.ts` para que la
   UI y el servidor usen exactamente el mismo número.
 
