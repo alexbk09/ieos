@@ -71,8 +71,9 @@ export function useHomeRandomProducts() {
 
     try {
       const res = await fetch(`${HOME_PRODUCTS_API_PATH}?locale=${encodeURIComponent(locale)}`, {
-        // Sin caché: el objetivo es que la lista cambie en cada visita.
-        cache: 'no-store',
+        // La API del inicio usa una ventana corta de caché para evitar avisar a
+        // la base en cada visita, pero aún permite rotación útil sin saturar el servidor.
+        cache: 'force-cache',
         signal: controller.signal,
       })
       const data: HomeProductsResponse = await res.json().catch(() => ({}))
