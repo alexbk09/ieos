@@ -686,6 +686,7 @@ export async function listNicheGuideCoverage(tipos: string[]) {
   const { data: categorias, error: categoriasError } = await supabase
     .from('categories')
     .select('id,name,slug,activa')
+    .eq('tipo', 'subcategoria')
     .order('name', { ascending: true })
   if (categoriasError) return { niches: [] as NicheGuideCoverage[], error: categoriasError }
 

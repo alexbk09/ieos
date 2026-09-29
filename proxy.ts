@@ -82,5 +82,8 @@ export const config = {
     '/afiliados/:path*',
     '/politicas/:path*',
     '/es/:path*',
+    // Hubs principales dinámicos (p. ej. /gaming, /desk-setup). Solo raíz:
+    // rutas reservadas, archivos y locales quedan fuera de esta regla.
+    '/((?!(?:api|_next|sitemap\\.xml|robots\\.txt|llms\\.txt|favicon\\.ico|es|en|fr|de|it|pt|catalogo|categoria|productos|guias|terminos|privacidad|afiliados|politicas)(?:/|$))[^/]+)',
   ],
 }

@@ -30,7 +30,7 @@ import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n
 
 /** Cache pública limitada para que las fichas se sirvan desde CDN sin forzar
  * regeneración costosa por cada crawler o petición repetida. */
-export const revalidate = 300
+export const revalidate = false
 
 /**
  * Genera el HTML estático de cada producto visible por cada idioma PUBLICADO.

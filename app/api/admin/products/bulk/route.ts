@@ -12,6 +12,8 @@ export async function POST(request: Request) {
 
   const body = await request.json()
   const items = Array.isArray(body.items) ? body.items : []
+  const categoriaPrincipalId =
+    typeof body.categoriaPrincipalId === 'string' ? body.categoriaPrincipalId.trim() : undefined
 
   if (items.length === 0) {
     return NextResponse.json({ error: 'El archivo no contiene productos válidos.' }, { status: 400 })
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Hay filas con datos inválidos.', invalidRows }, { status: 400 })
   }
 
-  const result = await createProductsBulk(normalized)
+  const result = await createProductsBulk(normalized, categoriaPrincipalId)
   if (result.errors && result.errors.length > 0) {
     return NextResponse.json(
       { error: 'Algunos productos no se pudieron crear.', errors: result.errors, created: result.products.length },

@@ -51,7 +51,12 @@ export async function getProductsCatalog(
       .order('created_at', { ascending: false })
       .range(safeOffset, safeOffset + safeLimit - 1)
     if (options.category?.trim()) {
-      const { data: cat } = await supabase.from('categories').select('id').eq('slug', options.category.trim()).maybeSingle()
+      const { data: cat } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('tipo', 'subcategoria')
+        .eq('slug', options.category.trim())
+        .maybeSingle()
       if (cat?.id) {
         const { data: links } = await supabase.from('product_categories').select('product_id').eq('category_id', cat.id)
         const ids = [...new Set((links ?? []).map((r: any) => r.product_id))]
@@ -204,13 +209,43 @@ async function redactarNombreCategoriaEnIdiomaRaiz(nombreBase: string): Promise<
  * (igual que las marcas por FK), de modo que el filtro del catálogo público
  * por categoría lo encuentra.
  */
-export async function obtenerCategoriaAliExpress(keyword?: string) {
+export async function obtenerCategoriaAliExpress(keyword: string | undefined, parentId: string) {
   try {
     const supabase = await createServerClient()
+    const { data: parent } = await supabase
+      .from('categories')
+      .select('id,name,tipo,activa')
+      .eq('id', parentId)
+      .maybeSingle()
+    if (!parent || parent.tipo !== 'principal' || !parent.activa) {
+      return { success: false as const, error: 'Selecciona un hobby principal activo.' }
+    }
+
     const nombreBase = nombreCategoriaDesdeKeyword(keyword ?? '')
     const slug = slugify(nombreBase)
-    const { data: existente } = await supabase.from('categories').select('id,name,name_i18n').eq('slug', slug).maybeSingle()
+    const { data: existente } = await supabase
+      .from('categories')
+      .select('id,name,name_i18n,tipo,parent_id')
+      .eq('tipo', 'subcategoria')
+      .eq('slug', slug)
+      .maybeSingle()
     if (existente?.id) {
+      if (existente.tipo === 'principal') {
+        return { success: false as const, error: 'El slug del nicho ya pertenece a un hobby principal.' }
+      }
+      if (existente.parent_id && existente.parent_id !== parent.id) {
+        return {
+          success: false as const,
+          error: 'Este nicho ya pertenece a otro hobby. Corrige su asignación en Categorías antes de continuar.',
+        }
+      }
+      if (!existente.parent_id) {
+        const { error } = await supabase
+          .from('categories')
+          .update({ parent_id: parent.id, tipo: 'subcategoria' })
+          .eq('id', existente.id)
+        if (error) return { success: false as const, error: error.message }
+      }
       // La categoría ya existe: se asegura su traducción base (idioma raíz) para
       // nichos creados antes de la migración 0049. Idempotente: solo si falta.
       const names = (existente.name_i18n ?? {}) as Record<string, string>
@@ -220,7 +255,12 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
           .update({ name_i18n: { ...names, [SOURCE_LOCALE]: existente.name ?? nombreBase } })
           .eq('id', existente.id)
       }
-      return { success: true as const, categoriaId: existente.id, nombre: existente.name ?? nombreBase }
+      return {
+        success: true as const,
+        categoriaId: existente.id,
+        nombre: existente.name ?? nombreBase,
+        categoriaPrincipal: parent.name,
+      }
     }
     // Nicho nuevo: el nombre visible nace redactado en el idioma raíz.
     const nombre = await redactarNombreCategoriaEnIdiomaRaiz(nombreBase)
@@ -230,6 +270,9 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
         name: nombre,
         slug,
         description: `Productos del nicho "${nombre}" descubiertos y optimizados por el pipeline automatizado.`,
+        tipo: 'subcategoria',
+        parent_id: parent.id,
+        activa: true,
         // Traducción base (idioma raíz): el nicho nace internacionalizable.
         // El resto de idiomas los completa traducirCategoria() en el pipeline.
         name_i18n: { [SOURCE_LOCALE]: nombre },
@@ -240,7 +283,7 @@ export async function obtenerCategoriaAliExpress(keyword?: string) {
     if (errorCreacion || !creada) return { success: false as const, error: errorCreacion?.message ?? 'No se pudo crear categoria.' }
     // Categoría nueva creada por el pipeline: se añade al sitemap al instante.
     revalidarSitemap({ categoriaSlug: slug })
-    return { success: true as const, categoriaId: creada.id, nombre }
+    return { success: true as const, categoriaId: creada.id, nombre, categoriaPrincipal: parent.name }
   } catch (err: any) {
     console.error('[aliProducts] obtenerCategoriaAliExpress:', err?.message)
     return { success: false as const, error: err?.message ?? 'Error obteniendo categoria.' }

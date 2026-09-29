@@ -17,6 +17,7 @@ import { revalidatePath } from 'next/cache'
 export function revalidarSitemap(opciones?: {
   productoSlug?: string | null
   categoriaSlug?: string | null
+  hobbySlug?: string | null
   /** Slug de la entrada SEO (guía/comparativa) publicada o editada. */
   entradaSlug?: string | null
 }) {
@@ -25,6 +26,7 @@ export function revalidarSitemap(opciones?: {
     revalidatePath('/sitemap.xml')
     if (opciones?.productoSlug) revalidatePath('/productos/' + opciones.productoSlug)
     if (opciones?.categoriaSlug) revalidatePath('/categoria/' + opciones.categoriaSlug)
+    if (opciones?.hobbySlug) revalidatePath('/' + opciones.hobbySlug)
     // Entradas SEO: se revalida la URL de la guía Y el hub /guias, porque su
     // listado debe reflejar altas/bajas/publicaciones al instante.
     if (opciones?.entradaSlug) {

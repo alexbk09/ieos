@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Download, FileSpreadsheet, LoaderCircle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { FormSubmitButton } from '@/components/ui/form-field'
 
 type Category = { id: string; name: string; slug: string }
+type PrimaryCategory = { id: string; name: string; tipo: 'principal'; activa: boolean }
 type Marca = { id: string; nombre: string }
 type Proveedor = { id: string; nombre: string }
 
@@ -159,13 +160,13 @@ function downloadTemplate() {
     { Instrucción: '"slug" es usado en la URL del catálogo. Ej: lampara-led-escritorio.' },
     { Instrucción: '"precio_usd" debe ser un número (ej: 25.99). Si se deja vacío, se usa 0.' },
     { Instrucción: '"stock" debe ser un número entero (ej: 15). Si se deja vacío, se usa 0.' },
-    { Instrucción: '"categoria" se crea automáticamente si no existe. Debe coincidir con el nombre exacto.' },
+    { Instrucción: '"categoria" se crea como subcategoría del hobby principal seleccionado si no existe.' },
     { Instrucción: '"featured" acepta SI/NO o TRUE/FALSE para mostrar el producto en la portada.' },
     { Instrucción: '"image_url" es una URL de imagen pública. Puede dejarse vacío.' },
     { Instrucción: '"marca" se crea automáticamente si no existe.' },
     { Instrucción: '"proveedor" se crea automáticamente si no existe.' },
     { Instrucción: '"costo_inicial" es el costo del producto (opcional, se usa 0 si se deja vacío).' },
-    { Instrucción: '"categoria_dos" es una segunda categoría opcional. Se crea si no existe.' },
+    { Instrucción: '"categoria_dos" es una segunda subcategoría opcional. Se crea bajo el mismo hobby si no existe.' },
     { Instrucción: '"pricing_type" acepta "peso" (se vende por gramos/kilos) o "unidad" (normal). Si se deja vacío, se usa "unidad".' },
     { Instrucción: '"price_per_kg_usd" es el precio por KILOGRAMO cuando pricing_type = peso. Ej: 12 = $12/kg.' },
     { Instrucción: '"stock_grams" es el inventario en gramos cuando pricing_type = peso. Ej: 50000 = 50 kg disponibles.' },
@@ -212,7 +213,31 @@ export function BulkUploadModal({
   const [importing, setImporting] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const [importErrors, setImportErrors] = useState<{ row: number; error: string }[]>([])
+  const [primaryCategories, setPrimaryCategories] = useState<PrimaryCategory[]>([])
+  const [primaryCategoryId, setPrimaryCategoryId] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const loadPrimaryCategories = async () => {
+      try {
+        const response = await fetch('/api/admin/categories', { cache: 'no-store' })
+        if (!response.ok) throw new Error('No se pudieron cargar los hobbies principales.')
+        const result = await response.json()
+        if (cancelled) return
+        const primary = (result.categories ?? []).filter(
+          (category: PrimaryCategory) => category.tipo === 'principal' && category.activa,
+        ) as PrimaryCategory[]
+        setPrimaryCategories(primary)
+        setPrimaryCategoryId(primary.length === 1 ? primary[0].id : '')
+      } catch (error) {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : 'No se pudieron cargar los hobbies.')
+      }
+    }
+    void loadPrimaryCategories()
+    return () => { cancelled = true }
+  }, [open])
 
   /** Convierte un valor del Excel a texto limpio. */
   const cleanCell = (value: unknown) => String(value ?? '').trim()
@@ -345,6 +370,10 @@ export function BulkUploadModal({
       toast.error('No hay filas válidas', { description: 'Corrige los errores de validación e inténtalo de nuevo.' })
       return
     }
+    if (!primaryCategoryId) {
+      toast.error('Selecciona el hobby principal para las categorías nuevas o pendientes.')
+      return
+    }
 
     const items: BulkProduct[] = validRows.map((row) => ({
       name: row.name,
@@ -380,7 +409,7 @@ export function BulkUploadModal({
       const response = await fetch('/api/admin/products/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, categoriaPrincipalId: primaryCategoryId }),
       })
       const result = await response.json()
 
@@ -418,6 +447,7 @@ export function BulkUploadModal({
     setParsing(false)
     setImportedCount(0)
     setImportErrors([])
+    setPrimaryCategoryId('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     onClose()
   }
@@ -475,6 +505,20 @@ export function BulkUploadModal({
           <p className="mt-0.5 text-xs text-muted-foreground">
             Formatos aceptados: <span className="font-mono">.xlsx</span>, <span className="font-mono">.xls</span>, <span className="font-mono">.csv</span>
           </p>
+          <label className="mt-3 grid max-w-md gap-1.5 text-sm font-medium">
+            Hobby principal para categorías nuevas o pendientes
+            <select
+              value={primaryCategoryId}
+              onChange={(event) => setPrimaryCategoryId(event.target.value)}
+              disabled={primaryCategories.length === 0 || importing}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm disabled:opacity-60"
+            >
+              <option value="">Seleccionar hobby</option>
+              {primaryCategories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </label>
 
           {parsing ? (
             <div className="mt-3 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-background px-4 py-8 text-center">
@@ -529,10 +573,11 @@ export function BulkUploadModal({
           )}
         </div>
 
-        {/* Nota sobre creación automática */}
+        {/* Nota sobre clasificación de categorías */}
         {fileName && (
           <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-xs text-muted-foreground">
-            Las columnas <span className="font-mono text-cyan-700">categoria</span>,{' '}
+            Las categorías nuevas o sin asignar se vinculan al hobby principal seleccionado. Las que ya tienen hobby conservan su relación. Las columnas{' '}
+            <span className="font-mono text-cyan-700">categoria</span>,{' '}
             <span className="font-mono text-cyan-700">categoria_dos</span>,{' '}
             <span className="font-mono text-cyan-700">marca</span> y{' '}
             <span className="font-mono text-cyan-700">proveedor</span> se crean automáticamente si no existen. Solo el

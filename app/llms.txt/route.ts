@@ -1,6 +1,6 @@
 import { getSiteSettings } from '@/services/site-settings'
 import { getSitemapProducts } from '@/services/aliProducts'
-import { getSitemapCategories } from '@/services/catalog'
+import { getPrimaryCategories, getSitemapCategories } from '@/services/catalog'
 import { getSitemapEntries } from '@/services/entries'
 import { absoluteUrl } from '@/lib/seo-url'
 import { SITEMAP_REVALIDATE_SECONDS } from '@/lib/constants'
@@ -21,9 +21,10 @@ import { SITEMAP_REVALIDATE_SECONDS } from '@/lib/constants'
 export const revalidate = false
 
 export async function GET() {
-  const [{ settings }, { items: categories }, products, { items: entries }] = await Promise.all([
+  const [{ settings }, { items: categories }, { data: primaryCategories }, products, { items: entries }] = await Promise.all([
     getSiteSettings(),
     getSitemapCategories(),
+    getPrimaryCategories(),
     getSitemapProducts(),
     getSitemapEntries(),
   ])
@@ -36,11 +37,26 @@ export async function GET() {
   if (tagline) lines.push('> ' + tagline)
   lines.push('')
 
-  // Hubs de categoría (pSEO) primero: son las páginas de mayor valor.
-  lines.push('## Categorias')
+  const parentsWithProducts = new Set(
+    categories.map((category) => category.parent_id).filter((id): id is string => Boolean(id)),
+  )
+
+  lines.push('## Hobbies')
+  lines.push('')
+  const publishedParents = (primaryCategories ?? []).filter((category) => parentsWithProducts.has(category.id))
+  if (publishedParents.length === 0) {
+    lines.push('- Sin hobbies publicados todavia.')
+  } else {
+    for (const category of publishedParents) {
+      lines.push('- ' + category.name + ': ' + absoluteUrl('/' + category.slug))
+    }
+  }
+  lines.push('')
+
+  lines.push('## Subcategorias')
   lines.push('')
   if (categories.length === 0) {
-    lines.push('- Sin categorias publicadas todavia.')
+    lines.push('- Sin subcategorias publicadas todavia.')
   } else {
     for (const category of categories) {
       lines.push('- ' + category.slug + ': ' + absoluteUrl('/categoria/' + category.slug))

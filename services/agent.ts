@@ -55,7 +55,7 @@ const AGENT_PRODUCT_SELECT =
   'product_categories(categories(id,name,slug,name_i18n,slug_i18n)),product_images(id,url,alt_text,sort_order,color_name)'
 
 /** Proyeccion ligera de categorias para orientar al cliente por tema. */
-const AGENT_CATEGORY_SELECT = 'id,name,slug,description,name_i18n,slug_i18n'
+const AGENT_CATEGORY_SELECT = 'id,name,slug,description,name_i18n,slug_i18n,tipo,parent_id'
 
 /** Opciones de resolución i18n (fuente única: lib/constants.ts). */
 const I18N_RESOLVE_OPTIONS = { sourceLocale: SOURCE_LOCALE, defaultLocale: DEFAULT_LOCALE }
@@ -79,7 +79,7 @@ export function buildAgentSystemPrompt(locale: string) {
   '3) Compras por afiliado: como comprar, enlaces de afiliado, redireccion a AliExpress/Amazon, envio, garantia y devoluciones del marketplace.',
   '4) Uso de la tienda: carrito, busqueda y navegacion.',
   `FUERA DE TEMA: si la pregunta no tiene relacion con la tienda, sus productos, sus categorias o las compras por afiliado (por ejemplo cultura general, noticias, codigo, tareas, consejos personales o politica), NO la respondas. Rechaza en una sola frase: "Solo puedo ayudarte con productos, categorias y compras por afiliados de ${AGENT_BRAND_NAME}." y ofrece volver al catalogo.`,
-  'DATOS: usa siempre buscarProductos o buscarCategorias antes de hablar de productos, precios o stock. Nunca inventes datos ni enlaces.',
+  'DATOS: usa siempre buscarProductos o buscarCategorias antes de hablar de productos, precios o stock. Nunca inventes datos ni enlaces. Para buscar por categoría, pasa a buscarProductos el categoryId devuelto por buscarCategorias.',
   'Si un producto no tiene enlace de afiliado, dilo con claridad y ofrece alternativas del catalogo.',
   'Para agregar al carrito, espera la confirmacion del cliente y pregunta cantidad y color.',
   'Si el producto es por peso (pricing_type=weight), confirma gramos o kilos y respeta min_order_grams.',
@@ -144,10 +144,11 @@ export function createBuscarProductosTool(locale: string) {
     'util para recomendar y agregar al carrito.',
   parameters: z.object({
     query: z.string().describe('Termino a buscar (ej: panel led, perfil). Puede ir vacio si se filtra por categoria.'),
+    categoryId: z.string().optional().describe('ID de categoría devuelto por buscarCategorias. Acepta hobby principal o subcategoría.'),
     categorySlug: z.string().optional().describe('Slug de categoria para acotar la busqueda (ver buscarCategorias).'),
     maxResults: z.number().min(1).max(AGENT_MAX_PRODUCT_RESULTS).default(AGENT_MAX_PRODUCT_RESULTS).describe('Resultados maximos'),
   }),
-  execute: async ({ query, categorySlug, maxResults }) => {
+  execute: async ({ query, categoryId, categorySlug, maxResults }) => {
     try {
       const supabase = createPublicClient()
       const term = query?.trim() ?? ''
@@ -156,17 +157,30 @@ export function createBuscarProductosTool(locale: string) {
       // Filtro por categoria: resuelve su id y luego los productos vinculados
       // (product_categories). Sin coincidencias -> lista vacia.
       let categoryProductIds: string[] | null = null
-      if (catSlug) {
-        const { data: cat } = await supabase
+      if (categoryId || catSlug) {
+        let categoryQuery = supabase
           .from('categories')
-          .select('id')
-          .eq('slug', catSlug)
-          .maybeSingle()
+          .select('id,tipo')
+          .eq('activa', true)
+        if (categoryId) categoryQuery = categoryQuery.eq('id', categoryId)
+        else categoryQuery = categoryQuery.eq('tipo', 'subcategoria').eq('slug', catSlug)
+        const { data: cat } = await categoryQuery.maybeSingle()
         if (!cat?.id) return { ok: true, products: [] }
+        let categoryIds = [cat.id]
+        if (cat.tipo === 'principal') {
+          const { data: children } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('activa', true)
+            .eq('tipo', 'subcategoria')
+            .eq('parent_id', cat.id)
+          categoryIds = (children ?? []).map((child: any) => child.id)
+        }
+        if (categoryIds.length === 0) return { ok: true, products: [] }
         const { data: links } = await supabase
           .from('product_categories')
           .select('product_id')
-          .eq('category_id', cat.id)
+          .in('category_id', categoryIds)
         categoryProductIds = [...new Set((links ?? []).map((r: any) => r.product_id))]
         if (categoryProductIds.length === 0) {
           // Analitica: la busqueda del agente sin resultados tambien se registra.
@@ -213,7 +227,7 @@ export function createBuscarCategoriasTool(locale: string) {
   return tool({
   description:
     `Lista o busca las categorias reales del catalogo ${AGENT_BRAND_NAME}. Usala para ` +
-    'orientar al cliente por tema y luego buscar productos con su slug.',
+    'orientar al cliente por hobby o subcategoria. Para productos, pasa el id devuelto a buscarProductos.',
   parameters: z.object({
     query: z.string().optional().describe('Texto opcional (ej: iluminacion, hogar). Vacio = categorias principales.'),
     maxResults: z.number().min(1).max(AGENT_MAX_CATEGORY_RESULTS).default(AGENT_MAX_CATEGORY_RESULTS).describe('Resultados maximos'),
@@ -225,6 +239,8 @@ export function createBuscarCategoriasTool(locale: string) {
       let dbQuery = supabase.from('categories').select(AGENT_CATEGORY_SELECT).eq('activa', true)
       if (term.length >= AGENT_MIN_QUERY_LENGTH) {
         dbQuery = dbQuery.or('name.ilike.%' + term + '%,slug.ilike.%' + term + '%,description.ilike.%' + term + '%')
+      } else {
+        dbQuery = dbQuery.eq('tipo', 'principal')
       }
       const { data, error } = await dbQuery.order('name', { ascending: true }).limit(maxResults)
       if (error) return { ok: false, error: 'No pudimos consultar las categorias' }
@@ -233,6 +249,8 @@ export function createBuscarCategoriasTool(locale: string) {
         name: resolveLocalizedValue(c.name_i18n, locale, I18N_RESOLVE_OPTIONS) || c.name,
         slug: resolveLocalizedValue(c.slug_i18n, locale, I18N_RESOLVE_OPTIONS) || c.slug,
         description: c.description ?? null,
+        tipo: c.tipo,
+        parentId: c.parent_id ?? null,
       }))
       // Analitica: la busqueda por categorias tambien cuenta como busqueda del agente.
       trackAgentSearchInBackground(term || 'categorias', [], categories.length)

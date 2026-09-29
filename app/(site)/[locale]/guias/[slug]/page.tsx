@@ -38,7 +38,7 @@ import { clampText, htmlToPlainText } from '@/lib/schema/product-schema'
  *    entradas antiguas que se conservan solo por enlaces).
  */
 
-export const revalidate = 300
+export const revalidate = false
 
 /**
  * Estructura estática de cada entrada publicada por cada idioma PUBLICADO,

@@ -7,6 +7,7 @@ import {
   getCategoryBySlug,
   getCategoryNav,
   getCategorySlugs,
+  getPrimaryCategoryById,
   getProductsByCategorySlug,
   type Product,
 } from '@/services/catalog'
@@ -35,7 +36,7 @@ import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
 
 /** Cache pública limitada para que cada hub de categoría se sirva desde CDN y
  * no genere un coste excesivo por cada crawl/bot o petición repetida. */
-export const revalidate = 300
+export const revalidate = false
 
 /**
  * Genera el HTML estático de cada categoría activa por cada idioma PUBLICADO,
@@ -156,6 +157,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
   // 404 real si la categoría no existe o está inactiva.
   if (!category) notFound()
 
+  const { category: parentCategory } = category.parent_id
+    ? await getPrimaryCategoryById(category.parent_id, locale)
+    : { category: null }
+
   // Guías del nicho: completa el enlazado interno BIDIRECCIONAL (hub ↔ entrada).
   // Se consulta DESPUÉS porque necesita el id de la categoría ya resuelta.
   const { entries: guides } = await getEntriesForCategory(category.id, locale)
@@ -182,7 +187,24 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
             name: 'Catálogo',
             item: absoluteUrl(buildLocalizedPath('/catalogo', locale, { prefixDefaultLocale: false })),
           },
-          { '@type': 'ListItem', position: 3, name: category.name, item: categoryUrl },
+          ...(parentCategory
+            ? [{
+                '@type': 'ListItem',
+                position: 3,
+                name: parentCategory.name,
+                item: absoluteUrl(
+                  buildLocalizedPath(`/${parentCategory.slug_localizado ?? parentCategory.slug}`, locale, {
+                    prefixDefaultLocale: false,
+                  }),
+                ),
+              }]
+            : []),
+          {
+            '@type': 'ListItem',
+            position: parentCategory ? 4 : 3,
+            name: category.name,
+            item: categoryUrl,
+          },
         ],
       },
       {
@@ -218,6 +240,12 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <CategoryPageView
+        parentCategory={parentCategory
+          ? {
+              name: parentCategory.name,
+              slug_localizado: parentCategory.slug_localizado ?? parentCategory.slug,
+            }
+          : null}
         category={{
           name: category.name,
           slug: category.slug,

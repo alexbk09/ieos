@@ -24,7 +24,7 @@ import {
 
 /** Revalidación diaria para mantener los términos estables sin gastar render
  * innecesario en cada request o crawl. */
-export const revalidate = 86400
+export const revalidate = false
 
 /** El documento existe en CADA idioma publicado (hreflang completo). */
 export function generateStaticParams() {

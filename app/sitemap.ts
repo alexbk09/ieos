@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { getSitemapProducts } from '@/services/aliProducts'
-import { getSitemapCategories } from '@/services/catalog'
+import { getPrimaryCategories, getSitemapCategories } from '@/services/catalog'
 import { getSitemapEntries } from '@/services/entries'
 import { absoluteUrl, ownOriginAssetUrl } from '@/lib/seo-url'
 import { buildLanguageAlternates } from '@/lib/seo'
@@ -34,7 +34,7 @@ import { LEGAL_DOCUMENT_ORDER, legalDocumentPath } from '@/lib/legal-content'
 // aborta el build con "Invalid segment configuration export detected".
 // Mantener un revalidate corto evita que el sitemap quede sin regeneración y a
 // la vez reduce el coste de render por crawlers repetidos.
-export const revalidate = 3600
+export const revalidate = false
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const generatedAt = new Date()
@@ -103,7 +103,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 2) Landings de categoría (/categoria/[slug]) — pSEO con lastmod real y
   //    SLUG LOCALIZADO por idioma (la URL habla el idioma del público).
-  const { items: categories } = await getSitemapCategories()
+  const [{ items: categories }, { data: primaryCategories }] = await Promise.all([
+    getSitemapCategories(),
+    getPrimaryCategories(),
+  ])
   for (const category of categories) {
     const slugFor = (locale: string) => category.slug_i18n?.[locale] ?? category.slug
     for (const locale of locales) {
@@ -114,6 +117,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
         alternates: alternatesFor((l) =>
           buildLocalizedPath(`/categoria/${slugFor(l)}`, l, { prefixDefaultLocale: false }),
+        ),
+      })
+    }
+  }
+
+  // 2.1) Hubs principales (/gaming, /fotografia, etc.). Solo se publican
+  // cuando contienen al menos una subcategoría con productos visibles.
+  const parentsWithProducts = new Set(
+    categories.map((category) => category.parent_id).filter((id): id is string => Boolean(id)),
+  )
+  for (const category of (primaryCategories ?? []).filter((item) => parentsWithProducts.has(item.id))) {
+    const slugFor = (locale: string) => category.slug_i18n?.[locale] ?? category.slug
+    for (const locale of locales) {
+      entries.push({
+        url: absoluteUrl(buildLocalizedPath(`/${slugFor(locale)}`, locale, { prefixDefaultLocale: false })),
+        lastModified: category.updated_at ?? generatedAt,
+        changeFrequency: 'weekly',
+        priority: 0.8,
+        alternates: alternatesFor((itemLocale) =>
+          buildLocalizedPath(`/${slugFor(itemLocale)}`, itemLocale, { prefixDefaultLocale: false }),
         ),
       })
     }

@@ -31,6 +31,7 @@ import { useLocalizedPath } from '@/hooks/use-localized-path'
  */
 export function CategoryPageView({
   category,
+  parentCategory,
   products,
   categories,
   guides,
@@ -53,6 +54,7 @@ export function CategoryPageView({
     /** Firma editorial del hub (autoría visible = señal E-E-A-T). */
     autor?: string | null
   }
+  parentCategory?: { name: string; slug_localizado: string } | null
   products: CardProduct[]
   /** Categorías para la navegación cross-categoría (enlazado interno). */
   categories: CategoryNavItem[]
@@ -93,6 +95,16 @@ export function CategoryPageView({
             <li aria-hidden="true">/</li>
             <li><a href={localizedPath('/catalogo')} className="transition-colors hover:text-brand-strong">{t('nav.catalog')}</a></li>
             <li aria-hidden="true">/</li>
+            {parentCategory && (
+              <>
+                <li>
+                  <a href={localizedPath(`/${parentCategory.slug_localizado}`)} className="transition-colors hover:text-brand-strong">
+                    {parentCategory.name}
+                  </a>
+                </li>
+                <li aria-hidden="true">/</li>
+              </>
+            )}
             <li className="text-brand-strong">{category.name}</li>
           </ol>
         </nav>

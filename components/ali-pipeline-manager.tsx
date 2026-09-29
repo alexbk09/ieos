@@ -74,6 +74,7 @@ type CredencialesEstado = {
   appKeyConfigurada: boolean
   appSecretConfigurado: boolean
   trackingIdConfigurado: boolean
+  categoriasPrincipales?: { id: string; name: string }[]
 }
 
 /** Etiquetas humanas por etapa para el log en vivo. */
@@ -100,6 +101,7 @@ function IconoEtapa({ etapa }: { etapa: EtapaPipeline }) {
 
 export function AliPipelineManager() {
   const [keyword, setKeyword] = useState('')
+  const [categoriaPrincipalId, setCategoriaPrincipalId] = useState('')
   const [ejecutando, setEjecutando] = useState(false)
   const [credenciales, setCredenciales] = useState<CredencialesEstado | null>(null)
   const [logEnVivo, setLogEnVivo] = useState<NotificacionEtapa[]>([])
@@ -112,7 +114,11 @@ export function AliPipelineManager() {
     try {
       const respuesta = await fetch('/api/admin/ali-pipeline', { cache: 'no-store' })
       const datos = await respuesta.json()
-      if (respuesta.ok && datos?.success) setCredenciales(datos.data)
+      if (respuesta.ok && datos?.success) {
+        setCredenciales(datos.data)
+        const primerasCategorias = datos.data.categoriasPrincipales ?? []
+        if (primerasCategorias.length === 1) setCategoriaPrincipalId(primerasCategorias[0].id)
+      }
     } catch {
       // Silencioso: el diagnóstico es opcional.
     }
@@ -129,6 +135,7 @@ export function AliPipelineManager() {
   const ejecutarPipeline = useCallback(async () => {
     const palabra = keyword.trim()
     if (!palabra) { toast.error('Escribe una palabra clave semilla.'); return }
+    if (!categoriaPrincipalId) { toast.error('Selecciona el hobby principal del nicho.'); return }
     if (ejecutando) return
 
     setEjecutando(true)
@@ -139,7 +146,7 @@ export function AliPipelineManager() {
       const respuesta = await fetch('/api/admin/ali-pipeline', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ keyword: palabra }),
+        body: JSON.stringify({ keyword: palabra, categoriaPrincipalId }),
       })
 
       // Si la API responde JSON (no SSE) es un error temprano (403/400/500).
@@ -224,7 +231,7 @@ export function AliPipelineManager() {
     } finally {
       setEjecutando(false)
     }
-  }, [keyword, ejecutando])
+  }, [keyword, categoriaPrincipalId, ejecutando])
 
   const credencialesCompletas = credenciales
     ? credenciales.appKeyConfigurada && credenciales.appSecretConfigurado && credenciales.trackingIdConfigurado
@@ -274,6 +281,20 @@ export function AliPipelineManager() {
               onKeyDown={(e) => { if (e.key === 'Enter') ejecutarPipeline() }}
             />
           </div>
+          <label className="grid gap-1.5 text-sm font-medium sm:w-56">
+            Hobby principal
+            <select
+              value={categoriaPrincipalId}
+              onChange={(e) => setCategoriaPrincipalId(e.target.value)}
+              disabled={!credenciales?.categoriasPrincipales?.length || ejecutando}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm disabled:opacity-60"
+            >
+              <option value="">Seleccionar hobby</option>
+              {(credenciales?.categoriasPrincipales ?? []).map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>{categoria.name}</option>
+              ))}
+            </select>
+          </label>
           <div className="flex items-end">
             {credencialesCompletas ? (
               <FormSubmitButton loading={ejecutando} onClick={ejecutarPipeline} className="gap-2">
@@ -295,6 +316,9 @@ export function AliPipelineManager() {
         <p className="mt-2 text-xs text-muted-foreground">
           El pipeline procesa hasta 5 productos nuevos por ejecución para no agotar créditos del proxy ni de DeepSeek.
         </p>
+        {credenciales && !credenciales.categoriasPrincipales?.length && (
+          <p className="mt-2 text-sm text-amber-600">Crea o activa un hobby principal en Categorías para clasificar los nichos.</p>
+        )}
       </section>
 
       {/* Log en vivo */}

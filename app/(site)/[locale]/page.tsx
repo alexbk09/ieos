@@ -11,7 +11,7 @@ import { createTranslator, MESSAGES } from '@/lib/i18n-messages'
 
 /** Cache pública limitada para evitar regeneración costosa por cada crawl/bot
  * mientras mantenemos la home servida desde CDN con HTML renderizado en servidor. */
-export const revalidate = 300
+export const revalidate = false
 
 /**
  * Rutas de la portada para cada idioma PUBLICADO.

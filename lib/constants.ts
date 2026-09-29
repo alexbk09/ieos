@@ -931,9 +931,10 @@ export const SITEMAP_REVALIDATE_SECONDS = 86400
  * raíz, metadata de página y la propia página). Con ~2.000 páginas estáticas eso
  * eran miles de round-trips a Supabase (≈250 ms cada uno): la causa real de que
  * el build tardara minutos. Memoizados por idioma, el build hace 6 consultas.
- * 5 min: el mismo ciclo que el ISR de la tienda (no añade retardo nuevo).
+ * Sin expiración automática: se invalida por etiqueta al guardar cambios desde
+ * el panel, evitando regeneraciones periódicas por tráfico o crawlers.
  */
-export const PUBLIC_DATA_REVALIDATE_SECONDS = 300
+export const PUBLIC_DATA_REVALIDATE_SECONDS = false
 
 /** Etiqueta de caché de site_settings (se invalida al guardar en el panel). */
 export const SITE_SETTINGS_CACHE_TAG = 'site-settings'

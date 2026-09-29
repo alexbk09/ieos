@@ -17,7 +17,7 @@ import { publishedLocales } from '@/lib/i18n-config'
  * Cache pública limitada para que las páginas del sitio no regeneren por cada
  * crawler o petición y se siga sirviendo desde CDN con revalidación controlada.
  */
-export const revalidate = 300
+export const revalidate = false
 
 export const viewport = ROOT_VIEWPORT
 

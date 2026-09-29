@@ -309,6 +309,7 @@ async function procesarUnProducto(params: {
 
 export async function ejecutarPipelineAutomatizacion(
   keyword: string,
+  categoriaPrincipalId: string,
   notificar: (n: NotificacionPipeline) => void,
 ) {
   const resultados: ResultadoProductoPipeline[] = []
@@ -345,11 +346,15 @@ export async function ejecutarPipelineAutomatizacion(
     // 2) Resolver categoria del nicho (derivada de la keyword) para los
     // productos nuevos. Asi cada lote queda en una categoria real y filtrable
     // en el catalogo publico (relacion N:N via product_categories).
-    const categoria = await obtenerCategoriaAliExpress(palabra)
+    const categoria = await obtenerCategoriaAliExpress(palabra, categoriaPrincipalId)
     if (!categoria.success || !categoria.categoriaId) {
       notificar({ etapa: 'error', mensaje: 'No se pudo resolver la categoria.' })
       return { success: false as const, error: categoria.error ?? 'Sin categoria.' }
     }
+    notificar({
+      etapa: 'filtrado',
+      mensaje: 'Nicho clasificado en ' + categoria.categoriaPrincipal + '.',
+    })
 
     // 2.1) Contenido del HUB de la categoria (pSEO): se genera UNA vez por
     // nicho si aún no tiene intro editorial. Convierte el listado plano en

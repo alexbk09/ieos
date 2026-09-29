@@ -6,7 +6,7 @@ import { revalidateTag } from 'next/cache'
  * POR QUÉ existe: los datos que se leen en todas las páginas (site_settings,
  * navegación de categorías) están memoizados para no repetir miles de consultas
  * a Supabase en el build y en ISR. Sin invalidarlos, un cambio guardado en el
- * panel tardaría hasta PUBLIC_DATA_REVALIDATE_SECONDS en verse.
+ * panel solo se reflejaría al expirar esa caché.
  *
  * Se centraliza (mismo patrón que lib/sitemap-revalidate.ts) para no duplicar el
  * manejo defensivo: si se invoca fuera de un contexto de request (build, script)

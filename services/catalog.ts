@@ -42,7 +42,7 @@ import { slugify } from '@/lib/slug'
  * @param slug Slug del contenido (si falta, no se hace nada).
  */
 async function notificarIndexacionDeContenido(
-  tipo: 'producto' | 'categoria',
+  tipo: 'producto' | 'categoria' | 'pagina',
   slug: string | null | undefined,
 ): Promise<void> {
   if (!slug) return
@@ -184,6 +184,8 @@ export type Category = {
   name: string
   slug: string
   description: string | null
+  tipo?: 'principal' | 'subcategoria'
+  parent_id?: string | null
   activa: boolean
   created_at: string
   updated_at: string
@@ -226,6 +228,8 @@ export type CategoryInput = {
   name: string
   slug: string
   description?: string | null
+  tipo?: 'principal' | 'subcategoria'
+  parent_id?: string | null
   activa?: boolean
   /** Traducciones por idioma (migración 0049). Opcionales: el CRUD simple no las toca. */
   name_i18n?: Record<string, string> | null
@@ -428,7 +432,7 @@ export async function getProductsWithCategories() {
   const supabase = await createServerClient()
   const [{ data: products }, { data: categories }] = await Promise.all([
     supabase.from('products').select(PRODUCT_SELECT).order('created_at', { ascending: false }),
-    supabase.from('categories').select('id,name,slug').order('name'),
+    supabase.from('categories').select('id,name,slug').eq('tipo', 'subcategoria').order('name'),
   ])
   return {
     products: (products ?? []).map(mapProduct),
@@ -892,7 +896,7 @@ function normalizeKey(value: string): string {
  *   3) Crea solo los faltantes (una inserción en lote por entidad).
  *   4) Devuelve mapas de nombre normalizado → id.
  */
-async function resolveBulkRelations(items: ProductInput[]) {
+async function resolveBulkRelations(items: ProductInput[], categoriaPrincipalId?: string) {
   const supabase = await createServerClient()
 
   // Recolectar nombres únicos mencionados en el Excel
@@ -911,22 +915,47 @@ async function resolveBulkRelations(items: ProductInput[]) {
   const [marcasRes, proveedoresRes, categoriasRes] = await Promise.all([
     marcasNombres.size > 0 ? supabase.from('marcas').select('id,nombre') : null,
     proveedoresNombres.size > 0 ? supabase.from('proveedores').select('id,nombre') : null,
-    categoriasNombres.size > 0 ? supabase.from('categories').select('id,name') : null,
+    categoriasNombres.size > 0
+      ? supabase.from('categories').select('id,name,parent_id').eq('tipo', 'subcategoria')
+      : null,
   ])
 
   // Construir mapas por nombre normalizado
   const marcaMap = new Map<string, string>()
   const proveedorMap = new Map<string, string>()
   const categoriaMap = new Map<string, string>()
+  const categoriaParentMap = new Map<string, string | null>()
 
   for (const row of (marcasRes?.data ?? []) as any[]) marcaMap.set(normalizeKey(row.nombre), row.id)
   for (const row of (proveedoresRes?.data ?? []) as any[]) proveedorMap.set(normalizeKey(row.nombre), row.id)
-  for (const row of (categoriasRes?.data ?? []) as any[]) categoriaMap.set(normalizeKey(row.name), row.id)
+  for (const row of (categoriasRes?.data ?? []) as any[]) {
+    categoriaMap.set(normalizeKey(row.name), row.id)
+    categoriaParentMap.set(row.id, row.parent_id ?? null)
+  }
 
   // Determinar faltantes
   const marcasFaltantes = [...marcasNombres].filter((n) => !marcaMap.has(normalizeKey(n)))
   const proveedoresFaltantes = [...proveedoresNombres].filter((n) => !proveedorMap.has(normalizeKey(n)))
   const categoriasFaltantes = [...categoriasNombres].filter((n) => !categoriaMap.has(normalizeKey(n)))
+  const categoriasSinPadre = [...categoriasNombres].filter((name) => {
+    const id = categoriaMap.get(normalizeKey(name))
+    return id && !categoriaParentMap.get(id)
+  })
+
+  if ((categoriasFaltantes.length > 0 || categoriasSinPadre.length > 0) && !categoriaPrincipalId) {
+    throw new Error('Selecciona un hobby principal para clasificar las categorías nuevas o pendientes del Excel.')
+  }
+
+  if (categoriaPrincipalId && (categoriasFaltantes.length > 0 || categoriasSinPadre.length > 0)) {
+    const { data: parent } = await supabase
+      .from('categories')
+      .select('id,tipo,activa')
+      .eq('id', categoriaPrincipalId)
+      .maybeSingle()
+    if (!parent || parent.tipo !== 'principal' || !parent.activa) {
+      throw new Error('El hobby principal seleccionado no existe o está inactivo.')
+    }
+  }
 
   // Crear faltantes en lote
   if (marcasFaltantes.length > 0) {
@@ -950,10 +979,26 @@ async function resolveBulkRelations(items: ProductInput[]) {
   if (categoriasFaltantes.length > 0) {
     const { data: created, error } = await supabase
       .from('categories')
-      .insert(categoriasFaltantes.map((name) => ({ name, slug: slugify(name) })))
+      .insert(categoriasFaltantes.map((name) => ({
+        name,
+        slug: slugify(name),
+        tipo: 'subcategoria',
+        parent_id: categoriaPrincipalId,
+        activa: true,
+      })))
       .select('id,name')
     if (error) throw new Error(`No se pudo crear las categorías: ${error.message}`)
     for (const row of (created ?? []) as any[]) categoriaMap.set(normalizeKey(row.name), row.id)
+  }
+
+  for (const name of categoriasSinPadre) {
+    const id = categoriaMap.get(normalizeKey(name))
+    if (!id) continue
+    const { error } = await supabase
+      .from('categories')
+      .update({ parent_id: categoriaPrincipalId })
+      .eq('id', id)
+    if (error) throw new Error(`No se pudo asignar el hobby a la categoría "${name}": ${error.message}`)
   }
 
   return { marcaMap, proveedorMap, categoriaMap }
@@ -971,7 +1016,7 @@ async function resolveBulkRelations(items: ProductInput[]) {
  * Si el Excel trae solo el NOMBRE del proveedor/marca/categoría, se crean
  * automáticamente y se relacionan con el producto por su id.
  */
-export async function createProductsBulk(items: ProductInput[]) {
+export async function createProductsBulk(items: ProductInput[], categoriaPrincipalId?: string) {
   if (items.length === 0) return { products: [], errors: null }
 
   const successful: Product[] = []
@@ -979,7 +1024,7 @@ export async function createProductsBulk(items: ProductInput[]) {
 
   try {
     // Paso 1: Resolver (o crear) las relaciones mencionadas en la carga
-    const { marcaMap, proveedorMap, categoriaMap } = await resolveBulkRelations(items)
+    const { marcaMap, proveedorMap, categoriaMap } = await resolveBulkRelations(items, categoriaPrincipalId)
 
     // Paso 2: Enriquecer cada item con los IDs resueltos
     const enriched = items.map((item, index) => {
@@ -1087,6 +1132,7 @@ async function selectCategoriesConFallback<T>(
 /** Entrada del sitemap de categorías (incluye datos i18n para hreflang). */
 export type SitemapCategoryItem = {
   slug: string
+  parent_id?: string | null
   lastmod: string
   name_i18n?: Record<string, string> | null
   slug_i18n?: Record<string, string> | null
@@ -1172,6 +1218,122 @@ export async function getCategories() {
   return supabase.from('categories').select('*').order('name')
 }
 
+/** Categorías principales activas disponibles para clasificar nichos. */
+export async function getPrimaryCategories() {
+  const supabase = createPublicClient()
+  return supabase
+    .from('categories')
+    .select('id,name,slug,activa,tipo,parent_id,updated_at,name_i18n,slug_i18n,description_i18n')
+    .eq('tipo', 'principal')
+    .eq('activa', true)
+    .order('name')
+}
+
+/** Resuelve un hobby principal por slug base o traducido. */
+export const getPrimaryCategoryBySlug = cache(async (slug: string, locale?: string) => {
+  const supabase = createPublicClient()
+  const BASE = 'id,name,slug,description,activa,tipo,parent_id,seo_title,seo_intro,autor'
+  const { data, error } = await selectCategoriesConFallback<any>(
+    (columns) =>
+      supabase
+        .from('categories')
+        .select(columns)
+        .eq('activa', true)
+        .eq('tipo', 'principal')
+        .eq('slug', slug)
+        .maybeSingle(),
+    BASE,
+  )
+  if (error) return { category: null, error }
+  if (data) return { category: localizarCategoria(data, locale), error: null }
+
+  if (locale) {
+    const { data: localized } = await selectCategoriesConFallback<any>(
+      (columns) =>
+        supabase
+          .from('categories')
+          .select(columns)
+          .eq('activa', true)
+          .eq('tipo', 'principal')
+          .contains('slug_i18n', { [baseLanguage(locale)]: slug })
+          .maybeSingle(),
+      BASE,
+    )
+    if (localized) return { category: localizarCategoria(localized, locale), error: null }
+  }
+  return { category: null, error: null }
+})
+
+/** Lee el hobby principal de una subcategoría por id para su breadcrumb. */
+export async function getPrimaryCategoryById(id: string, locale?: string) {
+  const supabase = createPublicClient()
+  const { data, error } = await selectCategoriesConFallback<any>(
+    (columns) =>
+      supabase
+        .from('categories')
+        .select(columns)
+        .eq('id', id)
+        .eq('activa', true)
+        .eq('tipo', 'principal')
+        .maybeSingle(),
+    'id,name,slug,description,activa,tipo,parent_id',
+  )
+  if (error) return { category: null, error }
+  return { category: data ? localizarCategoria(data, locale) : null, error: null }
+}
+
+/** Slugs base y traducidos de los hobbies principales para generar sus páginas. */
+export async function getPrimaryCategorySlugs() {
+  const supabase = createPublicClient()
+  const { data, error } = await selectCategoriesConFallback<any>(
+    (columns) =>
+      supabase
+        .from('categories')
+        .select(columns)
+        .eq('activa', true)
+        .eq('tipo', 'principal'),
+    'slug',
+    'slug_i18n',
+  )
+  if (error) return { items: [] as CategorySlugItem[], error }
+  return {
+    items: ((data ?? []) as any[])
+      .filter((row) => row?.slug)
+      .map((row) => ({
+        slug: String(row.slug),
+        slug_i18n: (row.slug_i18n ?? null) as Record<string, string> | null,
+      })),
+    error: null,
+  }
+}
+
+/** Subcategorías activas con productos visibles que pertenecen al hobby. */
+export async function getSubcategoriesByParent(parentId: string, locale?: string) {
+  const supabase = createPublicClient()
+  const [{ data, error }, counts] = await Promise.all([
+    selectCategoriesConFallback<any>(
+      (columns) =>
+        supabase
+          .from('categories')
+          .select(columns)
+          .eq('activa', true)
+          .eq('tipo', 'subcategoria')
+          .eq('parent_id', parentId)
+          .order('name'),
+      'id,name,slug,description,activa,tipo,parent_id',
+    ),
+    contarProductosPorCategoria(),
+  ])
+  if (error) return { items: [], error }
+  const items = ((data ?? []) as any[])
+    .filter((row) => (counts.get(String(row.id)) ?? 0) > 0)
+    .map((row) => ({
+      ...localizarCategoria(row, locale),
+      count: counts.get(String(row.id)) ?? 0,
+    }))
+  return { items, error: null }
+}
+
 /**
  * Obtiene solo las categorías activas (para el filtro del catálogo público).
  * Cliente público → SSG+ISR.
@@ -1179,8 +1341,14 @@ export async function getCategories() {
 export async function getCategoriesActivas(locale?: string) {
   const supabase = createPublicClient()
   const { data, error } = await selectCategoriesConFallback<any>(
-    (columns) => supabase.from('categories').select(columns).eq('activa', true).order('name'),
-    'id,name,slug,description,activa',
+    (columns) =>
+      supabase
+        .from('categories')
+        .select(columns)
+        .eq('activa', true)
+        .eq('tipo', 'subcategoria')
+        .order('name'),
+    'id,name,slug,description,activa,tipo,parent_id',
   )
   if (error) return { data: null, error }
   return { data: (data ?? []).map((row: any) => localizarCategoria(row, locale)), error: null }
@@ -1195,11 +1363,18 @@ export async function getCategoriesActivas(locale?: string) {
  */
 export const getCategoryBySlug = cache(async (slug: string, locale?: string) => {
   const supabase = createPublicClient()
-  const BASE = 'id,name,slug,description,activa,seo_title,seo_intro,seo_faq,autor'
+  const BASE = 'id,name,slug,description,activa,tipo,parent_id,seo_title,seo_intro,seo_faq,autor'
 
   // 1) Coincidencia por el slug BASE (URL histórica, ya indexada).
   const { data, error } = await selectCategoriesConFallback<any>(
-    (columns) => supabase.from('categories').select(columns).eq('activa', true).eq('slug', slug).maybeSingle(),
+    (columns) =>
+      supabase
+        .from('categories')
+        .select(columns)
+        .eq('activa', true)
+        .eq('tipo', 'subcategoria')
+        .eq('slug', slug)
+        .maybeSingle(),
     BASE,
   )
   if (error) return { category: null, error }
@@ -1213,6 +1388,7 @@ export const getCategoryBySlug = cache(async (slug: string, locale?: string) => 
           .from('categories')
           .select(columns)
           .eq('activa', true)
+          .eq('tipo', 'subcategoria')
           .contains('slug_i18n', { [baseLanguage(locale)]: slug })
           .maybeSingle(),
       BASE,
@@ -1257,7 +1433,7 @@ export async function getCategorySeo(categoryId: string) {
 export async function getCategorySlugs() {
   const supabase = createPublicClient()
   const { data, error } = await selectCategoriesConFallback<any>(
-    (columns) => supabase.from('categories').select(columns).eq('activa', true),
+    (columns) => supabase.from('categories').select(columns).eq('activa', true).eq('tipo', 'subcategoria'),
     'slug',
     'slug_i18n',
   )
@@ -1313,14 +1489,24 @@ const readCategoryNav = unstable_cache(
     const [{ data: cats, error }, counts] = await Promise.all([
       selectCategoriesConFallback<any>(
         (columns) => supabase.from('categories').select(columns).eq('activa', true),
-        'id,name,slug,description',
+        'id,name,slug,description,tipo,parent_id',
       ),
       contarProductosPorCategoria(),
     ])
     // El throw evita cachear un fallo transitorio (unstable_cache no cachea rechazos).
     if (error) throw new Error(error.message)
 
-    return ((cats ?? []) as any[])
+    const rows = (cats ?? []) as any[]
+    const parentCounts = new Map<string, number>()
+    for (const category of rows) {
+      if (category.tipo !== 'subcategoria' || !category.parent_id) continue
+      parentCounts.set(
+        String(category.parent_id),
+        (parentCounts.get(String(category.parent_id)) ?? 0) + (counts.get(category.id) ?? 0),
+      )
+    }
+
+    return rows
       .map((c) => {
         const localized = localizarCategoria(c, locale)
         return {
@@ -1331,11 +1517,19 @@ const readCategoryNav = unstable_cache(
           // Slug traducido disponible para enlaces localizados (Fase 3).
           slug_localizado: String(localized.slug_localizado ?? c.slug),
           description: (localized.description ?? null) as string | null,
-          count: counts.get(c.id) ?? 0,
+          parent_id: (c.parent_id ?? null) as string | null,
+          tipo: c.tipo === 'principal' ? 'principal' as const : 'subcategoria' as const,
+          count: c.tipo === 'principal'
+            ? parentCounts.get(String(c.id)) ?? 0
+            : counts.get(c.id) ?? 0,
         }
       })
       .filter((c) => c.count > 0)
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .sort((a, b) =>
+        (a.tipo === b.tipo ? 0 : a.tipo === 'principal' ? -1 : 1) ||
+        b.count - a.count ||
+        a.name.localeCompare(b.name),
+      )
       .slice(0, limit)
   },
   ['category-nav'],
@@ -1371,8 +1565,14 @@ export async function getSitemapCategories(locale?: string) {
   const supabase = createPublicClient()
   const [{ data, error }, counts] = await Promise.all([
     selectCategoriesConFallback<any>(
-      (columns) => supabase.from('categories').select(columns).eq('activa', true).order('name'),
-      'id,slug,name,updated_at',
+      (columns) =>
+        supabase
+          .from('categories')
+          .select(columns)
+          .eq('activa', true)
+          .eq('tipo', 'subcategoria')
+          .order('name'),
+      'id,slug,name,updated_at,parent_id',
       'name_i18n,slug_i18n',
     ),
     contarProductosPorCategoria(),
@@ -1382,6 +1582,7 @@ export async function getSitemapCategories(locale?: string) {
     .filter((row) => row?.slug && (counts.get(row.id) ?? 0) > 0)
     .map((row) => ({
       slug: String(row.slug),
+      parent_id: row.parent_id ? String(row.parent_id) : null,
       lastmod: (row.updated_at ?? new Date().toISOString()).slice(0, 10),
       // Datos i18n: alimentan el hreflang por idioma del sitemap (Fase 3).
       name_i18n: (row.name_i18n ?? null) as Record<string, string> | null,
@@ -1407,6 +1608,7 @@ export async function getProductsByCategorySlug(slug: string, from = 0, locale?:
     .from('categories')
     .select('id')
     .eq('activa', true)
+    .eq('tipo', 'subcategoria')
     .eq('slug', slug)
     .maybeSingle()
   categoryId = cat?.id ?? null
@@ -1417,6 +1619,7 @@ export async function getProductsByCategorySlug(slug: string, from = 0, locale?:
       .from('categories')
       .select('id')
       .eq('activa', true)
+      .eq('tipo', 'subcategoria')
       .contains('slug_i18n', { [baseLanguage(locale)]: slug })
       .maybeSingle()
     categoryId = localized?.id ?? null
@@ -1486,15 +1689,16 @@ export async function createCategory(payload: CategoryInput) {
   const supabase = await createServerClient()
   const row = {
     ...payload,
+    tipo: payload.tipo ?? 'subcategoria',
+    parent_id: payload.tipo === 'principal' ? null : (payload.parent_id ?? null),
     name_i18n: { [SOURCE_LOCALE]: payload.name, ...(payload.name_i18n ?? {}) },
     slug_i18n: { [SOURCE_LOCALE]: payload.slug, ...(payload.slug_i18n ?? {}) },
   }
   const result = await supabase.from('categories').insert(row).select('*').single()
-  // La nueva landing de categoría debe entrar al sitemap al instante.
   if (!result.error) {
-    revalidarSitemap({ categoriaSlug: payload.slug })
-    // La categoría recién creada también se avisa a los buscadores.
-    await notificarIndexacionDeContenido('categoria', payload.slug)
+    const esPrincipal = (payload.tipo ?? 'subcategoria') === 'principal'
+    revalidarSitemap(esPrincipal ? { hobbySlug: payload.slug } : { categoriaSlug: payload.slug })
+    await notificarIndexacionDeContenido(esPrincipal ? 'pagina' : 'categoria', payload.slug)
     // La navegación cross-categoría tiene que incluirla ya (no esperar 5 min).
     revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
   }
@@ -1509,6 +1713,7 @@ export async function createCategory(payload: CategoryInput) {
 export async function updateCategory(id: string, payload: CategoryInput) {
   const supabase = await createServerClient()
   const update: Record<string, unknown> = { ...payload, updated_at: new Date().toISOString() }
+  if (payload.tipo === 'principal') update.parent_id = null
 
   if (payload.name || payload.slug) {
     const { data: current } = await supabase
@@ -1531,11 +1736,10 @@ export async function updateCategory(id: string, payload: CategoryInput) {
   }
 
   const result = await supabase.from('categories').update(update).eq('id', id).select('*').single()
-  // La URL/meta de la categoría cambió: sitemap y landing al instante.
   if (!result.error) {
-    revalidarSitemap({ categoriaSlug: payload.slug })
-    // El hub cambió: se re-avisa a los buscadores (URL_UPDATED).
-    await notificarIndexacionDeContenido('categoria', payload.slug)
+    const esPrincipal = payload.tipo === 'principal'
+    revalidarSitemap(esPrincipal ? { hobbySlug: payload.slug } : { categoriaSlug: payload.slug })
+    await notificarIndexacionDeContenido(esPrincipal ? 'pagina' : 'categoria', payload.slug)
     // El nombre/slug traducido también alimenta la navegación cross-categoría.
     revalidarCacheDeDatos(CATEGORY_NAV_CACHE_TAG)
   }
@@ -1580,11 +1784,11 @@ export async function updateCategorySeo(
   // que no habla del autor) NO pisa la firma ya guardada, y `null` sí la limpia.
   if (payload.autor !== undefined) row.autor = payload.autor
   const result = await supabase.from('categories').update(row).eq('id', id).select('*').single()
-  // La landing del hub cambió: se revalida su página y el sitemap al instante.
   if (!result.error) {
-    revalidarSitemap({ categoriaSlug: options.slug })
-    // El hub pSEO acaba de cambiar de contenido: se avisa a los buscadores.
-    await notificarIndexacionDeContenido('categoria', options.slug)
+    const { data: category } = await supabase.from('categories').select('tipo').eq('id', id).maybeSingle()
+    const esPrincipal = category?.tipo === 'principal'
+    revalidarSitemap(esPrincipal ? { hobbySlug: options.slug } : { categoriaSlug: options.slug })
+    await notificarIndexacionDeContenido(esPrincipal ? 'pagina' : 'categoria', options.slug)
   }
   return result
 }

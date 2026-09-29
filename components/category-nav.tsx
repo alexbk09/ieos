@@ -12,6 +12,7 @@ export type CategoryNavItem = {
   /** Slug traducido del idioma activo (URL localizada). Fallback = slug base. */
   slug_localizado?: string
   description?: string | null
+  tipo?: 'principal' | 'subcategoria'
   count: number
 }
 
@@ -68,7 +69,11 @@ export function CategoryNav({
         {others.map((c) => (
           <a
             key={c.id}
-            href={localizedPath(`/categoria/${c.slug_localizado ?? c.slug}`)}
+            href={localizedPath(
+              c.tipo === 'principal'
+                ? `/${c.slug_localizado ?? c.slug}`
+                : `/categoria/${c.slug_localizado ?? c.slug}`,
+            )}
             className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand hover:shadow-lg hover:shadow-brand/10"
           >
             {/* Halo decorativo que se intensifica al pasar el cursor. */}

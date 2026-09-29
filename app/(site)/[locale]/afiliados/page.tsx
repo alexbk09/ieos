@@ -24,7 +24,7 @@ import {
 
 /** Revalidación corta para mantener el aviso legal estable y evitar render de
  * cada request o crawl sin necesidad. */
-export const revalidate = 86400
+export const revalidate = false
 
 /** El documento existe en CADA idioma publicado (hreflang completo). */
 export function generateStaticParams() {

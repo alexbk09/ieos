@@ -19,11 +19,18 @@ export async function GET() {
 export async function POST(request: Request) {
   await requireAdmin()
   const body = await request.json()
+  const tipo = body.tipo === 'principal' ? 'principal' : 'subcategoria'
+  const parentId = body.parent_id ? String(body.parent_id) : null
+  if (tipo === 'subcategoria' && !parentId) {
+    return NextResponse.json({ error: 'Selecciona el hobby principal de esta subcategoría.' }, { status: 400 })
+  }
 
   const result = await createCategory({
     name: String(body.name ?? '').trim(),
     slug: String(body.slug ?? '').trim(),
     description: body.description ?? null,
+    tipo,
+    parent_id: parentId,
     activa: body.activa !== false,
   })
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })
@@ -36,11 +43,24 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   await requireAdmin()
   const body = await request.json()
+  const parentId = body.parent_id ? String(body.parent_id) : null
+  const { data: categories } = await getCategories()
+  const current = (categories ?? []).find((category) => category.id === body.id)
+  if (current && current.slug !== body.slug) {
+    return NextResponse.json({ error: 'No se puede cambiar el slug de una categoría existente.' }, { status: 400 })
+  }
+  if (body.tipo === 'subcategoria' && !parentId) {
+    if (current?.tipo === 'principal' || current?.parent_id) {
+      return NextResponse.json({ error: 'Selecciona el hobby principal de esta subcategoría.' }, { status: 400 })
+    }
+  }
 
   const result = await updateCategory(body.id, {
     name: body.name,
     slug: body.slug,
     description: body.description ?? null,
+    tipo: body.tipo === 'principal' ? 'principal' : 'subcategoria',
+    parent_id: parentId,
     activa: body.activa !== false,
   })
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 })

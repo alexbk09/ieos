@@ -13,6 +13,8 @@ type Category = {
   name: string
   slug: string
   description: string | null
+  tipo?: 'principal' | 'subcategoria'
+  parent_id?: string | null
   activa: boolean
   created_at: string
   updated_at: string
@@ -24,6 +26,8 @@ type CategoryForm = {
   name: string
   slug: string
   description: string
+  tipo: 'principal' | 'subcategoria'
+  parent_id: string
   activa: boolean
 }
 
@@ -36,7 +40,7 @@ type CategoryForm = {
 export function CategoryManager({ initialCategories }: { initialCategories: Category[] }) {
   const [categories, setCategories] = useState(initialCategories)
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<CategoryForm>({ name: '', slug: '', description: '', activa: true })
+  const [form, setForm] = useState<CategoryForm>({ name: '', slug: '', description: '', tipo: 'subcategoria', parent_id: '', activa: true })
   const [saving, setSaving] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -63,7 +67,7 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
 
   /** Abre el modal para crear una categoría nueva. */
   function openCreate() {
-    setForm({ name: '', slug: '', description: '', activa: true })
+    setForm({ name: '', slug: '', description: '', tipo: 'subcategoria', parent_id: '', activa: true })
     setModalOpen(true)
   }
 
@@ -74,6 +78,8 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
       name: category.name,
       slug: category.slug,
       description: category.description ?? '',
+      tipo: category.tipo ?? 'subcategoria',
+      parent_id: category.parent_id ?? '',
       activa: category.activa,
     })
     setModalOpen(true)
@@ -83,6 +89,12 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
   function validate(): string | null {
     if (!form.name.trim()) return 'El nombre de la categoría es obligatorio.'
     if (!form.slug.trim()) return 'El slug de la categoría es obligatorio.'
+    if (form.tipo === 'subcategoria' && !form.parent_id) {
+      const current = categories.find((category) => category.id === form.id)
+      if (!form.id || current?.tipo === 'principal' || current?.parent_id) {
+        return 'Selecciona el hobby principal de esta subcategoría.'
+      }
+    }
     return null
   }
 
@@ -124,6 +136,8 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
         name: category.name,
         slug: category.slug,
         description: category.description,
+        tipo: category.tipo ?? 'subcategoria',
+        parent_id: category.parent_id ?? null,
         activa: !category.activa,
       }),
     })
@@ -175,7 +189,14 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
           </div>
           <div>
             <p className="font-medium">{category.name}</p>
-            <p className="font-mono text-xs text-muted-foreground">/{category.slug}</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                {category.tipo === 'principal' ? `/${category.slug}` : `/categoria/${category.slug}`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {category.tipo === 'principal'
+                  ? 'Hobby principal'
+                  : categories.find((item) => item.id === category.parent_id)?.name ?? 'Subcategoría sin asignar'}
+              </p>
           </div>
         </div>
       ),
@@ -286,6 +307,33 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
         }
       >
         <div className="grid gap-4">
+          <label className="grid gap-1.5 text-sm font-medium">
+            Nivel
+            <select
+              value={form.tipo}
+              onChange={(e) => setForm({ ...form, tipo: e.target.value as CategoryForm['tipo'], parent_id: '' })}
+              disabled={Boolean(form.id)}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
+            >
+              <option value="principal">Hobby principal</option>
+              <option value="subcategoria">Subcategoría</option>
+            </select>
+          </label>
+          {form.tipo === 'subcategoria' && (
+            <label className="grid gap-1.5 text-sm font-medium">
+              Hobby principal
+              <select
+                value={form.parent_id}
+                onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
+                className="h-10 rounded-xl border border-border bg-background px-3 text-sm"
+              >
+                <option value="">{form.id ? 'Sin asignar todavía' : 'Selecciona un hobby'}</option>
+                {categories
+                  .filter((category) => category.tipo === 'principal' && category.id !== form.id)
+                  .map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              </select>
+            </label>
+          )}
           <FormInput
             label="Nombre"
             value={form.name}
@@ -298,7 +346,12 @@ export function CategoryManager({ initialCategories }: { initialCategories: Cate
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
             placeholder="Ej: iluminacion-led"
-            hint="Usado en la URL del catálogo."
+            disabled={Boolean(form.id)}
+            hint={form.id
+              ? 'La ruta de una categoría existente se conserva.'
+              : form.tipo === 'principal'
+                ? 'URL del hobby: /[slug]'
+                : 'URL del nicho: /categoria/[slug]'}
           />
           <FormTextarea
             label="Descripción"

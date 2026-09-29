@@ -10,7 +10,7 @@ import { OG_IMAGE_PATH } from '@/lib/constants'
 
 /** Cache pública limitada: evitamos el coste de render sin caché y mantenemos
  * las páginas del catálogo servidas desde CDN con revalidación controlada. */
-export const revalidate = 300
+export const revalidate = false
 
 /** Genera el HTML estático del catálogo por cada idioma publicado. */
 export function generateStaticParams() {

@@ -226,7 +226,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
  *
  * - `locale` forma parte de la clave (unstable_cache añade los argumentos).
  * - Un error de Supabase se LANZA (no se cachea) para que el siguiente intento
- *   vuelva a consultar y no quede servido un fallback durante 5 minutos.
+ *   vuelva a consultar y no quede servido un fallback.
  * - Se invalida al guardar desde el panel (updateSiteSettings → revalidateTag).
  */
 const readSiteSettings = unstable_cache(

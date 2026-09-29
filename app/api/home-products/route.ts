@@ -6,14 +6,14 @@ import { isPublishedLocale } from '@/lib/i18n-config'
  * disparar la consulta en cada request del navegador o crawler, pero sí se
  * revalide de forma periódica para mantener la rotación del inicio. */
 const CACHE_HEADERS = {
-  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=1800',
-  'CDN-Cache-Control': 'public, s-maxage=300, stale-while-revalidate=1800',
-  'Vercel-CDN-Cache-Control': 'public, s-maxage=300, stale-while-revalidate=1800',
+  'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+  'CDN-Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+  'Vercel-CDN-Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
 } as const
 
 /** El endpoint sirve una selección aleatoria, pero con ventana de caché corta
  * para mantener la carga baja y evitar regenerar en cada request. */
-export const revalidate = 300
+export const revalidate = 86400
 
 /**
  * API pública de la muestra ALEATORIA de productos del inicio.

@@ -4,6 +4,7 @@ import { hasPermission } from '@/services/roles'
 import { ALI_PIPELINE_MODULE_SLUG } from '@/lib/constants'
 import { ejecutarPipelineAutomatizacion } from '@/services/aliPipeline'
 import { estadoCredencialesAliExpress } from '@/services/aliApi'
+import { getPrimaryCategories } from '@/services/catalog'
 
 /**
  * API route del Pipeline de Automatización AliExpress (Fase 2.2).
@@ -48,9 +49,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No tienes permiso para ejecutar el pipeline.' }, { status: 403 })
   }
 
-  const body = (await request.json().catch(() => ({}))) as { keyword?: unknown }
+  const body = (await request.json().catch(() => ({}))) as {
+    keyword?: unknown
+    categoriaPrincipalId?: unknown
+  }
   const { keyword, error } = parsearKeyword(body)
   if (error || !keyword) return NextResponse.json({ error }, { status: 400 })
+  const categoriaPrincipalId =
+    typeof body.categoriaPrincipalId === 'string' ? body.categoriaPrincipalId.trim() : ''
+  if (!categoriaPrincipalId) {
+    return NextResponse.json({ error: 'Selecciona un hobby principal para este nicho.' }, { status: 400 })
+  }
 
   // Verifica credenciales antes de abrir el stream para dar feedback temprano.
   const credenciales = estadoCredencialesAliExpress()
@@ -74,7 +83,7 @@ export async function POST(request: Request) {
       }
 
       try {
-        const resultado = await ejecutarPipelineAutomatizacion(keyword, (notificacion) => {
+        const resultado = await ejecutarPipelineAutomatizacion(keyword, categoriaPrincipalId, (notificacion) => {
           enviar('etapa', notificacion)
         })
         enviar('fin', resultado)
@@ -109,5 +118,9 @@ export async function GET() {
   if (!puedeLeer) {
     return NextResponse.json({ error: 'No tienes permiso para ver el estado del pipeline.' }, { status: 403 })
   }
-  return NextResponse.json({ success: true, data: estadoCredencialesAliExpress() })
+  const { data: categorias } = await getPrimaryCategories()
+  return NextResponse.json({
+    success: true,
+    data: { ...estadoCredencialesAliExpress(), categoriasPrincipales: categorias ?? [] },
+  })
 }
