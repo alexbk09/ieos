@@ -19,7 +19,7 @@ export default async function CategorySeoPage() {
       <AdminPageHeader
         eyebrow="Catálogo · SEO · Hub de nicho"
         title="SEO de Categorías"
-        description="Edita el título largo, la guía de compra y la FAQ de cada categoría. Este contenido convierte el listado plano en una landing de nicho indexable (pSEO) y alimenta el schema FAQPage de Google."
+        description="Edita el título largo, la guía de compra y las preguntas frecuentes visibles de cada categoría."
       />
       <div className="p-5 sm:p-8">
         <CategorySeoManager />

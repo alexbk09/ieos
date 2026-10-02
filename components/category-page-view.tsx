@@ -49,7 +49,7 @@ export function CategoryPageView({
     seo_title?: string | null
     /** HTML editorial del hub (Guía de compra, Cómo elegir). */
     seo_intro?: string | null
-    /** FAQ del nicho (visible + schema FAQPage). */
+    /** Preguntas frecuentes visibles del nicho. */
     seo_faq?: SeoFaqItem[] | null
     /** Firma editorial del hub (autoría visible = señal E-E-A-T). */
     autor?: string | null
@@ -153,8 +153,7 @@ export function CategoryPageView({
           )}
         </section>
 
-        {/* FAQ del nicho: visible para el usuario y espejo del schema FAQPage
-            que la página inyecta en el <head> (Google exige que coincidan). */}
+        {/* FAQ del nicho: contenido visible para resolver dudas de compra. */}
         {category.seo_faq && category.seo_faq.length > 0 && (
           <section aria-labelledby="category-faq-heading" className="mt-12 max-w-3xl border-t border-border pt-8">
             <h2 id="category-faq-heading" className="text-2xl font-semibold tracking-[-.04em]">

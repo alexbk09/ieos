@@ -29,9 +29,7 @@ import { clampText, htmlToPlainText } from '@/lib/schema/product-schema'
  *  - SSG + ISR (300s) con el artículo, la tabla comparativa y la FAQ
  *    renderizados en servidor: Google recibe el contenido completo sin JS.
  *  - JSON-LD en el <head>: Article (+ datePublished/dateModified reales),
- *    ItemList de los productos comparados, FAQPage y BreadcrumbList.
- *  - La FAQ VISIBLE y el schema FAQPage son el mismo dato (Google exige que
- *    el marcado coincida con lo que ve el usuario).
+ *    ItemList de los productos comparados y BreadcrumbList.
  *  - 404 real si la entrada no está publicada: los borradores no existen para
  *    el público (la RLS ni siquiera los devuelve).
  *  - `indexado_google = false` ⇒ la página se sirve con noindex (útil para
@@ -151,7 +149,7 @@ export default async function EntryPage({
     ENTRY_REQUIRED_SECTIONS[ENTRY_REQUIRED_SECTIONS.length - 1],
   )
 
-  // JSON-LD en servidor: un único @graph con artículo, productos, FAQ y migas.
+  // JSON-LD en servidor: un único @graph con artículo, productos y migas.
   const jsonLd = buildEntryJsonLd({
     article: {
       url: pageUrl,
@@ -173,7 +171,6 @@ export default async function EntryPage({
       ),
     })),
     itemsName: entry.titulo,
-    faq: entry.faq,
     breadcrumb: [
       { name: t('nav.home'), url: origin },
       { name: t('entry.indexTitle'), url: hubUrl },

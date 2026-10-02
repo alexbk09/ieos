@@ -9,7 +9,7 @@ import {
 import { generateSeoContent } from '@/services/seo-content'
 import { existeTituloSimilar } from '@/services/seoDedupe'
 import { generateHubContent } from '@/services/seo-hub'
-import { getCategorySeo, updateCategorySeo, slugify } from '@/services/catalog'
+import { getCategorySeo, getCategorySeoContext, updateCategorySeo, slugify } from '@/services/catalog'
 import { traducirResenas } from '@/services/aliReviews'
 import { extraerMarcaYSpecs } from '@/services/aliMeta'
 import { espejarImagenesExternas } from '@/services/aliImages'
@@ -261,7 +261,6 @@ async function procesarUnProducto(params: {
       crudo: JSON.stringify({
         titulo_fabrica: tituloFinal,
         precio: dataScraper?.precio_base?.texto_original ?? null,
-        specs: specsFinal,
       }),
       specs: specsFinal,
       evitarTitulos,
@@ -363,7 +362,11 @@ export async function ejecutarPipelineAutomatizacion(
       const seoHubActual = await getCategorySeo(categoria.categoriaId)
       if (!seoHubActual.data?.seo_intro) {
         notificar({ etapa: 'procesando_seo', mensaje: 'Generando contenido de la categoria (hub)...' })
-        const hub = await generateHubContent(categoria.nombre ?? palabra)
+        const contexto = await getCategorySeoContext(categoria.categoriaId)
+        const hub = await generateHubContent(categoria.nombre ?? palabra, {
+          description: contexto.category?.description,
+          products: contexto.products,
+        })
         if (hub.success) {
           await updateCategorySeo(
             categoria.categoriaId,

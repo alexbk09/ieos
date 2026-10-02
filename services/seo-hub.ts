@@ -13,9 +13,9 @@ import {
  * ------------------------------------------------------------------
  * Una landing de categoría con solo una grilla de productos rankea poco.
  * Este servicio usa DeepSeek para producir, UNA sola vez por nicho:
- *   - seo_title: H1 largo tipo "Los mejores {nicho} — Guía {año}".
+ *   - seo_title: un H1 específico y útil para el nicho.
  *   - seo_intro: intro con H2 ("Guía de compra", "Cómo elegir ...").
- *   - seo_faq:   preguntas frecuentes del nicho (alimenta FAQPage).
+ *   - seo_faq:   preguntas frecuentes visibles del nicho.
  *
  * Se guarda en la tabla `categories` y alimenta /categoria/[slug].
  */
@@ -37,19 +37,30 @@ export type HubContent = {
 const API_URL = 'https://api.deepseek.com/v1/chat/completions'
 const MODEL = 'deepseek-chat'
 
+export type HubProductContext = {
+  name: string
+  specifications?: Record<string, string>
+}
+
+export type HubGenerationContext = {
+  description?: string | null
+  products?: HubProductContext[]
+}
+
 /**
  * Construye el prompt del hub a partir del nicho. Los encabezados H2 son
  * los que Google usa para entender la estructura de la guía.
  */
-function construirPrompt(nombreCategoria: string): string {
+function construirPrompt(nombreCategoria: string, tieneCatalogo: boolean): string {
   return (
-    'Eres redactor SEO senior especializado en paginas de categoria (hubs) de e-commerce. ' +
-    'Genera contenido UNICO en espanol neutro para la categoria "' + nombreCategoria + '". ' +
-    'REGLAS OBLIGATORIAS: ' +
-    '1) "seo_title": titulo H1 atractivo de maximo ' + SEO_TITLE_MAX_LENGTH + ' caracteres, con patron de intencion de compra (ej: "Los mejores ' + nombreCategoria + ' — Guia y comparativa"). ' +
-    '2) "seo_intro": HTML con SOLO <h2>,<h3>,<p>,<ul>,<li>. Incluye <h2>Guia de compra</h2>, <h2>Como elegir ' + nombreCategoria + '</h2> y un <h2>Consejos utiles</h2>. Minimo 200 caracteres utiles, sin relleno. ' +
-    '3) "seo_faq": [' + SEO_MIN_FAQ + '-' + SEO_MAX_FAQ + '] preguntas frecuentes reales del nicho. ' +
-    'PROHIBIDO inventar marcas especificas, precios o datos tecnicos. Responde EXCLUSIVAMENTE con JSON: ' +
+    'Redacta en espanol neutro una pagina de categoria original y util para quien esta decidiendo que comprar en "' + nombreCategoria + '". ' +
+    (tieneCatalogo
+      ? 'Usa la descripcion, los productos y sus especificaciones del mensaje de datos como contexto real. Puedes citar ejemplos de esos productos, pero no afirmes que son los unicos disponibles, los mas vendidos ni que tienen una ventaja no demostrada. '
+      : 'No hay contexto de productos disponible: orienta sobre criterios generales de compra sin afirmar que el catalogo incluye marcas, modelos, funciones o rangos de precio concretos. ') +
+    'SEO_TITLE: maximo ' + SEO_TITLE_MAX_LENGTH + ' caracteres. Debe identificar el nicho y ofrecer un motivo concreto para entrar (orientacion para elegir, diferencias o necesidades); evita el patron repetido "Los mejores... guia y comparativa", superlativos vacios y promesas. ' +
+    'SEO_INTRO: HTML solo con <h2>,<h3>,<p>,<ul>,<li>. Incluye en este orden <h2>Guia de compra</h2>, <h2>Como elegir ' + nombreCategoria + '</h2> y <h2>Consejos utiles</h2>. Escribe 180-240 palabras sustantivas: criterios de decision, compromisos entre opciones y comprobaciones que el comprador puede hacer. Integra los datos del catalogo solo donde aporten una decision concreta; cada seccion debe ser distinta, sin introducciones obvias ni relleno. ' +
+    'SEO_FAQ: genera ' + SEO_MIN_FAQ + '-' + SEO_MAX_FAQ + ' dudas reales y especificas del nicho; prioriza 3 con respuestas breves y prudentes. No afirmes disponibilidad ni caracteristicas del catalogo. ' +
+    'Escribe para ayudar primero y atraer con relevancia, no con clickbait. Responde solo JSON valido: ' +
     '{"seo_title":"","seo_intro":"","seo_faq":[{"pregunta":"","respuesta":""}]}'
   )
 }
@@ -59,11 +70,22 @@ function construirPrompt(nombreCategoria: string): string {
  * @param nombreCategoria Nombre legible de la categoría (ej: "Tira Led RGB").
  * @returns { success, data } | { success:false, error }
  */
-export async function generateHubContent(nombreCategoria: string) {
+export async function generateHubContent(nombreCategoria: string, context: HubGenerationContext = {}) {
   const key = process.env.DEEPSEEK_API_KEY?.trim()
   if (!key) return { success: false as const, error: 'Falta DEEPSEEK_API_KEY.' }
   const nombre = (nombreCategoria ?? '').trim()
   if (!nombre) return { success: false as const, error: 'Falta el nombre de la categoria.' }
+  const products = (context.products ?? []).slice(0, 6).map((product) => ({
+    name: String(product.name ?? '').trim().slice(0, 140),
+    specifications: Object.fromEntries(
+      Object.entries(product.specifications ?? {})
+        .filter(([key, value]) => key.trim() && String(value ?? '').trim())
+        .slice(0, 8)
+        .map(([key, value]) => [key.trim().slice(0, 40), String(value).trim().slice(0, 80)]),
+    ),
+  })).filter((product) => product.name)
+  const description = String(context.description ?? '').trim().slice(0, 500)
+  const hasCatalogContext = Boolean(description || products.length)
 
   try {
     const res = await fetch(API_URL, {
@@ -72,8 +94,11 @@ export async function generateHubContent(nombreCategoria: string) {
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: 'system', content: construirPrompt(nombre) },
-          { role: 'user', content: JSON.stringify({ categoria: nombre }) },
+          { role: 'system', content: construirPrompt(nombre, hasCatalogContext) },
+          {
+            role: 'user',
+            content: JSON.stringify({ categoria: nombre, descripcion: description, productos: products }),
+          },
         ],
         temperature: SEO_TEMPERATURE,
         max_tokens: SEO_MAX_TOKENS,

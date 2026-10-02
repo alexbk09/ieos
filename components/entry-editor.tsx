@@ -213,7 +213,7 @@ export function EntryEditor({
             label="Autor"
             value={autor}
             onChange={(event) => setAutor(event.target.value)}
-            hint="Firma visible (E-E-A-T)"
+            hint="Persona o equipo que revisó el contenido; no atribuyas pruebas no realizadas."
           />
         </div>
 
@@ -255,7 +255,7 @@ export function EntryEditor({
           </span>
         </label>
 
-        {/* FAQ: es el mismo dato que alimenta el schema FAQPage de la página. */}
+        {/* FAQ: preguntas visibles para resolver dudas del comprador. */}
         <section>
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold uppercase tracking-wider">Preguntas frecuentes</h3>

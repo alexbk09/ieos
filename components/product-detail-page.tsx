@@ -83,6 +83,8 @@ export type DetailProduct = {
   rating_average?: number | null
   /** Número de valoraciones reales (migración 0052). */
   rating_count?: number | null
+  /** Fuente externa de la valoración, visible junto a los datos importados. */
+  rating_source?: string | null
   /** Reseñas reales traducidas (migración 0052). */
   reviews?: DetailProductReview[]
 }
@@ -201,6 +203,12 @@ export function ProductDetailPageView({ product, related, guides, categories, na
   // Etiqueta del marketplace / CTA de afiliado
   const affiliateUrl = product.url_afiliado_ali ?? product.url_afiliado_amazon ?? product.url_afiliado_store ?? null
   const market = marketplaceForUrl(affiliateUrl)
+  const sourceId = product.rating_source?.trim().toLowerCase()
+  const ratingSource = sourceId === 'aliexpress'
+    ? 'AliExpress'
+    : sourceId === 'amazon'
+      ? 'Amazon'
+      : product.rating_source?.trim() || null
   // Reseñas reales del producto (migración 0052); [] si aún no hay opiniones.
   const reviews = product.reviews ?? []
   // Producto de afiliado: su precio se guarda en EUR (precio real de AliExpress)
@@ -524,6 +532,12 @@ export function ProductDetailPageView({ product, related, guides, categories, na
                     <span className="text-xs text-muted-foreground">{t('product.ratingCount', { count: product.rating_count })}</span>
                   )}
                 </div>
+              )}
+
+              {ratingSource && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t('product.ratingSource', { source: ratingSource })}
+                </p>
               )}
 
               {reviews.length > 0 ? (

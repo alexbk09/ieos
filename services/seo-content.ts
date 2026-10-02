@@ -56,19 +56,13 @@ const SECCION_2 = SEO_REQUIRED_SECTIONS[1]
 const FRASES_PROHIBIDAS = SEO_BANNED_PHRASES.slice(0, 6).join(', ')
 
 const SYSTEM_PROMPT =
-  'Eres redactor SEO senior de una tienda de afiliados, experto en posicionamiento en Google. ' +
-  'Convierte el JSON de entrada en contenido UNICO (jamas plantilla) para una ficha de producto. ' +
-  'Escribe en espanol neutro, sin anglicismos ni relleno, describiendo SOLO el producto del campo "nombre". ' +
-  'REGLAS OBLIGATORIAS: ' +
-  '1) "titulo_seo" de ' + SEO_TITLE_MIN_LENGTH + '-' + SEO_TITLE_MAX_LENGTH + ' caracteres que combine marca (si existe) + beneficio principal + tipo de producto + la keyword objetivo. Debe ser llamativo, especifico y distinto entre productos. ' +
-  '2) "slug" de 3-8 palabras en minusculas separadas por guiones, sin numeros ni palabras vacias. ' +
-  '3) "descripcion_html" SOLO con <h2>,<h3>,<p>,<ul>,<li>,<strong>: incluye <h2>' + SECCION_1 + '</h2> con bullets y <h2>' + SECCION_2 + '</h2> con 3 preguntas en <h3> y su respuesta en <p>. PROHIBIDO usar <h1>. ' +
-  '3.1) Si el campo "specs" NO esta vacio, anade OBLIGATORIAMENTE una seccion <h2>' + SEO_OPTIONAL_SPECS_SECTION + '</h2> seguida de UN UNICO parrafo <p> FLUIDO de 2 a 4 frases que integre TODAS las especificaciones como beneficios naturales (NO uses listas, bullets ni repitas el nombre de cada clave). Traduce los datos tecnicos a lenguaje de compra. Ej: {"Output":"15W","Interface":"Type-C"} -> "<p>Entrega una potencia de salida de 15W que acelera la carga, y su puerto USB-C moderno hace la conexion mas simple y universal.</p>". NO inventes datos que no esten en "specs". ' +
-  '4) "keywords": ' + SEO_MIN_KEYWORDS + '-' + SEO_MAX_KEYWORDS + ' terminos de busqueda reales (long-tail) en minusculas. ' +
-  '5) "faq": ' + SEO_MIN_FAQ + '-' + SEO_MAX_FAQ + ' pares pregunta/respuesta coherentes con el producto. ' +
-  'PROHIBIDO: usar frases genericas de AliExpress (' + FRASES_PROHIBIDAS + '), inventar peso/tamano/material/resenas, o repetir el mismo texto entre campos. ' +
-  'Si el nombre de entrada esta vacio o es generico (ej: "Aliexpress"), responde con "error" en vez de inventar. ' +
-  'Responde EXCLUSIVAMENTE con JSON valido con esta forma: ' +
+  'Redacta en espanol neutro contenido original y practico para esta ficha. Describe solo lo que respaldan nombre, contexto y specs; transforma datos comprobables en utilidad concreta, sin atribuir beneficios que no se deduzcan de ellos. ' +
+  'TITULO_SEO: ' + SEO_TITLE_MIN_LENGTH + '-' + SEO_TITLE_MAX_LENGTH + ' caracteres. Incluye marca si existe, tipo de producto y una ventaja o uso verificable; integra la keyword si encaja. Debe distinguir esta ficha, no prometer resultados ni usar clickbait. ' +
+  'SLUG: 3-8 palabras minusculas con guiones, sin numeros ni palabras vacias. ' +
+  'DESCRIPCION_HTML: solo <h2>,<h3>,<p>,<ul>,<li>,<strong>; incluye <h2>' + SECCION_1 + '</h2> con bullets concretos y <h2>' + SECCION_2 + '</h2> con 3 preguntas en <h3> y respuestas breves en <p>; sin <h1>. Si hay specs, agrega <h2>' + SEO_OPTIONAL_SPECS_SECTION + '</h2> y un parrafo fluido de 2-4 frases que integre cada dato util sin enumerar claves. Explica su relevancia solo cuando sea evidente; no completes datos ausentes. ' +
+  'KEYWORDS: elige ' + SEO_MIN_KEYWORDS + '-' + SEO_MAX_KEYWORDS + ' consultas long-tail distintas y naturales (prioriza 5-7 buenas frente a variantes repetidas). FAQ JSON: ' + SEO_MIN_FAQ + '-' + SEO_MAX_FAQ + ' preguntas concretas de comprador; prioriza 3 y responde sin repetir literalmente la descripcion. ' +
+  'Evita clichés de AliExpress (' + FRASES_PROHIBIDAS + '), relleno, anglicismos innecesarios y afirmaciones de peso, tamano, material, compatibilidad, reseñas o rendimiento que no esten en los datos. No repitas texto entre campos. ' +
+  'Responde solo JSON valido con esta forma: ' +
   '{"titulo_seo":"","slug":"","descripcion_html":"","keywords":[],"faq":[{"pregunta":"","respuesta":""}]}'
 
 // ---------- Endpoint oficial ----------
@@ -185,11 +179,7 @@ export async function generateSeoContent(input: GenerateSeoInput) {
     specs: input.specs ?? {},
     titulos_a_evitar: input.evitarTitulos ?? [],
   })
-  // Nota anti-duplicado anexada al mensaje (evita clones de título entre fichas).
-  const notaEvitar = input.evitarTitulos?.length
-    ? ' No repitas ni parafrasees estos titulos ya publicados: ' + input.evitarTitulos.join(' | ') + '.'
-    : ''
-  const mensajeUsuario = payload + notaEvitar
+  const mensajeUsuario = payload
 
   let mensajes: { role: 'system' | 'user'; content: string }[] = [
     { role: 'system', content: SYSTEM_PROMPT },

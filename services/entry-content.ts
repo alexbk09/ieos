@@ -109,6 +109,25 @@ export type GenerateEntryInput = {
 const SECCIONES = ENTRY_REQUIRED_SECTIONS.join('</h2>, <h2>')
 const FRASES_PROHIBIDAS = ENTRY_BANNED_PHRASES.slice(0, 6).join(', ')
 
+const INSTRUCCIONES_POR_TIPO: Record<string, string> = {
+  comparativa:
+    'Resuelve una eleccion entre alternativas: compara diferencias verificables, explica que gana cada una y para quien conviene. No declares un ganador universal.',
+  top_lista:
+    'Presenta una seleccion util y diferenciada. Ordena solo si los datos permiten justificar el orden; nunca la llames bestseller ni afirmes ventas, pruebas o popularidad sin evidencia.',
+  guia_compra:
+    'Enseña a elegir antes de comprar: convierte criterios del catalogo en decisiones practicas y explica que sacrificios aceptar segun la necesidad.',
+  caso_uso:
+    'Parte de una situacion concreta de uso y recomienda alternativas del catalogo segun las necesidades y limites de ese escenario.',
+  vale_la_pena:
+    'Da un veredicto equilibrado: ventajas, limites y perfil al que le compensa. No inventes opiniones, pruebas ni relacion calidad-precio.',
+  problema_solucion:
+    'Abre con un problema reconocible, explica que caracteristicas ayudan a resolverlo y cuando los productos disponibles no serian adecuados.',
+  mito_realidad:
+    'Contrasta expectativas frecuentes con lo que permiten afirmar los datos disponibles. No presentes mitos o afirmaciones tecnicas como hechos sin respaldo.',
+  regalo:
+    'Ayuda a elegir un regalo por destinatario, ocasion y preferencias; evita asegurar que gustara y no inventes edad, gustos ni ocasiones especiales.',
+}
+
 /**
  * Construye el prompt del artículo a partir del brief real.
  * POR QUÉ se le pasan los datos del catálogo y la lista de títulos existentes:
@@ -126,28 +145,24 @@ export function construirPromptEntrada(tipo: string, brief: EntryBrief): string 
   const pares = brief.pares.map((par) => `${par.a.nombre} vs ${par.b.nombre}`).join(' | ')
   const titulosExistentes = brief.evitar.titulos.slice(0, 25).join(' | ')
   const keywordsExistentes = brief.evitar.keywords.slice(0, 40).join(', ')
+  const enfoqueTipo = INSTRUCCIONES_POR_TIPO[tipo] ?? INSTRUCCIONES_POR_TIPO.guia_compra
 
   return (
-    'Eres redactor SEO senior especializado en contenido de compra para una tienda de afiliados. ' +
-    'Escribe en espanol neutro una entrada de tipo "' + tipo + '" sobre los nichos: ' + nichos + '. ' +
-    'REGLAS OBLIGATORIAS: ' +
-    '1) "titulo" de ' + ENTRY_TITLE_MIN_LENGTH + '-' + ENTRY_TITLE_MAX_LENGTH + ' caracteres, con gancho y especifico (nada de titulos genericos ni de relleno). ' +
-    '2) "slug" de 3-8 palabras en minusculas separadas por guiones, sin numeros ni palabras vacias. ' +
-    '3) "resumen" de ' + ENTRY_RESUMEN_MIN_LENGTH + '-' + ENTRY_RESUMEN_MAX_LENGTH + ' caracteres para la meta description. ' +
-    '4) "cuerpo_html" de AL MENOS ' + ENTRY_MIN_WORDS + ' palabras usando SOLO <h2>,<h3>,<p>,<ul>,<li>,<strong>,<table>,<thead>,<tbody>,<tr>,<th>,<td>. ' +
-    'DEBE incluir, en este orden, las secciones <h2>' + SECCIONES + '</h2>. PROHIBIDO usar <h1>. ' +
-    '5) "faq": entre ' + ENTRY_MIN_FAQ + ' y ' + ENTRY_MAX_FAQ + ' preguntas reales de comprador con su respuesta. ' +
-    '6) "keywords": entre ' + ENTRY_MIN_KEYWORDS + ' y ' + ENTRY_MAX_KEYWORDS + ' terminos long-tail en minusculas. ' +
-    '7) "keyword_objetivo": la busqueda principal que debe captar la entrada. ' +
-    '8) "angulo": el gancho editorial en una frase (ej: "para pisos pequenos", "regalo original"). ' +
-    '9) "criterios_comparativa": hasta ' + ENTRY_MAX_CRITERIA + ' nombres de criterio a comparar (ej: "Potencia", "Conectividad"). Solo NOMBRES: los valores de la tabla los pone el sistema con datos reales. ' +
-    'DATOS REALES (usa SOLO estos productos, nunca inventes otros): ' + productos + '. ' +
-    'ESPECIFICACIONES REALES disponibles por producto: ' + especificaciones + '. ' +
+    'Redacta en espanol neutro una entrada de compra util, concreta y original para el nicho: ' + nichos + '. ' +
+    'TIPO ' + tipo + ': ' + enfoqueTipo + ' ' +
+    'El lector debe poder decidir mejor al terminar. Empieza por una necesidad o duda concreta; usa detalles distintos de estos productos en cada seccion, explica ventajas y limites y evita repetir la misma idea. Habla al lector con naturalidad, sin clickbait ni promesas comerciales. ' +
+    'TITULO: ' + ENTRY_TITLE_MIN_LENGTH + '-' + ENTRY_TITLE_MAX_LENGTH + ' caracteres; especifico, atractivo y fiel al contenido. RESUMEN: ' + ENTRY_RESUMEN_MIN_LENGTH + '-' + ENTRY_RESUMEN_MAX_LENGTH + ' caracteres; explica que decision ayuda a tomar, no repitas el titulo. ANGULO: una frase que nombre el enfoque diferencial. ' +
+    'SLUG: 3-8 palabras en minusculas separadas por guiones, sin numeros ni palabras vacias. ' +
+    'CUERPO: minimo ' + ENTRY_MIN_WORDS + ' palabras; solo <h2>,<h3>,<p>,<ul>,<li>,<strong>,<table>,<thead>,<tbody>,<tr>,<th>,<td>. Usa en este orden <h2>' + SECCIONES + '</h2>; prohibido <h1>. Desarrolla cada seccion con informacion nueva y accionable, no con texto para alcanzar longitud. ' +
+    'FAQ: ' + ENTRY_MIN_FAQ + '-' + ENTRY_MAX_FAQ + ' dudas reales de compra; genera normalmente ' + ENTRY_MIN_FAQ + ', y amplia solo si cada pregunta cubre una duda diferente. Responde directo y sin repetir datos. KEYWORDS: ' + ENTRY_MIN_KEYWORDS + '-' + ENTRY_MAX_KEYWORDS + ' busquedas long-tail naturales en minusculas; usa normalmente ' + ENTRY_MIN_KEYWORDS + ' relevantes y distintas, sin variantes casi identicas. Incluye keyword_objetivo como consulta principal. ' +
+    'CRITERIOS_COMPARATIVA: hasta ' + ENTRY_MAX_CRITERIA + ' nombres de criterios pertinentes; solo nombres. El sistema completa la tabla con especificaciones reales. ' +
+    'PRODUCTOS DISPONIBLES (no agregues otros): ' + productos + '. ' +
+    'ESPECIFICACIONES DISPONIBLES: ' + especificaciones + '. ' +
     (pares ? 'PARES COMPARABLES sugeridos: ' + pares + '. ' : '') +
-    'PROHIBIDO: usar frases genericas (' + FRASES_PROHIBIDAS + '), inventar marcas, precios, medidas o tecnologias, y afirmar certificaciones. ' +
+    'No inventes prestaciones, precios, marcas, certificaciones, pruebas, ventas ni opiniones. Si falta un dato, no lo insinues. Evita frases genericas o los siguientes clichés: ' + FRASES_PROHIBIDAS + '. ' +
     (titulosExistentes ? 'NO repitas ni parafrasees estos titulos ya publicados: ' + titulosExistentes + '. ' : '') +
     (keywordsExistentes ? 'NO repitas estas keywords ya usadas: ' + keywordsExistentes + '. ' : '') +
-    'Responde EXCLUSIVAMENTE con JSON valido con la forma ' +
+    'Responde solo JSON valido con la forma ' +
     '{"titulo":"","slug":"","resumen":"","cuerpo_html":"","faq":[{"pregunta":"","respuesta":""}],"keywords":[],"keyword_objetivo":"","angulo":"","criterios_comparativa":[]}'
   )
 }

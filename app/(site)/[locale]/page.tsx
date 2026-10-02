@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
  * Página de inicio con ISR. La tasa del dólar se obtiene en cliente (useExchangeRate) sin bloquear el render.
  * La grilla de productos llega con la semilla determinista del servidor y el
  * cliente la rota aleatoriamente en cada visita (ver useHomeRandomProducts).
- * Inyecta JSON-LD (Organization, WebSite+SearchAction, ItemList y FAQPage si el admin configuró FAQs)
+ * Inyecta JSON-LD (Organization, WebSite+SearchAction e ItemList)
  * para que Google entienda la estructura de la tienda de afiliados.
  */
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
@@ -113,20 +113,6 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const origin = absoluteUrl('/')
   const homepageConfig = normalizeHomepageConfig(settings.homepage_config ?? {})
 
-  // FAQPage JSON-LD: se genera SOLO si el admin agregó un segmento de tipo 'faq'.
-  const faqSegment = homepageConfig.segments.find((s) => s.type === 'faq' && s.enabled && s.faqItems && s.faqItems.length > 0)
-  const faqJsonLd = faqSegment
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: faqSegment.faqItems!.map((item) => ({
-          '@type': 'Question',
-          name: item.question,
-          acceptedAnswer: { '@type': 'Answer', text: item.answer },
-        })),
-      }
-    : null
-
   // ItemList JSON-LD: lista la selección del inicio (mejora el rich snippet).
   // Coincide con el HTML servido por SSR/ISR (la rotación aleatoria es cliente).
   const itemListJsonLd = normalized.length > 0
@@ -174,7 +160,6 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       },
     },
     ...(itemListJsonLd ? [itemListJsonLd] : []),
-    ...(faqJsonLd ? [faqJsonLd] : []),
   ]
 
   return (

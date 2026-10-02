@@ -198,7 +198,7 @@ export function CategorySeoManager() {
                 placeholder={DEFAULT_AUTHOR}
               />
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Se muestra como «Por {autor}» en el hub. Por defecto viene de NEXT_PUBLIC_DEFAULT_AUTHOR.
+                Indica quién redactó o revisó realmente el contenido. No atribuyas pruebas ni credenciales que no existan.
               </span>
             </label>
 
@@ -216,7 +216,7 @@ export function CategorySeoManager() {
             {faq.length > 0 && (
               <div>
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                  FAQ del nicho ({faq.length}) — alimenta el schema FAQPage
+                  Preguntas frecuentes visibles ({faq.length})
                 </p>
                 <ul className="mt-2 space-y-2">
                   {faq.map((f, i) => (

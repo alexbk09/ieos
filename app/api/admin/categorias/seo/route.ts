@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { hasPermission } from '@/services/roles'
-import { CATEGORY_SEO_MODULE_SLUG, DEFAULT_AUTHOR } from '@/lib/constants'
-import { getCategories, updateCategorySeo } from '@/services/catalog'
+import { CATEGORY_SEO_MODULE_SLUG } from '@/lib/constants'
+import { getCategories, getCategorySeoContext, updateCategorySeo } from '@/services/catalog'
 import { generateHubContent } from '@/services/seo-hub'
 import type { SeoFaqItem } from '@/lib/seo-types'
 
@@ -58,11 +58,17 @@ export async function POST(request: Request) {
 
   const slug = typeof body.slug === 'string' ? body.slug.trim() : undefined
 
-  // Modo regenerar: la IA produce título + intro + FAQ desde el nombre.
+  // Modo regenerar: el nombre, descripción y una muestra real del catálogo
+  // orientan el texto sin exponer una lista ilimitada de productos al modelo.
   if (body.regenerar === true) {
-    const nombre = String(body.nombre ?? '').trim()
-    if (!nombre) return NextResponse.json({ error: 'Falta el nombre de la categoría para regenerar.' }, { status: 400 })
-    const hub = await generateHubContent(nombre)
+    const context = await getCategorySeoContext(id)
+    if (!context.category) {
+      return NextResponse.json({ error: context.error?.message ?? 'No se encontró la categoría.' }, { status: 400 })
+    }
+    const hub = await generateHubContent(context.category.name, {
+      description: context.category.description,
+      products: context.products,
+    })
     if (!hub.success) return NextResponse.json({ error: hub.error }, { status: 500 })
     const result = await updateCategorySeo(
       id,
@@ -70,9 +76,6 @@ export async function POST(request: Request) {
         seo_title: hub.data.seo_title,
         seo_intro: hub.data.seo_intro,
         seo_faq: hub.data.seo_faq,
-        // El hub generado se firma con el autor por defecto del entorno: la
-        // autoría visible es una señal E-E-A-T y nunca queda vacía.
-        autor: DEFAULT_AUTHOR,
       },
       { slug },
     )

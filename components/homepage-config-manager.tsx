@@ -298,7 +298,7 @@ export function HomepageConfigManager({
                     </div>
                   )}
 
-                  {/* faq: preguntas frecuentes (genera FAQPage JSON-LD) */}
+                  {/* faq: preguntas frecuentes visibles en la portada */}
                   {segment.type === 'faq' && (
                     <div className="grid gap-2">
                       {(segment.faqItems ?? []).map((item, fi) => (

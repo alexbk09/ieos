@@ -5,7 +5,7 @@ import { getPublicProductBySlug, getPublicProductSlugs, getRelatedProducts, getC
 import { getEntriesForProduct } from '@/services/entries'
 import { ProductDetailPageView, type DetailProduct } from '@/components/product-detail-page'
 import type { CardProduct } from '@/components/product-card'
-import { buildProductSchema, buildBreadcrumbSchema, buildFaqSchema, htmlToPlainText, clampText, toAbsoluteUrl } from '@/lib/schema/product-schema'
+import { buildProductSchema, buildBreadcrumbSchema, htmlToPlainText, clampText, toAbsoluteUrl } from '@/lib/schema/product-schema'
 import { storedPriceToUsd } from '@/lib/display-price'
 import { absoluteUrl } from '@/lib/seo-url'
 import { buildLanguageAlternates } from '@/lib/seo'
@@ -23,9 +23,9 @@ import { buildLocalizedPath, publishedLocales, DEFAULT_LOCALE } from '@/lib/i18n
  *  - Los datos del schema provienen de la tabla `products` real
  *    (misma capa /services), por lo que son 100% consistentes con
  *    la UI (evita "content mismatch" que Google penaliza).
- *  - No se inventan reseñas (aggregateRating/review) ni se fabrica
- *    contenido: descripción, precio, imágenes y URL de afiliado se
- *    leen de los metadatos REALES del producto.
+ *  - Las valoraciones y reseñas importadas se atribuyen a su fuente en la UI,
+ *    pero no se presentan como reseñas propias en Product JSON-LD.
+ *  - Descripción, precio, imágenes y URL de afiliado salen del producto real.
  */
 
 /** Cache pública limitada para que las fichas se sirvan desde CDN sin forzar
@@ -94,6 +94,7 @@ function toDetailProduct(product: NonNullable<Awaited<ReturnType<typeof getPubli
     // Valoraciones y opiniones reales (migración 0052).
     rating_average: product.rating_average ?? null,
     rating_count: product.rating_count ?? null,
+    rating_source: product.rating_source ?? null,
     reviews: (product.reviews ?? []).map((r) => ({
       autor: r.autor,
       valoracion: r.valoracion,
@@ -163,7 +164,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const cleanDescription = clampText(htmlToPlainText(product.description), 300)
   const description = cleanDescription
     ? cleanDescription
-    : `${product.name} — disponible en ${brandName}. Compra segura a través de nuestro enlace de afiliado.`
+    : `${product.name}: consulta sus características, precio de referencia y disponibilidad en ${brandName}.`
 
   const productUrl = absoluteUrl(buildLocalizedPath(`/productos/${product.slug}`, locale, { prefixDefaultLocale: false }))
   // hreflang: el slug del producto aún no se localiza, pero sí el prefijo de idioma.
@@ -281,9 +282,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       categories: product.categories ?? [],
       marca: product.marca ?? null,
       images: product.images ?? [],
-      // Valoraciones reales: habilitan el AggregateRating del schema.
-      rating_average: product.rating_average ?? null,
-      rating_count: product.rating_count ?? null,
     },
     origin: schemaOrigin,
     organization: { name: settings.company_name || 'zonadehobbies', url: schemaOrigin },
@@ -302,9 +300,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       : []),
     { name: product.name, url: productUrl },
   ])
-
-  // FAQPage: solo si el producto trae FAQ estructurada (generada por la IA).
-  const faqLd = buildFaqSchema(product.seo_faq)
 
   return (
     <>
@@ -326,21 +321,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
 
-      {/* FAQPage (solo si hay FAQ real; nunca se emite vacío). */}
-      {faqLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
-        />
-      )}
-
       <ProductDetailPageView
         product={detailProduct}
         related={related}
-      guides={guides.map((guide) => ({
-        titulo: guide.titulo,
-        slugLocalizado: guide.slug_localizado ?? guide.slug,
-      }))}
+        guides={guides.map((guide) => ({
+          titulo: guide.titulo,
+          slugLocalizado: guide.slug_localizado ?? guide.slug,
+        }))}
         categories={navCategories}
         navLinks={settings.nav_links}
         brand={{

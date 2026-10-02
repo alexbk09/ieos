@@ -307,9 +307,7 @@ export function EntryPageView({
           </aside>
         </div>
 
-        {/* FAQ visible: espejo EXACTO del schema FAQPage que inyecta la página.
-            Se OMITE si el propio artículo ya trae su sección de preguntas: así el
-            usuario no las ve dos veces y la página no repite contenido. */}
+        {/* FAQ visible: se omite si el propio artículo ya trae sus preguntas. */}
         {!faqEnCuerpo && entry.faq && entry.faq.length > 0 && (
           <section aria-labelledby="entry-faq-heading" className="mt-14 max-w-3xl border-t border-border pt-8">
             <h2 id="entry-faq-heading" className="text-2xl font-semibold tracking-[-.04em]">

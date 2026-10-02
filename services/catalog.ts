@@ -1218,6 +1218,75 @@ export async function getCategories() {
   return supabase.from('categories').select('*').order('name')
 }
 
+export type CategorySeoProductContext = {
+  name: string
+  specifications: Record<string, string>
+  imageUrl: string | null
+}
+
+/** Lee una muestra limitada de productos reales para redactar el hub de categoría. */
+export const getCategorySeoContext = cache(async (categoryId: string) => {
+  const supabase = createPublicClient()
+  const { data: category, error: categoryError } = await supabase
+    .from('categories')
+    .select('id,name,description,tipo,parent_id')
+    .eq('id', categoryId)
+    .maybeSingle()
+
+  if (categoryError || !category) {
+    return { category: null, products: [] as CategorySeoProductContext[], error: categoryError }
+  }
+
+  let categoryIds = [category.id]
+  if (category.tipo === 'principal') {
+    const { data: children, error: childrenError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('parent_id', category.id)
+      .eq('tipo', 'subcategoria')
+      .eq('activa', true)
+    if (childrenError) {
+      return { category, products: [] as CategorySeoProductContext[], error: childrenError }
+    }
+    categoryIds = [...categoryIds, ...((children ?? []) as { id: string }[]).map((item) => item.id)]
+  }
+
+  const productIds = await getProductIdsByCategories(categoryIds)
+  if (productIds.length === 0) return { category, products: [] as CategorySeoProductContext[], error: null }
+
+  const { data: rows, error: productsError } = await supabase
+    .from('products')
+    .select('name,specifications,image_url,product_images(url,sort_order)')
+    .in('id', productIds)
+    .eq('is_available', true)
+    .order('sort_order', { ascending: true })
+    .order('rating_average', { ascending: false, nullsFirst: false })
+    .limit(6)
+
+  if (productsError) {
+    return { category, products: [] as CategorySeoProductContext[], error: productsError }
+  }
+
+  const products = ((rows ?? []) as any[]).map((row) => {
+    const specifications = row.specifications && typeof row.specifications === 'object'
+      ? Object.fromEntries(
+          Object.entries(row.specifications)
+            .filter(([key, value]) => key.trim() && String(value ?? '').trim())
+            .map(([key, value]) => [key, String(value).trim()]),
+        )
+      : {}
+    const images = (row.product_images ?? []) as { url: string; sort_order?: number }[]
+    images.sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+    return {
+      name: String(row.name ?? ''),
+      specifications,
+      imageUrl: row.image_url ?? images[0]?.url ?? null,
+    }
+  }).filter((product) => product.name)
+
+  return { category, products, error: null }
+})
+
 /** Categorías principales activas disponibles para clasificar nichos. */
 export async function getPrimaryCategories() {
   const supabase = createPublicClient()

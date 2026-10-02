@@ -358,13 +358,10 @@ test('buildEntryJsonLd agrupa en @graph y descarta los bloques vacíos', () => {
     ],
   })
   assert.equal(schema['@context'], 'https://schema.org')
-  assert.equal(schema['@graph'].length, 4)
+  assert.equal(schema['@graph'].length, 3)
   const tipos = schema['@graph'].map((nodo) => nodo['@type'])
-  assert.deepEqual(tipos, ['Article', 'ItemList', 'FAQPage', 'BreadcrumbList'])
-  // La FAQ vacía se filtra: solo queda la pregunta real.
-  const faq = schema['@graph'][2]
-  assert.equal(faq.mainEntity.length, 1)
-  assert.equal(faq.mainEntity[0].acceptedAnswer.text, 'Depende del uso.')
+  assert.deepEqual(tipos, ['Article', 'ItemList', 'BreadcrumbList'])
+  assert.ok(!tipos.includes('FAQPage'))
 })
 
 test('buildEntryJsonLd devuelve null si no hay ninguna pieza válida', () => {

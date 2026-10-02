@@ -19,13 +19,6 @@
 // JSONB. Este helper es agnóstico: solo recibe un producto plano.
 // ============================================================
 
-import {
-  STORE_COUNTRY_CODE,
-  AFFILIATE_SHIPPING_MIN_DAYS,
-  AFFILIATE_SHIPPING_MAX_DAYS,
-  MERCHANT_RETURN_DAYS,
-} from '@/lib/constants'
-
 // ---------- Tipos del producto mínimo para el schema ----------
 export type SchemaProduct = {
   id: string
@@ -70,13 +63,6 @@ export type SchemaProduct = {
    * mismatch" que Google penaliza).
    */
   ali_status?: 'ok' | 'unavailable' | null
-  /**
-   * Valoración media real en escala 0-5 (migración 0052). Solo se emite
-   * AggregateRating cuando este dato Y el nº de valoraciones son reales.
-   */
-  rating_average?: number | null
-  /** Número de valoraciones reales reportadas por el marketplace. */
-  rating_count?: number | null
 }
 
 /** Datos de la organización que opera la tienda. */
@@ -89,8 +75,6 @@ const SCHEMA_URL = {
   OutOfStock: 'https://schema.org/OutOfStock',
   NewCondition: 'https://schema.org/NewCondition',
 } as const
-
-const OFFER_VALIDITY_DAYS = 30 as const
 
 // ---------- Helpers puros ----------
 
@@ -290,63 +274,27 @@ export function buildPhysicalProperties(product: SchemaProduct): Record<string, 
 
 /**
  * Construye el bloque `offers`:
- * - Un solo Offer canónico con el precio base REAL (price_usd).
- * - Si existe precio original mayor (precio tachado), se usa
- *   AggregateOffer con lowPrice = precio base y highPrice =
- *   precio original para que Google entienda el descuento.
- * La URL apunta SIEMPRE al enlace de afiliado externo (AliExpress).
+ * - Emite una sola Offer con el precio actual que ve el usuario.
+ * - No afirma vigencia, envío o devoluciones que no provengan de la oferta
+ *   concreta del marketplace.
+ * La URL apunta al enlace de afiliado del vendedor correspondiente.
  */
 export function buildOffersNode(
   product: SchemaProduct,
   affiliateUrl: string | null,
   sellerName: string,
-  priceValidUntil: string,
 ): Record<string, unknown> {
   const basePrice = Number(product.price_usd) || 0
-  const originalPrice = Number(product.precio_original ?? 0)
 
-  const shared = {
+  return {
+    '@type': 'Offer',
+    price: basePrice.toFixed(2),
     priceCurrency: 'USD',
     url: affiliateUrl && affiliateUrl.trim().length > 0 ? affiliateUrl.trim() : undefined,
     availability: resolveAvailability(product),
     itemCondition: SCHEMA_URL.NewCondition,
     seller: { '@type': 'Organization', name: sellerName || 'AliExpress' },
-    priceValidUntil,
-    // Merchant / Rich Results: envío estimado y política de devolución.
-    // Se declaran datos REALES de operación (no se inventan precios de envío).
-    shippingDetails: {
-      '@type': 'OfferShippingDetails',
-      shippingDestination: { '@type': 'DefinedRegion', addressCountry: STORE_COUNTRY_CODE },
-      deliveryTime: {
-        '@type': 'ShippingDeliveryTime',
-        handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
-        transitTime: {
-          '@type': 'QuantitativeValue',
-          minValue: AFFILIATE_SHIPPING_MIN_DAYS,
-          maxValue: AFFILIATE_SHIPPING_MAX_DAYS,
-          unitCode: 'DAY',
-        },
-      },
-    },
-    hasMerchantReturnPolicy: {
-      '@type': 'MerchantReturnPolicy',
-      applicableCountry: STORE_COUNTRY_CODE,
-      returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-      merchantReturnDays: MERCHANT_RETURN_DAYS,
-    },
   }
-
-  if (originalPrice > basePrice) {
-    return {
-      '@type': 'AggregateOffer',
-      ...shared,
-      lowPrice: basePrice.toFixed(2),
-      highPrice: originalPrice.toFixed(2),
-      offerCount: 1,
-    }
-  }
-
-  return { '@type': 'Offer', ...shared, price: basePrice.toFixed(2) }
 }
 
 /**
@@ -399,45 +347,18 @@ function ensureDescription(product: SchemaProduct): string {
 }
 
 /**
- * Construye el bloque `aggregateRating` del schema.
- * Devuelve null (y por tanto NO se emite) cuando faltan datos reales, para
- * cumplir la política de Google: nunca inventar reseñas ni valoraciones.
- * Requiere AMBOS: media válida (0-5) y nº de valoraciones > 0.
- */
-export function buildAggregateRating(product: SchemaProduct): Record<string, unknown> | null {
-  const rating = Number(product.rating_average)
-  const count = Number(product.rating_count)
-  if (!Number.isFinite(rating) || rating < 0 || rating > 5) return null
-  if (!Number.isFinite(count) || count <= 0) return null
-  return {
-    '@type': 'AggregateRating',
-    ratingValue: rating.toFixed(1),
-    reviewCount: Math.round(count),
-    bestRating: 5,
-    worstRating: 1,
-  }
-}
-
-/**
  * Construye el objeto JSON-LD completo de Schema.org Product.
  * @param product Metadatos REALES del producto (desde Supabase).
  * @param origin Origin absoluto del deploy (para canonical/robots).
  * @param organization Nombre/URL de la organización propietaria.
- * @param referenceDate Fecha de generación (para priceValidUntil).
  */
 export function buildProductSchema(input: {
   product: SchemaProduct
   origin: string
   organization?: SchemaOrganization
-  referenceDate?: Date
 }): Record<string, unknown> {
   const { product, origin, organization } = input
-  const referenceDate = input.referenceDate ?? new Date()
   const affiliateUrl = resolveAffiliateUrl(product)
-
-  // Fecha límite del precio (30 días desde la generación del HTML).
-  const validUntil = new Date(referenceDate.getTime())
-  validUntil.setDate(validUntil.getDate() + OFFER_VALIDITY_DAYS)
 
   // Canonical en el propio sitio (la URL que ve el usuario).
   const productUrl = `${origin.replace(/\/+$/, '')}/productos/${product.slug}`
@@ -467,20 +388,12 @@ export function buildProductSchema(input: {
     product,
     affiliateUrl,
     marketplaceLabel(affiliateUrl),
-    validUntil.toISOString().slice(0, 10),
   )
 
   // Propiedades físicas clave-valor (peso, dimensiones y specs).
   const physical = buildPhysicalProperties(product)
   if (physical.length > 0) {
     schema.additionalProperty = physical
-  }
-
-  // AggregateRating: SOLO con datos REALES y visibles de valoraciones
-  // (nunca se inventan reseñas → se evita el riesgo de penalización pSEO).
-  const aggregateRating = buildAggregateRating(product)
-  if (aggregateRating) {
-    schema.aggregateRating = aggregateRating
   }
 
   // Proveedor de la tienda (organización dueña del catálogo).

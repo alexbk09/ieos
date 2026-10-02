@@ -6,6 +6,7 @@ import { getSiteSettings } from '@/services/site-settings'
 import {
   getCategoryBySlug,
   getCategoryNav,
+  getCategorySeoContext,
   getCategorySlugs,
   getPrimaryCategoryById,
   getProductsByCategorySlug,
@@ -13,7 +14,7 @@ import {
 } from '@/services/catalog'
 import { getEntriesForCategory, entryHeroImage } from '@/services/entries'
 import { buildPageMetadata } from '@/lib/seo'
-import { absoluteUrl } from '@/lib/seo-url'
+import { absoluteAssetUrl, absoluteUrl } from '@/lib/seo-url'
 import { buildLocalizedPath, publishedLocales } from '@/lib/i18n-config'
 import { OG_IMAGE_PATH } from '@/lib/constants'
 import { htmlToPlainText, clampText } from '@/lib/schema/product-schema'
@@ -109,6 +110,14 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
   if (!category) return { title: 'Categoría no encontrada' }
 
+  let image = ''
+  try {
+    const context = await getCategorySeoContext(category.id)
+    image = absoluteAssetUrl(context.products.find((product) => product.imageUrl)?.imageUrl)
+  } catch {
+    // Un fallo al resolver la imagen no debe impedir mostrar la categoría.
+  }
+
   const name = settings.company_name || 'zonadehobbies'
   // H1/título largo del hub (pSEO) con fallback al nombre de categoría.
   const hubTitle = category.seo_title?.trim() || `${category.name} — Catálogo`
@@ -116,7 +125,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const fuenteDescripcion = category.seo_intro ?? category.description
   const cleanDescription = fuenteDescripcion
     ? clampText(htmlToPlainText(fuenteDescripcion), 300)
-    : `Compra ${category.name} en ${name}: productos seleccionados con envío internacional y compra segura.`
+    : `Explora ${category.name} y compara opciones para elegir según tus necesidades.`
 
   // Canónica con el slug LOCALIZADO del idioma (SEO por idioma).
   const canonicalSlug = category.slug_localizado ?? category.slug
@@ -134,8 +143,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     title: `${hubTitle} | ${name}`,
     description: cleanDescription,
     path,
-    // Imagen social por defecto (la categoría hereda la OG de marca).
-    image: absoluteUrl(OG_IMAGE_PATH),
+    image: image || absoluteUrl(OG_IMAGE_PATH),
     siteName: name,
     robots: 'index, follow',
     alternatesByLocale,
@@ -217,20 +225,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ local
           url: absoluteUrl(buildLocalizedPath(`/productos/${p.slug}`, locale, { prefixDefaultLocale: false })),
         })),
       },
-      // FAQPage del nicho: refleja la FAQ visible del hub (Google exige que el
-      // marcado coincida con el contenido de la página). Se omite si no hay FAQ.
-      ...(category.seo_faq && category.seo_faq.length > 0
-        ? [
-            {
-              '@type': 'FAQPage',
-              mainEntity: category.seo_faq.map((f) => ({
-                '@type': 'Question',
-                name: f.pregunta,
-                acceptedAnswer: { '@type': 'Answer', text: htmlToPlainText(f.respuesta) },
-              })),
-            },
-          ]
-        : []),
     ],
   }
 
