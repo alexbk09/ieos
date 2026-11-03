@@ -57,8 +57,8 @@ export async function proxy(request: NextRequest) {
  * Rutas donde corre el proxy:
  *  - Áreas con sesión (auth).
  *  - Páginas públicas (para la resolución "as-needed" del idioma).
- * Se EXCLUYEN /api, /_next, sitemap.xml, robots.txt, llms.txt y los ficheros
- * estáticos para no penalizar el rendimiento ni el crawl.
+ * Se EXCLUYEN /api, /_next, sitemap.xml, robots.txt, llms.txt, el archivo de
+ * verificación de Google y los ficheros estáticos para no penalizar el rendimiento ni el crawl.
  *
  * ⚠️ IMPORTANTE: esto es una LISTA BLANCA. Toda ruta pública nueva (como
  * /guias) DEBE añadirse aquí; si no, no se reescribe al idioma por defecto y
@@ -84,6 +84,6 @@ export const config = {
     '/es/:path*',
     // Hubs principales dinámicos (p. ej. /gaming, /desk-setup). Solo raíz:
     // rutas reservadas, archivos y locales quedan fuera de esta regla.
-    '/((?!(?:api|_next|sitemap\\.xml|robots\\.txt|llms\\.txt|favicon\\.ico|es|en|fr|de|it|pt|catalogo|categoria|productos|guias|terminos|privacidad|afiliados|politicas)(?:/|$))[^/]+)',
+    '/((?!(?:api|_next|sitemap\\.xml|robots\\.txt|llms\\.txt|favicon\\.ico|google8222e40aea313a4f\\.html|es|en|fr|de|it|pt|catalogo|categoria|productos|guias|terminos|privacidad|afiliados|politicas)(?:/|$))[^/]+)',
   ],
 }
